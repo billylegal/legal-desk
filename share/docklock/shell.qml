@@ -116,10 +116,13 @@ ShellRoot {
   component CycleButton: Rectangle {
     id: cb
     property string label: ""
+    property string caption: ""
     signal step(int d)
     height: 34; radius: 6
     color: cbm.containsMouse ? selC : hiC; border.color: accC; border.width: 1
-    Text { anchors.centerIn: parent; width: parent.width - 26; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: cb.label; color: txtC; font.pixelSize: 9 }
+    Column { anchors.centerIn: parent; width: parent.width - 26; spacing: 0
+      Text { visible: cb.caption !== ""; width: parent.width; horizontalAlignment: Text.AlignHCenter; text: cb.caption; color: accC; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.8 }
+      Text { width: parent.width; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: cb.label; color: txtC; font.pixelSize: 9 } }
     MouseArea { id: cbm; anchors.fill: parent; hoverEnabled: true; onClicked: cb.step(1) }
     Text { anchors.left: parent.left; anchors.leftMargin: 5; anchors.verticalCenter: parent.verticalCenter; text: "\u2039"; color: accC; font.pixelSize: 16; font.bold: true }
     MouseArea { anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 14; onClicked: cb.step(-1) }
@@ -512,19 +515,22 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             CycleButton {
               width: (parent.width - 8) / 3
               enabled: !locked; opacity: locked ? 0.35 : 1
+              caption: "SKIN"
               label: skinNames[skinIdx]
               onStep: (d) => { menuT.restart(); skinProc.a = d > 0 ? "next" : "prev"; skinProc.running = false; skinProc.running = true }
             }
             CycleButton {
               enabled: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0; opacity: enabled ? 1 : 0.35
               width: (parent.width - 8) / 3
-              label: "Wall " + (wallTxt.split(" ")[0] || "...")
+              caption: "WALLPAPER"
+              label: (wallTxt.split(" ")[0] || "...").replace("/", " / ")
               onStep: (d) => { menuT.restart(); wallProc.a = d > 0 ? "next" : "prev"; wallProc.running = false; wallProc.running = true }
             }
             CycleButton {
               width: (parent.width - 8) / 3
               enabled: !locked && mac; opacity: (locked || !mac) ? 0.35 : 1
-              label: iconIdx === 0 ? "Icons" : iconNames[iconIdx]
+              caption: "ICONS"
+              label: iconNames[iconIdx]
               onStep: (d) => { menuT.restart(); iconProc.a = d > 0 ? "next" : "prev"; iconProc.running = false; iconProc.running = true }
             }
           }
