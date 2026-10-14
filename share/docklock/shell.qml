@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: mac ? 514 : 444
+  readonly property int menuH: mac ? 478 : 408
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -76,7 +76,7 @@ ShellRoot {
     var d = lastDock
     // centred over the last icon (the launcher): measured by the Mac dock itself, or the right end of the classic dock
     var cx = (mac && launcherX > 0) ? launcherX : d.x + d.w - cpitch / 2
-    frozenLeft = Math.max(4, Math.min((d.mon && Quickshell.screens.find(s => s.name === d.mon) ? Quickshell.screens.find(s => s.name === d.mon).width : 1920) - 210, cx - 100))
+    frozenLeft = Math.max(4, Math.min((d.mon && Quickshell.screens.find(s => s.name === d.mon) ? Quickshell.screens.find(s => s.name === d.mon).width : 1920) - 234, cx - 100))
     frozenTop = (mac && menuLine > 0) ? screenH(d.mon) - menuLine - menuH : d.y - menuH - 10
   }
   Timer { id: dragT; interval: 1500; onTriggered: dragging = false }
@@ -378,7 +378,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
       anchors { top: true; left: true }
       margins { left: frozenLeft; top: frozenTop }
-      implicitWidth: 200; implicitHeight: menuH
+      implicitWidth: 224; implicitHeight: menuH
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.layer: WlrLayer.Overlay
@@ -398,7 +398,6 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               { label: hidden ? "Keep dock up" : "Hide dock", icon: hidden ? "\uf077" : "\uf078", act: "hide" },
               { label: full ? "Floating dock" : "Full-width dock", icon: "\uf337", act: "full" },
               { label: "Mouse", icon: "\uf245", act: "mouse" },
-              { label: "Reboot", icon: "\uf01e", act: "reboot" },
               { label: "Shut down", icon: "\uf011", act: "shutdown" },
               { label: "Hidden", icon: "", act: "hidden" }
             ].filter(i => i.act !== "hidden").filter(i => !mac || i.act === "close" || i.act === "move" || i.act === "mouse" || i.act === "full" || i.act === "trans" || i.act === "lock" || i.act === "apps" || i.act === "reboot" || i.act === "shutdown")
@@ -532,24 +531,27 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           }
           Row {
             id: bottomRow
-            width: parent.width; height: 28; spacing: 6
-            Rectangle { width: 54; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: apa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
-              Row { anchors.centerIn: parent; spacing: 4
-                Text { text: "\uf00a"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
-                Text { text: "Apps"; color: txtC; font.pixelSize: 10 } }
-              MouseArea { id: apa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuOpen = false; appsProc.running = true } } }
-            Rectangle { width: 54; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: cla.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+            width: parent.width; height: 28; spacing: 4
+            Rectangle { width: 52; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: cla.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
               Row { anchors.centerIn: parent; spacing: 4
                 Text { text: "\uf00d"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
                 Text { text: "Close"; color: txtC; font.pixelSize: 10 } }
               MouseArea { id: cla; anchors.fill: parent; hoverEnabled: true; onClicked: menuOpen = false } }
+            Rectangle { width: 52; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: apa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+              Row { anchors.centerIn: parent; spacing: 4
+                Text { text: "\uf00a"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
+                Text { text: "Apps"; color: txtC; font.pixelSize: 10 } }
+              MouseArea { id: apa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuOpen = false; appsProc.running = true } } }
             Rectangle { width: 30; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: lka2.containsMouse ? selC : (locked ? hiC : "transparent"); border.color: accC; border.width: locked ? 2 : 1
               Text { anchors.centerIn: parent; text: locked ? "\uf023" : "\uf09c"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
               MouseArea { id: lka2; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); toggle.running = true } } }
-            Item { width: Math.max(0, parent.width - 54 - 54 - 30 - 30 - 18); height: 1 }
+            Rectangle { width: 30; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: rba.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+              Text { anchors.centerIn: parent; text: "\uf01e"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+              MouseArea { id: rba; anchors.fill: parent; hoverEnabled: true; onClicked: { menuOpen = false; rebootProc.running = true } } }
+            Item { width: Math.max(0, parent.width - 52 - 52 - 30 - 30 - 30 - 20); height: 1 }
             Rectangle { id: rsBtn; width: 30; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter
               color: rsa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
-              Text { anchors.centerIn: parent; text: "\uf0e2"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+              Text { anchors.centerIn: parent; text: "\uf186"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
               MouseArea { id: rsa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); resetProc.running = false; resetProc.running = true } } }
           }
         }

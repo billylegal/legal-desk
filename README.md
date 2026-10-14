@@ -64,7 +64,7 @@ The dock menus (the grid-button menu, the right-click app menu and the Reboot/Sh
 
 The dock menu's look row has three buttons, **Transparent** (icons float), **Solid** (one plate behind the icons) and **Block** (every icon on its own block, no plate); the current one is highlighted. **Full-width dock** is a separate menu item that stretches the solid bar across the screen. The **Icons** row ‹ › changes only the icons' look (any original skin's), the Skin buttons change skin and icons together, and the small ↺ button resets everything to Nebula (`legal-dock reset`). Nebula's icons are tinted purple like the Amber skin; **Nebula 2** is the plate look.
 
-The **Apps** and **Close** buttons sit at the bottom of the dock menu next to the reset button. The app drawer (Apps) wears the skin's colours too and is rewritten whenever the skin changes; press Apps again, the X, or Esc to close it.
+The bottom row of the dock menu has **Close**, **Apps**, the padlock, **Reboot** and the moon (reset to Nebula) buttons. The app drawer (Apps) wears the skin's colours too and is rewritten whenever the skin changes; press Apps again, the X, or Esc to close it.
 
 The **lock** button (a padlock, bottom row of the dock menu) locks the dock's layout: while it is locked you can't move the icons, change the skin or change the icons, and those controls are dimmed in the menu. Everything else (wallpaper, size, look, ...) keeps working. Press the padlock again to unlock.
 
