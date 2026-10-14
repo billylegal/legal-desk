@@ -60,11 +60,11 @@ ShellRoot {
   property string skinTxt: "auto"
   property bool dragging: false
   readonly property real zoomEff: zoomRaw >= 1 ? zoomRaw : (sizePx >= 56 ? 2.3 : (sizePx <= 36 ? 2.8 : 2.5))
-  readonly property var skinNames: rubik ? ["Cube", "Pastel", "Mono", "Neon", "Sunset", "Ocean", "Candy", "Jungle", "Circles", "Nebula", "Omarchy"]
+  readonly property var skinNames: rubik ? ["Cube", "Pastel", "Mono", "Neon", "Sunset", "Ocean", "Candy", "Jungle", "Circles", "Nebula", "Nebula 2", "Omarchy"]
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: 14 * 36 + 12
+  readonly property int menuH: 17 * 36 + 12 + 6
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -84,6 +84,18 @@ ShellRoot {
   Process { id: sizeW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-size\"", String(sizePx)] }
   Process { id: zoomW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-zoom\"", String(zoomRaw)] }
   Process { id: runner2; property var cmd: []; command: cmd }
+  property int iconIdx: 0
+  readonly property var iconNames: ["With skin", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
+  FileView {
+    id: icoFile
+    path: Quickshell.env("HOME") + "/.cache/dock-icon-style"
+    printErrors: false
+    onLoaded: { var n = parseInt(text()); ldr.iconIdx = (isNaN(n) || n < 0 || n >= ldr.iconNames.length) ? 0 : n }
+    onLoadFailed: ldr.iconIdx = 0
+  }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: icoFile.reload() }
+  Process { id: iconProc; property string a: "next"; command: ["/usr/lib/legal-dock/dock-icon-style", a]; onExited: icoFile.reload() }
+  Process { id: resetProc; command: ["/usr/lib/legal-dock/dock-reset"]; onExited: icoFile.reload() }
   property string wallTxt: ""
   Process { id: wallProc; property string a: "name"; command: ["/usr/lib/legal-dock/dock-wallpaper", a]
     stdout: StdioCollector { onStreamFinished: wallTxt = text.trim() } }
@@ -316,6 +328,18 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   // Restart / Shut down always ask first ("Do you really want to ...?"), popup centered on screen.
   Process { id: rebootProc; command: ["/usr/lib/legal-dock/reboot-confirm", "reboot", "center"] }
   Process { id: shutdownProc; command: ["/usr/lib/legal-dock/reboot-confirm", "shutdown", "center"] }
+  property bool blocksOn: false
+  FileView {
+    id: blocksFile
+    path: Quickshell.env("HOME") + "/.cache/dock-block"
+    printErrors: false
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: ldr.blocksOn = true
+    onLoadFailed: ldr.blocksOn = false
+  }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: blocksFile.reload() }
+  Process { id: lookProc; property string a: "solid"; command: ["/usr/lib/legal-dock/dock-look", a]; onExited: { poll.running = true; blocksFile.reload() } }
   Process { id: transToggle; command: ["/usr/lib/legal-dock/dock-transparent-toggle"]; onExited: poll.running = true }
 
   // One gear button at the right end of the dock; opens a small menu above it.
@@ -374,13 +398,12 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               { label: locked ? "Unlock dock" : "Lock dock", icon: locked ? "\uf09c" : "\uf023", act: "lock" },
               { label: moving ? "Done Moving" : "Move Icons", icon: "\uf0b2", act: "move" },
               { label: hidden ? "Keep dock up" : "Hide dock", icon: hidden ? "\uf077" : "\uf078", act: "hide" },
-              { label: transparent ? "Solid dock" : "Transparent dock", icon: "\uf1fc", act: "trans" },
               { label: full ? "Floating dock" : "Full-width dock", icon: "\uf337", act: "full" },
               { label: "Mouse", icon: "\uf245", act: "mouse" },
               { label: "Reboot", icon: "\uf01e", act: "reboot" },
               { label: "Shut down", icon: "\uf011", act: "shutdown" },
               { label: "Close menu", icon: "\uf00d", act: "close" }
-            ].filter(i => !mac || i.act === "close" || i.act === "move" || i.act === "mouse" || i.act === "trans" || i.act === "lock" || i.act === "apps" || i.act === "reboot" || i.act === "shutdown")
+            ].filter(i => !mac || i.act === "close" || i.act === "move" || i.act === "mouse" || i.act === "full" || i.act === "trans" || i.act === "lock" || i.act === "apps" || i.act === "reboot" || i.act === "shutdown")
             Rectangle {
               required property var modelData
               width: parent.width; height: 34; radius: 6
@@ -403,6 +426,24 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
                   else if (modelData.act === "move") { if (moving) endMove(); else startMove() }
                   else if (modelData.act === "reboot") rebootProc.running = true
                   else if (modelData.act === "shutdown") shutdownProc.running = true
+                }
+              }
+            }
+          }
+          Row {
+            width: parent.width; height: 34; spacing: 4
+            Repeater {
+              model: [ { l: "Transparent", k: "transparent" }, { l: "Solid", k: "solid" }, { l: "Block", k: "block" } ]
+              Rectangle {
+                required property var modelData
+                readonly property bool on: modelData.k === "block" ? blocksOn : (modelData.k === "transparent" ? (transparent && !blocksOn) : (!transparent && !blocksOn))
+                width: (parent.width - 8) / 3; height: 34; radius: 6
+                color: on ? hiC : (lka.containsMouse ? selC : "transparent")
+                border.color: accC; border.width: on ? 1 : 0
+                Text { anchors.centerIn: parent; text: modelData.l; color: txtC; font.pixelSize: 11 }
+                MouseArea {
+                  id: lka; anchors.fill: parent; hoverEnabled: true
+                  onClicked: { menuT.restart(); lookProc.a = modelData.k; lookProc.running = false; lookProc.running = true }
                 }
               }
             }
@@ -463,6 +504,22 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               MouseArea { id: sna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "next"; skinProc.running = false; skinProc.running = true } } }
           }
           Row {
+            visible: mac
+            width: parent.width; height: mac ? 34 : 0; spacing: 4
+            Rectangle { width: 34; height: 34; radius: 6; color: ipa.containsMouse ? selC : "transparent"
+              Text { anchors.centerIn: parent; text: "\u2039"; color: txtC; font.pixelSize: 20 }
+              MouseArea { id: ipa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); iconProc.a = "prev"; iconProc.running = false; iconProc.running = true } } }
+            Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: accC; border.width: 1
+              Row { anchors.centerIn: parent; spacing: 8
+                Grid { anchors.verticalCenter: parent.verticalCenter; columns: 2; spacing: 2
+                  Repeater { model: ["#ef5350", "#66bb6a", "#42a5f5", "#ffa726"]
+                    Rectangle { required property string modelData; width: 7; height: 7; radius: 2; color: modelData } } }
+                Text { text: "Icons: " + iconNames[iconIdx]; color: txtC; font.pixelSize: 11 } } }
+            Rectangle { width: 34; height: 34; radius: 6; color: ina.containsMouse ? selC : "transparent"
+              Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
+              MouseArea { id: ina; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); iconProc.a = "next"; iconProc.running = false; iconProc.running = true } } }
+          }
+          Row {
             visible: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0
             width: parent.width; height: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0 ? 34 : 0; spacing: 4
             Rectangle { width: 34; height: 34; radius: 6; color: wpa.containsMouse ? selC : "transparent"
@@ -473,6 +530,15 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             Rectangle { width: 34; height: 34; radius: 6; color: wna.containsMouse ? selC : "transparent"
               Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
               MouseArea { id: wna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); wallProc.a = "next"; wallProc.running = false; wallProc.running = true } } }
+          }
+          Item {
+            width: parent.width; height: 28
+            Text { id: rsHint; anchors.right: rsBtn.left; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter
+              text: "Reset everything to Nebula"; color: txtC; opacity: rsa.containsMouse ? 0.9 : 0; font.pixelSize: 11 }
+            Rectangle { id: rsBtn; width: 30; height: 24; radius: 6; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
+              color: rsa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+              Text { anchors.centerIn: parent; text: "\uf0e2"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+              MouseArea { id: rsa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); resetProc.running = false; resetProc.running = true } } }
           }
         }
       }

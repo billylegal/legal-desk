@@ -1,0 +1,15 @@
+#!/bin/bash
+# dock-look transparent|solid|block|status : the dock's look.
+#   transparent = icons float, no plate;  solid = one plate behind all the icons;  block = every icon on its own block, no plate.
+# (The full-width bar is a separate switch: dock-full-toggle / "Full-width dock" in the menu.)
+H="$HOME/.cache"; C="$HOME/.config/nwg-dock-hyprland/style.css"; B="$(dirname "$(readlink -f "$0")")"
+is_t() { [ -e "$H/dock-transparent" ] || grep -q "background: transparent" "$C" 2>/dev/null; }
+case "$1" in
+  transparent) wt=1; wb=0 ;;
+  solid)       wt=0; wb=0 ;;
+  block)       wt=1; wb=1 ;;
+  *) if [ -e "$H/dock-block" ]; then echo block; elif is_t; then echo transparent; else echo solid; fi; exit 0 ;;
+esac
+if [ "$wb" = 1 ]; then : > "$H/dock-block"; else rm -f "$H/dock-block"; fi
+cur=0; is_t && cur=1; [ "$cur" != "$wt" ] && "$B/dock-transparent-toggle"
+exit 0
