@@ -1,9 +1,10 @@
 #!/bin/bash
-# dock-icon-style next|prev|N|show : choose how the dock's icons are coloured (Mac/Rubik dock), independent of the skin.
-# 0 Original, then coloured tiles in palettes (Rainbow, Nebula, Omarchy, Sunset, Ocean, Candy, Jungle, Neon, Gold), 10 Mono (grey icons).
+# dock-icon-style next|prev|N|show : give the dock's icons the look of one of the original skins (Mac/Rubik dock), independent of the skin in use.
+# 0 = Original (the skin's own look), then every skin: Emerald, Glass, ... Nebula, Omarchy, and the Rubik palettes (Cube, Pastel, Ocean, Candy, Jungle, Circles).
 # Remembered in ~/.cache/dock-icon-style. It never changes the skin or the menu colours.
-F="$HOME/.cache/dock-icon-style"; N=11
-NAMES=(Original Rainbow Nebula Omarchy Sunset Ocean Candy Jungle Neon Gold Mono)
+F="$HOME/.cache/dock-icon-style"
+NAMES=("Original" "Emerald" "Glass" "Midnight" "Neon" "Aluminum" "Aqua" "Sunset" "Mono" "Paper" "Terminal" "Amber" "Blueprint" "Bubbles" "Pearls" "Windows 95" "Windows 98" "Windows 11" "Polybar" "Tint2" "Nebula" "Omarchy" "Cube" "Pastel" "Ocean" "Candy" "Jungle" "Circles")
+N=${#NAMES[@]}
 cur=$(cat "$F" 2>/dev/null); [[ $cur =~ ^[0-9]+$ ]] && [ "$cur" -lt $N ] || cur=0
 case "$1" in
   next) cur=$(( (cur + 1) % N )) ;;

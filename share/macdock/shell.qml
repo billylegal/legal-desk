@@ -148,30 +148,31 @@ ShellRoot {
       if (c.sel) root.pSel = c.sel
     }
   }
-  // Icon colours (menu: Icons < >), independent of the skin: coloured tiles behind the icons, or grey icons. File: ~/.cache/dock-icon-style
+  // Icon colours (menu: Icons < >), independent of the skin: the icons take the look of any ORIGINAL skin.
+  // Skins with their own icon tint (Mono, Terminal, Amber, Blueprint, Paper) tint the icons; skins with a tile palette (Rubik palettes, Bubbles) put
+  // the icons on coloured tiles; every other skin puts each icon on a small plate in that skin's colours. File: ~/.cache/dock-icon-style
   property int iconStyle: 0
-  readonly property var iconStyles: [
-    { n: "Original" },
-    { n: "Rainbow", t: ["#ef5350", "#ffa726", "#ffee58", "#66bb6a", "#42a5f5", "#ab47bc"] },
-    { n: "Nebula",  t: ["#8B5CF6", "#B061FF", "#6C8CFF", "#5CC8F5", "#CC8CFF", "#E6E1FA"] },
-    { n: "Omarchy", t: ["#f7768e", "#e0af68", "#9ece6a", "#7aa2f7", "#bb9af7", "#7dcfff"] },
-    { n: "Sunset",  t: ["#ff5a5f", "#ff8a3d", "#ffc857", "#e8590c", "#a8124a", "#ffd9b0"] },
-    { n: "Ocean",   t: ["#00b4d8", "#0077b6", "#90e0ef", "#023e8a", "#48cae4", "#caf0f8"] },
-    { n: "Candy",   t: ["#ff4d9d", "#ffd166", "#06d6a0", "#8338ec", "#ff6b6b", "#4cc9f0"] },
-    { n: "Jungle",  t: ["#2d6a4f", "#52b788", "#95d5b2", "#40916c", "#1b4332", "#b7e4c7"] },
-    { n: "Neon",    t: ["#39ff14", "#00e5ff", "#ff2a2a", "#ffe066", "#d946ff", "#ff6a00"] },
-    { n: "Gold",    t: ["#d4af37", "#f2d675", "#a9831e", "#c9a227", "#e8c547", "#b8860b"] },
-    { n: "Mono",    gray: true }
-  ]
-  readonly property var istyle: iconStyles[iconStyle] || iconStyles[0]
-  readonly property bool iconTiles: !!istyle.t
-  readonly property string icEff: istyle.gray ? "gray" : skin.ic
+  readonly property var iconNames: ["Original", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
+  function styleSkin(n) {
+    for (var i = 0; i < rubikSkins.length; i++) if (rubikSkins[i].n === n && rubikSkins[i].t && rubikSkins[i].t.length >= 3) return rubikSkins[i]
+    for (var j = 0; j < macSkins.length; j++) if (macSkins[j].n === n) return macSkins[j]
+    for (var k = 0; k < rubikSkins.length; k++) if (rubikSkins[k].n === n) return rubikSkins[k]
+    return null
+  }
+  readonly property var istyle: iconStyle > 0 ? styleSkin(iconNames[iconStyle]) : null
+  readonly property bool iconTinted: !!istyle && !!istyle.ic
+  readonly property bool iconTiles: !!istyle && !istyle.ic
+  readonly property bool iconPal: iconTiles && !!istyle.t && istyle.t.length >= 3
+  readonly property string icEff: iconStyle > 0 ? ((istyle && istyle.ic) || "") : skin.ic
   function icol(cls) { var h = 7; for (var i = 0; i < cls.length; i++) h = (h * 31 + cls.charCodeAt(i)) % 1000003; return istyle.t[h % istyle.t.length] }
+  function tc1(cls) { return iconPal ? icol(cls) : istyle.c1 }
+  function tc2(cls) { return iconPal ? icol(cls) : istyle.c2 }
+  readonly property color tcb: iconPal ? "#33ffffff" : (istyle ? istyle.b : "transparent")
   FileView {
     id: icoFile
     path: Quickshell.env("HOME") + "/.cache/dock-icon-style"
     printErrors: false
-    onLoaded: { var n = parseInt(text()); root.iconStyle = (isNaN(n) || n < 0 || n >= root.iconStyles.length) ? 0 : n }
+    onLoaded: { var n = parseInt(text()); root.iconStyle = (isNaN(n) || n < 0 || n >= root.iconNames.length) ? 0 : n }
     onLoadFailed: root.iconStyle = 0
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: icoFile.reload() }
@@ -514,7 +515,7 @@ print(json.dumps(out))
           Rectangle {
             visible: root.rubik && cell.modelData.cls !== "__launcher__"
             anchors.fill: parent; radius: width * (root.skin.rr !== undefined ? root.skin.rr : 0.2)
-            color: root.iconTiles ? root.icol(cell.modelData.cls) : root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
+            color: root.iconTiles ? root.tc1(cell.modelData.cls) : root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
             rotation: cell.twist
             Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: "#33ffffff"; border.width: 1 }
           }
@@ -526,16 +527,17 @@ print(json.dumps(out))
             anchors.centerIn: parent
             width: parent.width * (kind === "circle" ? 0.96 : 0.98); height: width
             radius: kind === "circle" ? width / 2 : (kind === "hpill" ? 8 : 0)
-            color: kind === "circle" ? (root.iconTiles ? root.icol(cell.modelData.cls) : (root.skin.t.length ? root.skin.t[cell.index % root.skin.t.length] : (root.skin.tc || "#33ffffff")))
+            color: kind === "circle" ? (root.iconTiles ? root.tc1(cell.modelData.cls) : (root.skin.t.length ? root.skin.t[cell.index % root.skin.t.length] : (root.skin.tc || "#33ffffff")))
                    : (kind === "hpill" ? "#2cffffff" : "#c0c0c0")
             border.color: kind === "circle" ? "#40000000" : "transparent"; border.width: kind === "circle" ? 1 : 0
             Bevel { visible: stile.kind === "btn" || stile.kind === "hbtn" }
           }
-          // Icon colours (non-Rubik skins): a rounded coloured tile behind the icon.
+          // Icon style tiles (non-Rubik skins): a rounded plate behind the icon in the chosen skin's colours.
           Rectangle {
             visible: root.iconTiles && !root.rubik && (root.skin.tile || "") !== "circle" && cell.modelData.cls !== "__launcher__"
             anchors.centerIn: parent; width: parent.width * 0.98; height: width; radius: width * 0.22
-            color: root.icol(cell.modelData.cls); border.color: "#33ffffff"; border.width: 1
+            gradient: Gradient { GradientStop { position: 0; color: root.tc1(cell.modelData.cls) } GradientStop { position: 1; color: root.tc2(cell.modelData.cls) } }
+            border.color: root.tcb; border.width: 1
           }
           Rectangle {
             visible: root.iconFor(cell.modelData.cls) === ""
