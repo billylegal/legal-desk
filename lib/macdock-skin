@@ -24,6 +24,29 @@ write_palette() {
   [ "$row" = OMA ] && row=$(oma_row)
   IFS='|' read -r b a t sel <<< "$row"
   printf 'bg=%s\nacc=%s\ntxt=%s\nsel=%s\n' "$b" "$a" "$t" "$sel" > "$H/dock-menu-colors.tmp" && mv "$H/dock-menu-colors.tmp" "$H/dock-menu-colors"
+  write_drawer "$b" "$a" "$t" "$sel"
+}
+
+# The app drawer ("All apps") wears the skin's colours too. nwg-drawer reads its stylesheet at start, so restart it when the colours change.
+write_drawer() {
+  local D="$HOME/.config/nwg-drawer" new
+  mkdir -p "$D"
+  new="/* Legal Dock: generated from the dock skin (macdock-skin) - edit freely, it is rewritten when the skin changes. */
+window { background-color: $1; color: $3; border: 2px solid $2; border-radius: 16px }
+entry { background-color: $4; color: $3; border: 1px solid $2; border-radius: 10px; padding: 6px 10px; caret-color: $2 }
+button, image { background: none; border: none; color: $3 }
+button { border-radius: 10px; padding: 4px }
+button:hover, button:focus { background-color: $4; box-shadow: none }
+button:active { background-color: $2; color: $1 }
+label { color: $3 }
+#category-button { margin: 0 10px 0 10px; border-radius: 10px }
+#pinned-box { padding-bottom: 5px; border-bottom: 1px dotted $2 }
+#files-box { padding: 5px; border: 1px dotted $2; border-radius: 15px }
+#math-label { font-weight: bold; font-size: 16px; color: $2 }"
+  if [ "$new" != "$(cat "$D/drawer.css" 2>/dev/null)" ]; then
+    printf '%s\n' "$new" > "$D/drawer.css"
+    pkill -x nwg-drawer 2>/dev/null; true
+  fi
 }
 
 # apply_classic : write the nwg-dock stylesheet for the chosen classic skin (keeps solid/transparent as it is).
