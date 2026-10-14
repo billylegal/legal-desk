@@ -76,7 +76,7 @@ ShellRoot {
     var d = lastDock
     // centred over the last icon (the launcher): measured by the Mac dock itself, or the right end of the classic dock
     var cx = (mac && launcherX > 0) ? launcherX : d.x + d.w - cpitch / 2
-    frozenLeft = Math.max(4, Math.min((d.mon && Quickshell.screens.find(s => s.name === d.mon) ? Quickshell.screens.find(s => s.name === d.mon).width : 1920) - 234, cx - 100))
+    frozenLeft = Math.max(4, Math.min((d.mon && Quickshell.screens.find(s => s.name === d.mon) ? Quickshell.screens.find(s => s.name === d.mon).width : 1920) - 266, cx - 100))
     frozenTop = (mac && menuLine > 0) ? screenH(d.mon) - menuLine - menuH : d.y - menuH - 10
   }
   Timer { id: dragT; interval: 1500; onTriggered: dragging = false }
@@ -110,6 +110,19 @@ ShellRoot {
   Process { id: wallProc; property string a: "name"; command: ["/usr/lib/legal-dock/dock-wallpaper", a]
     stdout: StdioCollector { onStreamFinished: wallTxt = text.trim() } }
   Process { id: skinProc; property string a: "next"; command: ["/usr/lib/legal-dock/macdock-skin", a]; onExited: poll.running = true }
+  component CycleButton: Rectangle {
+    id: cb
+    property string label: ""
+    signal step(int d)
+    height: 34; radius: 6
+    color: cbm.containsMouse ? selC : hiC; border.color: accC; border.width: 1
+    Text { anchors.centerIn: parent; text: cb.label; color: txtC; font.pixelSize: 10 }
+    MouseArea { id: cbm; anchors.fill: parent; hoverEnabled: true; onClicked: cb.step(1) }
+    Text { anchors.left: parent.left; anchors.leftMargin: 5; anchors.verticalCenter: parent.verticalCenter; text: "\u2039"; color: accC; font.pixelSize: 16; font.bold: true }
+    MouseArea { anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 14; onClicked: cb.step(-1) }
+    Text { anchors.right: parent.right; anchors.rightMargin: 5; anchors.verticalCenter: parent.verticalCenter; text: "\u203a"; color: accC; font.pixelSize: 16; font.bold: true }
+    MouseArea { anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 14; onClicked: cb.step(1) }
+  }
   component SliderRow: Rectangle {
     id: sr
     property string label: ""
@@ -145,7 +158,7 @@ ShellRoot {
   property int pinCount: 0
   // Every second word of a menu label gets a capital: "Lock dock" -> "Lock Dock".
   function cap2(s) { var w = String(s).split(" "); for (var i = 1; i < w.length; i += 2) if (w[i].length) w[i] = w[i].charAt(0).toUpperCase() + w[i].slice(1); return w.join(" ") }
-  Timer { id: menuT; interval: 8000; running: menuOpen; repeat: false; onTriggered: menuOpen = false }
+  Timer { id: menuT; interval: 40000; running: menuOpen; repeat: false; onTriggered: menuOpen = false }
   IpcHandler { target: "dockmenu"; function toggle(): void { menuOpen = !menuOpen } function close(): void { menuOpen = false; mouseOpen = false } function mouse(): void { openMouse() } function moveDone(): void { endMove() } }
   readonly property int cpitch: iconSize === "small" ? 40 : (iconSize === "large" ? 69 : 53)
 
@@ -401,7 +414,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
       anchors { top: true; left: true }
       margins { left: frozenLeft; top: frozenTop }
-      implicitWidth: 224; implicitHeight: menuH
+      implicitWidth: 256; implicitHeight: menuH
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.layer: WlrLayer.Overlay
@@ -447,35 +460,30 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               }
             }
           }
-          // Three cycle buttons on one line: every press moves to the next choice (look, dock style, icon size).
+          // Three cycle buttons on one line (look, dock style, icon size): ‹ › inside each one steps back / forward, the middle steps forward.
+          // The menu stays open while you try them.
           Row {
             width: parent.width; height: 34; spacing: 4
-            Rectangle {
+            CycleButton {
               readonly property var opts: [ { l: "Transparent", k: "transparent" }, { l: "Solid", k: "solid" }, { l: "Block", k: "block" } ]
               readonly property int cur: blocksOn ? 2 : (transparent ? 0 : 1)
-              width: (parent.width - 8) / 3; height: 34; radius: 6
-              color: cya.containsMouse ? selC : hiC; border.color: accC; border.width: 1
-              Text { anchors.centerIn: parent; text: parent.opts[parent.cur].l; color: txtC; font.pixelSize: 11 }
-              MouseArea { id: cya; anchors.fill: parent; hoverEnabled: true
-                onClicked: { menuT.restart(); lookProc.a = parent.opts[(parent.cur + 1) % 3].k; lookProc.running = false; lookProc.running = true } }
+              width: (parent.width - 8) / 3
+              label: opts[cur].l
+              onStep: (d) => { menuT.restart(); lookProc.a = opts[(cur + d + 3) % 3].k; lookProc.running = false; lookProc.running = true }
             }
-            Rectangle {
+            CycleButton {
               readonly property var opts: [ { l: "Classic", k: "off" }, { l: "Mac", k: "on" }, { l: "Rubik", k: "rubik" } ]
               readonly property int cur: !mac ? 0 : (rubik ? 2 : 1)
-              width: (parent.width - 8) / 3; height: 34; radius: 6
-              color: cyb.containsMouse ? selC : hiC; border.color: accC; border.width: 1
-              Text { anchors.centerIn: parent; text: parent.opts[parent.cur].l; color: txtC; font.pixelSize: 11 }
-              MouseArea { id: cyb; anchors.fill: parent; hoverEnabled: true
-                onClicked: { menuOpen = false; styler.which = parent.opts[(parent.cur + 1) % 3].k; styler.running = true } }
+              width: (parent.width - 8) / 3
+              label: opts[cur].l
+              onStep: (d) => { menuT.restart(); styler.which = opts[(cur + d + 3) % 3].k; styler.running = false; styler.running = true }
             }
-            Rectangle {
+            CycleButton {
               readonly property var opts: [ { l: "Small", k: "small" }, { l: "Medium", k: "medium" }, { l: "Large", k: "large" } ]
               readonly property int cur: presetOn("small") ? 0 : (presetOn("large") ? 2 : 1)
-              width: (parent.width - 8) / 3; height: 34; radius: 6
-              color: cyc.containsMouse ? selC : hiC; border.color: accC; border.width: 1
-              Text { anchors.centerIn: parent; text: parent.opts[parent.cur].l; color: txtC; font.pixelSize: 11 }
-              MouseArea { id: cyc; anchors.fill: parent; hoverEnabled: true
-                onClicked: { if (mac) menuT.restart(); else menuOpen = false; sizer.which = parent.opts[(parent.cur + 1) % 3].k; sizer.running = true } }
+              width: (parent.width - 8) / 3
+              label: opts[cur].l
+              onStep: (d) => { menuT.restart(); sizer.which = opts[(cur + d + 3) % 3].k; sizer.running = false; sizer.running = true }
             }
           }
           SliderRow {
