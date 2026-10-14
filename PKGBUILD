@@ -8,7 +8,7 @@ url='https://github.com/5ive7/legal-dock'
 license=('MIT')
 depends=('hyprland' 'nwg-dock-hyprland' 'nwg-drawer' 'quickshell' 'inotify-tools' 'python' 'util-linux' 'procps-ng' 'bash')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('285100416b34dd59a25c1dad2a4f98be7ee6e78cea6de117cb2186942af5ae6e')
 
 package() {
   cd "$pkgname-$pkgver"
