@@ -1,18 +1,23 @@
 #!/bin/bash
-# dock-wallpaper next|prev|name : cycle the wallpapers of the current Omarchy theme (used by the Legal Dock menu).
+# dock-wallpaper next|prev|name : cycle through ALL wallpapers on this system (Omarchy's stock themes, your own themes,
+# per-theme user backgrounds, ~/Pictures/Wallpapers). Used by the Legal Dock menu. Only the wallpaper changes, not the theme.
 CUR="$HOME/.local/state/omarchy/current"
-THEME=$(cat "$CUR/theme.name" 2>/dev/null)
-mapfile -t W < <(find -L "$HOME/.config/omarchy/backgrounds/$THEME" "$CUR/theme/backgrounds" -maxdepth 1 -type f \
-  \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | sort)
+mapfile -t W < <(
+  { find -L /usr/share/omarchy/themes/*/backgrounds "$HOME"/.config/omarchy/themes/*/backgrounds "$HOME"/.config/omarchy/backgrounds \
+      "$HOME/Pictures/Wallpapers" -maxdepth 2 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null
+  } | while read -r f; do echo "$(readlink -f "$f")"; done | sort -u)
 N=${#W[@]}
-now=$(readlink -f "$CUR/background" 2>/dev/null)
-i=-1; for k in "${!W[@]}"; do [ "$(readlink -f "${W[$k]}")" = "$now" ] && i=$k; done
+idx() {  # exact path first; the current theme keeps a copy of its backgrounds, so fall back to same name + size
+  local now sz; now=$(readlink -f "$CUR/background" 2>/dev/null); i=-1
+  for k in "${!W[@]}"; do [ "${W[$k]}" = "$now" ] && { i=$k; return; }; done
+  sz=$(stat -c %s "$now" 2>/dev/null)
+  for k in "${!W[@]}"; do [ "$(basename "${W[$k]}")" = "$(basename "$now")" ] && [ "$(stat -c %s "${W[$k]}")" = "$sz" ] && { i=$k; return; }; done
+}
+idx
 case "${1:-name}" in
   next) [ $N -gt 0 ] && { i=$(( (i + 1) % N )); omarchy-theme-bg-set "${W[$i]}" >/dev/null 2>&1; } ;;
-  prev) [ $N -gt 0 ] && { i=$(( (i - 1 + N) % N )); omarchy-theme-bg-set "${W[$i]}" >/dev/null 2>&1; } ;;
+  prev) [ $N -gt 0 ] && { [ $i -lt 0 ] && i=0; i=$(( (i - 1 + N) % N )); omarchy-theme-bg-set "${W[$i]}" >/dev/null 2>&1; } ;;
 esac
-# print "<n>/<total> <name>"
-now=$(readlink -f "$CUR/background" 2>/dev/null); i=0
-for k in "${!W[@]}"; do [ "$(readlink -f "${W[$k]}")" = "$now" ] && i=$((k + 1)); done
-b=$(basename -- "${now:-none}"); b=${b%.*}; b=$(echo "$b" | sed 's/^[0-9]*-//; s/-/ /g')
-echo "$i/$N $b"
+idx
+b=$(basename -- "$(readlink -f "$CUR/background" 2>/dev/null)"); b=${b%.*}; b=$(echo "$b" | sed 's/^[0-9]*-//; s/-/ /g')
+echo "$((i + 1))/$N $b"

@@ -58,7 +58,7 @@ Your pinned apps live in `~/.cache/nwg-dock-pinned` (one app class per line). Yo
 
 ## Nebula (special edition)
 
-A purple-nebula desktop theme with a matching dock skin, in every dock style (Classic, Mac and Rubik). Run `legal-dock theme` to install and apply the Omarchy theme (wallpaper, window borders, panel colours) and switch the dock to its Nebula skin. Switch back any time with the Omarchy theme menu or the skin buttons in the dock menu. The dock menu also has a **Wallpaper** row (‹ ›) that cycles through the current theme's wallpapers.
+A purple-nebula desktop theme with a matching dock skin, in every dock style (Classic, Mac and Rubik). Run `legal-dock theme` to install and apply the Omarchy theme (wallpaper, window borders, panel colours) and switch the dock to its Nebula skin. Switch back any time with the Omarchy theme menu or the skin buttons in the dock menu. The dock menu also has a **Wallpaper** row (‹ ›) that cycles through every wallpaper on your system (all Omarchy themes plus your own).
 
 ## Minimize windows
 
