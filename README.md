@@ -10,8 +10,10 @@ Plus a menu (the grid button) with **Small / Medium / Large** icons (tight sizes
 
 ## Install
 
+Get it from the [Omarchy Store](https://omarchystore.com) (search "Legal Dock"), or install the package from the [latest release](https://github.com/5ive7/legal-dock/releases/latest):
+
 ```bash
-yay -S legal-dock        # or any AUR helper
+sudo pacman -U legal-dock-*-any.pkg.tar.zst
 ```
 
 Add to `~/.config/hypr/autostart.lua` (or `hyprland.conf`: `exec-once = legal-dock start`):
