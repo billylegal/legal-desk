@@ -111,6 +111,9 @@ print(json.dumps({"transparent": "background: transparent" in open(os.path.expan
   Process { id: styler; property string which: "off"; command: ["/usr/lib/legal-dock/macdock-toggle", which]; onExited: poll.running = true }
   Process { id: appsProc; command: ["/usr/lib/legal-dock/drawer-only"] }
   Process { id: fullToggle; command: ["/usr/lib/legal-dock/dock-full-toggle"]; onExited: poll.running = true }
+  // Restart / Shut down always ask first ("Do you really want to ...?"), popup centered on screen.
+  Process { id: rebootProc; command: ["/usr/lib/legal-dock/reboot-confirm", "reboot", "center"] }
+  Process { id: shutdownProc; command: ["/usr/lib/legal-dock/reboot-confirm", "shutdown", "center"] }
   Process { id: transToggle; command: ["/usr/lib/legal-dock/dock-transparent-toggle"]; onExited: poll.running = true }
 
   // One gear button at the right end of the dock; opens a small menu above it.
@@ -171,7 +174,7 @@ print(json.dumps({"transparent": "background: transparent" in open(os.path.expan
               { label: transparent ? "Solid dock" : "Transparent dock", icon: "\uf1fc", act: "trans" },
               { label: full ? "Floating dock" : "Full-width dock", icon: "\uf337", act: "full" },
               { label: "Reboot", icon: "\uf01e", act: "reboot" },
-              { label: "Shutdown", icon: "\uf011", act: "shutdown" },
+              { label: "Shut down", icon: "\uf011", act: "shutdown" },
               { label: "Close menu", icon: "\uf00d", act: "close" }
             ].filter(i => !mac || i.act === "close" || i.act === "lock" || i.act === "apps" || i.act === "reboot" || i.act === "shutdown")
             Rectangle {
@@ -192,8 +195,8 @@ print(json.dumps({"transparent": "background: transparent" in open(os.path.expan
                   else if (modelData.act === "hide") hideToggle.running = true
                   else if (modelData.act === "full") fullToggle.running = true
                   else if (modelData.act === "trans") transToggle.running = true
-                  else if (modelData.act === "reboot") root.sh(["systemctl", "reboot"])
-                  else if (modelData.act === "shutdown") root.sh(["systemctl", "poweroff"])
+                  else if (modelData.act === "reboot") rebootProc.running = true
+                  else if (modelData.act === "shutdown") shutdownProc.running = true
                 }
               }
             }

@@ -3,16 +3,20 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-// Small "Do you really want to reboot?" popup, placed just above the dock icon that was clicked.
+// "Do you really want to ...?" popup for Restart / Shut down. Centered on screen (from the dock menu) or just above a dock icon (RC_X set).
 ShellRoot {
+  readonly property string action: Quickshell.env("RC_ACTION") === "shutdown" ? "shutdown" : "reboot"
+  readonly property bool nearIcon: (Quickshell.env("RC_X") || "") !== ""
   property int cx: parseInt(Quickshell.env("RC_X") || "960")
+  readonly property string question: action === "shutdown" ? "Do you really want to shut down?" : "Do you really want to reboot?"
+  readonly property string verb: action === "shutdown" ? "Shut down" : "Reboot"
 
-  Process { id: reboot; command: ["omarchy", "system", "reboot"]; onExited: Qt.quit() }
+  Process { id: power; command: ["omarchy", "system", action]; onExited: Qt.quit() }
 
   PanelWindow {
-    anchors { bottom: true; left: true }
-    margins { left: Math.max(8, cx - 110); bottom: parseInt(Quickshell.env("RC_B") || "72") }
-    implicitWidth: 220; implicitHeight: 84
+    anchors { bottom: nearIcon; left: nearIcon }
+    margins { left: Math.max(8, cx - 150); bottom: parseInt(Quickshell.env("RC_B") || "72") }
+    implicitWidth: 300; implicitHeight: 104
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
@@ -20,29 +24,29 @@ ShellRoot {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
     Rectangle {
-      anchors.fill: parent; radius: 10
+      anchors.fill: parent; radius: 14
       color: "#111c18"; border.color: "#C1C497"; border.width: 1
       focus: true
       Keys.onEscapePressed: Qt.quit()
 
       Text {
-        y: 10; anchors.horizontalCenter: parent.horizontalCenter
-        text: "Do you really want to reboot?"
-        color: "#C1C497"; font.pixelSize: 13
+        y: 16; anchors.horizontalCenter: parent.horizontalCenter
+        text: question
+        color: "#C1C497"; font.pixelSize: 15; font.bold: true
       }
       Row {
-        y: 42; anchors.horizontalCenter: parent.horizontalCenter; spacing: 12
+        y: 56; anchors.horizontalCenter: parent.horizontalCenter; spacing: 14
         Rectangle {
-          width: 88; height: 30; radius: 6
+          width: 110; height: 34; radius: 8
           color: cma.containsMouse ? "#2a3a30" : "#16241f"; border.color: "#C1C497"; border.width: 1
-          Text { anchors.centerIn: parent; text: "Cancel"; color: "#C1C497"; font.pixelSize: 13 }
+          Text { anchors.centerIn: parent; text: "Cancel"; color: "#C1C497"; font.pixelSize: 14 }
           MouseArea { id: cma; anchors.fill: parent; hoverEnabled: true; onClicked: Qt.quit() }
         }
         Rectangle {
-          width: 88; height: 30; radius: 6
+          width: 110; height: 34; radius: 8
           color: rma.containsMouse ? "#5a2a24" : "#3a1f1b"; border.color: "#E0705A"; border.width: 1
-          Text { anchors.centerIn: parent; text: "Reboot"; color: "#E0705A"; font.pixelSize: 13 }
-          MouseArea { id: rma; anchors.fill: parent; hoverEnabled: true; onClicked: reboot.running = true }
+          Text { anchors.centerIn: parent; text: verb; color: "#E0705A"; font.pixelSize: 14 }
+          MouseArea { id: rma; anchors.fill: parent; hoverEnabled: true; onClicked: power.running = true }
         }
       }
     }

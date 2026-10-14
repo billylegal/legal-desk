@@ -10,6 +10,15 @@ ShellRoot {
   id: root
   property var pinned: []
   property var running: ({})
+  property int winCount: 0                  // open windows -> how scrambled the cube is
+  property var launching: ({})              // apps that were just clicked -> their icon bounces until the window appears
+  function markLaunch(c) { var o = Object.assign({}, launching); o[c.toLowerCase()] = true; launching = o; launchClear.restart() }
+  Timer { id: launchClear; interval: 12000; onTriggered: root.launching = ({}) }
+  Process {
+    id: countProc
+    command: ["python3", "-c", "import json,subprocess;print(sum(1 for c in json.loads(subprocess.run(['hyprctl','clients','-j'],capture_output=True,text=True).stdout or '[]') if c['class'] and not c['class'].lower().startswith('nwg-')))"]
+    stdout: StdioCollector { onStreamFinished: { var n = parseInt(text); if (!isNaN(n)) root.winCount = n } }
+  }
   property string sizeName: "medium"
   readonly property int base: sizeName === "small" ? 32 : (sizeName === "large" ? 80 : 56)
   readonly property real maxScale: 1.9
@@ -57,7 +66,7 @@ ShellRoot {
       }
     }
   }
-  Timer { interval: 1500; running: true; repeat: true; triggeredOnStart: true; onTriggered: { if (!poll.running) poll.running = true; hidChk.running = true } }
+  Timer { interval: 1500; running: true; repeat: true; triggeredOnStart: true; onTriggered: { if (!poll.running) poll.running = true; if (!countProc.running) countProc.running = true; hidChk.running = true } }
 
   property var appmap: ({})
   Process {
@@ -124,6 +133,7 @@ print(json.dumps(out))
     if (cls === "__launcher__") { sh(["/usr/lib/legal-dock/drawer-toggle"]); return }
     if (cls === "reboot") { sh(["/usr/lib/legal-dock/reboot-confirm"]); return }
     if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-dock/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && /usr/lib/legal-dock/hypr-dispatch focus \"$a\"", "x", cls]); return }
+    markLaunch(cls)
     var r = appmap[cls]
     if (r) launch(["gtk-launch", r.id + ".desktop"])
     else launch(["bash", "-c", "gtk-launch \"$1\" || { command -v \"$1\" >/dev/null && setsid \"$1\"; }", "x", cls])
@@ -222,6 +232,15 @@ print(json.dumps(out))
           width: root.base * s
           height: root.base * s
           anchors.bottom: parent.bottom
+          property real bounce: 0
+          anchors.bottomMargin: bounce
+          readonly property bool isLaunching: cell.modelData.cls !== "__launcher__" && !!root.launching[cell.modelData.cls.toLowerCase()] && !root.running[cell.modelData.cls.toLowerCase()]
+          SequentialAnimation {
+            running: cell.isLaunching; loops: Animation.Infinite
+            NumberAnimation { target: cell; property: "bounce"; to: root.base * 0.55; duration: 240; easing.type: Easing.OutQuad }
+            NumberAnimation { target: cell; property: "bounce"; to: 0; duration: 460; easing.type: Easing.OutBounce }
+            onRunningChanged: if (!running) cell.bounce = 0
+          }
 
           Rectangle {
             visible: root.iconFor(cell.modelData.cls) === ""
@@ -230,6 +249,7 @@ print(json.dumps(out))
             Text { anchors.centerIn: parent; text: root.letterOf(cell.modelData.cls); color: "white"; font.bold: true; font.pixelSize: parent.height * 0.55 }
           }
           Image {
+            visible: cell.modelData.cls !== "__launcher__"
             anchors.fill: parent
             scale: root.scaleOf(cell.modelData.cls)
             source: root.iconFor(cell.modelData.cls)
@@ -237,6 +257,52 @@ print(json.dumps(out))
             fillMode: Image.PreserveAspectFit
             smooth: true
             mipmap: true
+          }
+          // Rubik's Cube launcher: solved with no windows open, scrambles a little more with every window you open.
+          Canvas {
+            id: cube
+            visible: cell.modelData.cls === "__launcher__"
+            anchors.fill: parent
+            property int n: root.winCount
+            onNChanged: { requestPaint(); pop.restart() }
+            onWidthChanged: requestPaint()
+            Component.onCompleted: requestPaint()
+            SequentialAnimation {
+              id: pop
+              NumberAnimation { target: cube; property: "scale"; to: 1.14; duration: 110; easing.type: Easing.OutQuad }
+              NumberAnimation { target: cube; property: "scale"; to: 1.0; duration: 220; easing.type: Easing.OutBack }
+            }
+            onPaint: {
+              var ctx = getContext("2d"); ctx.reset()
+              var S = Math.min(width, height), u = S * 0.148, cx = width / 2, cy = height / 2 + u * 0.1
+              var pal = ["#f4f4f4", "#ffd500", "#c41e3a", "#ff5a00", "#0b57d0", "#00a152"]   // W Y R O B G
+              var solved = [0, 5, 2]                                                          // top white, left green, right red
+              var ax = u * 0.866, ay = u * 0.5
+              function poly(px, py, v1x, v1y, v2x, v2y, col) {
+                ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + v1x, py + v1y); ctx.lineTo(px + v1x + v2x, py + v1y + v2y); ctx.lineTo(px + v2x, py + v2y); ctx.closePath()
+                ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = Math.max(1, S * 0.012); ctx.strokeStyle = "#0d0d0d"; ctx.stroke()
+              }
+              function colorOf(face, i, j) {
+                var s = face * 9 + i * 3 + j
+                var rank = (s * 11) % 27
+                var k = Math.min(27, n * 5)
+                var c = solved[face]
+                if (rank < k) { c = (s * 5 + n) % 6; if (c === solved[face]) c = (c + 1) % 6 }
+                return pal[c]
+              }
+              var Tx = cx, Ty = cy - 3 * u
+              // top face: along (ax, ay) and (-ax, ay)
+              for (var i = 0; i < 3; i++) for (var j = 0; j < 3; j++)
+                poly(Tx + i * ax - j * ax, Ty + i * ay + j * ay, ax, ay, -ax, ay, colorOf(0, i, j))
+              // left face: from the left corner, along (ax, ay) and straight down
+              var Lx = Tx - 3 * ax, Ly = Ty + 3 * ay
+              for (var i2 = 0; i2 < 3; i2++) for (var k2 = 0; k2 < 3; k2++)
+                poly(Lx + i2 * ax, Ly + i2 * ay + k2 * u, ax, ay, 0, u, colorOf(1, i2, k2))
+              // right face: from the right corner, along (-ax, ay) and straight down
+              var Rx = Tx + 3 * ax, Ry = Ty + 3 * ay
+              for (var j3 = 0; j3 < 3; j3++) for (var k3 = 0; k3 < 3; k3++)
+                poly(Rx - j3 * ax, Ry + j3 * ay + k3 * u, -ax, ay, 0, u, colorOf(2, j3, k3))
+            }
           }
           // running dot
           Rectangle {

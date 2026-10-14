@@ -19,6 +19,7 @@ package() {
     install -Dm644 "share/$d/shell.qml" "$pkgdir/usr/share/legal-dock/$d/shell.qml"
   done
   install -Dm644 share/style.css "$pkgdir/usr/share/legal-dock/style.css"
+  install -Dm644 share/mac-animations.lua "$pkgdir/usr/share/legal-dock/mac-animations.lua"
   install -Dm644 legal-dock.desktop "$pkgdir/usr/share/applications/legal-dock.desktop"
   install -Dm644 logo/legal-dock.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/legal-dock.svg"
   install -Dm644 logo/legal-dock.png "$pkgdir/usr/share/icons/hicolor/512x512/apps/legal-dock.png"

@@ -35,6 +35,13 @@ legal-dock status
 
 Your pinned apps live in `~/.cache/nwg-dock-pinned` (one app class per line). Your dock colours live in `~/.config/nwg-dock-hyprland/style.css`; a default is copied there on first run and never overwritten.
 
+## Mac touches
+
+- **Rubik's Cube launcher** (Mac dock): solved with no windows open, and it scrambles a little more with every window you open.
+- **Launch bounce**: an app's icon bounces until its window appears.
+- **Restart / Shut down** live in the dock menu (grid button) and always ask "Do you really want to ...?" first.
+- **Mac-style window animations** (spring-open, shrink-and-fade close, minimize slides toward the dock). Hyprland cannot do a true genie effect. Copy `/usr/share/legal-dock/mac-animations.lua` into your Hyprland Lua config (or `source` it) to enable them.
+
 ## Minimize windows
 
 Hyprland has no minimize, so Legal Dock adds one: `/usr/lib/legal-dock/win-minimize` parks a window on a hidden workspace and brings it back later. Clicking a minimized app in the **Mac dock** restores it. To use it elsewhere:
