@@ -414,7 +414,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               MouseArea { id: sna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "next"; skinProc.running = false; skinProc.running = true } } }
           }
           Row {
-            width: parent.width; height: 34; spacing: 4
+            visible: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0
+            width: parent.width; height: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0 ? 34 : 0; spacing: 4
             Rectangle { width: 34; height: 34; radius: 6; color: wpa.containsMouse ? "#2a3a30" : "transparent"
               Text { anchors.centerIn: parent; text: "\u2039"; color: "#C1C497"; font.pixelSize: 20 }
               MouseArea { id: wpa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); wallProc.a = "prev"; wallProc.running = false; wallProc.running = true } } }

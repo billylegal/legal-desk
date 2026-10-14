@@ -3,7 +3,7 @@
 # legal-dock [start|menu|classic|mac|rubik|theme|small|medium|large|restart|status|uninstall|version]
 B="/usr/lib/legal-dock"
 SH="/usr/share/legal-dock"
-VERSION="1.0.0"
+VERSION="1.1.2"
 
 # First run: give the classic dock its default look (never overwrites your own style.css).
 ensure_config() {
@@ -12,8 +12,22 @@ ensure_config() {
   [ -e "$c/style.css" ] || cp "$SH/style.css" "$c/style.css"
 }
 
+# First run: a fresh system has no pinned apps, so the dock would show nothing but the launcher. Pin the usual apps that are installed.
+seed_pins() {
+  local f="$HOME/.cache/nwg-dock-pinned" id d
+  [ -s "$f" ] && return
+  for id in org.gnome.Nautilus org.kde.dolphin thunar nemo pcmanfm foot kitty Alacritty com.mitchellh.ghostty org.wezfurlong.wezterm \
+            firefox chromium google-chrome brave-browser zen-browser spotify discord org.telegram.desktop steam code obsidian vlc mpv; do
+    for d in /usr/share/applications "$HOME/.local/share/applications" /var/lib/flatpak/exports/share/applications; do
+      [ -e "$d/$id.desktop" ] && { echo "$id" >> "$f"; break; }
+    done
+  done
+  return 0
+}
+
 start_all() {
   ensure_config
+  seed_pins
   # Each job is fully detached (output closed) so callers - terminals, scripts, ssh - never hang waiting on the dock.
   { pgrep -f "quickshell -n -p $SH/docklock" >/dev/null || setsid quickshell -n -p "$SH/docklock"; } >/dev/null 2>&1 </dev/null &
   { pgrep -f "dock-keepalive" >/dev/null || setsid "$B/dock-keepalive"; } >/dev/null 2>&1 </dev/null &
