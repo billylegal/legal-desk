@@ -228,18 +228,18 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       property int toSlot: -1
       function slotAt(x) { return Math.max(0, Math.min(pinCount - 1, Math.floor((x - pad) / pitch))) }
 
-      Rectangle { anchors.fill: parent; radius: 10; color: "#10E0A040"; border.color: "#E0A040"; border.width: 1 }
+      Rectangle { anchors.fill: parent; radius: 10; color: "transparent" }   // no visible frame; dragging still works
       // highlight of the icon being dragged
       Rectangle {
         visible: ov.fromSlot >= 0
         x: ov.pad + ov.fromSlot * ov.pitch; y: 4; width: ov.pitch; height: parent.height - 8; radius: 6
-        color: "#40E0A040"
+        color: Qt.rgba(accC.r, accC.g, accC.b, 0.3)
       }
       // drop marker
       Rectangle {
         visible: ov.fromSlot >= 0 && ov.toSlot !== ov.fromSlot
         x: ov.pad + ov.toSlot * ov.pitch + (ov.toSlot > ov.fromSlot ? ov.pitch - 2 : 0); y: 4; width: 3; height: parent.height - 8
-        color: "#E0A040"
+        color: accC
       }
       MouseArea {
         anchors.fill: parent
