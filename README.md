@@ -74,6 +74,8 @@ The menu's action buttons, **Move** (rearrange icons), **Mouse** (pointer settin
 
 The **Mouse** popup has a **Pointer** row ‹ ›: **Original**, **Solid** (a filled pointer in the skin's colour) or **Outlined** (a hollow pointer with a skin-coloured outline). The pointer keeps matching the skin when you change it; hands, text cursors and resize cursors stay as your theme has them. `legal-dock pointer` also works from a terminal.
 
+On the **Classic** dock the menu also has the **Size** slider (the dock restarts when you stop dragging). The **Zoom** slider is only on the Mac and Rubik docks, because the classic dock has no magnification.
+
 ## Minimize windows
 
 Hyprland has no minimize, so Legal Dock adds one: `/usr/lib/legal-dock/win-minimize` parks a window on a hidden workspace and brings it back later. Clicking a minimized app in the **Mac dock** restores it. To use it elsewhere:

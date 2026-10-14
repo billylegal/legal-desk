@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: mac ? 232 : 188
+  readonly property int menuH: mac ? 232 : 212
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -81,6 +81,9 @@ ShellRoot {
   }
   Timer { id: dragT; interval: 1500; onTriggered: dragging = false }
   Timer { id: writeT; interval: 50; onTriggered: { sizeW.running = false; sizeW.running = true; zoomW.running = false; zoomW.running = true } }
+  // Classic dock: apply the slider size once you stop dragging (the dock restarts to pick it up).
+  Process { id: killDock; command: ["pkill", "-x", "nwg-dock-hyprla"] }
+  Timer { id: classicSizeT; interval: 600; onTriggered: { killDock.running = false; killDock.running = true } }
   Process { id: sizeW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-size\"", String(sizePx)] }
   Process { id: zoomW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-zoom\"", String(zoomRaw)] }
   Process { id: runner2; property var cmd: []; command: cmd }
@@ -488,8 +491,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           }
           SliderRow {
             txtC: ldr.txtC; accC: ldr.accC; selC: ldr.selC; bgC: ldr.bgC
-            visible: mac; width: parent.width; label: "Size"; from: 28; to: 96; value: sizePx; shown: Math.round(sizePx) + "px"
-            onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); sizePx = Math.round(v); writeT.restart() }
+            width: parent.width; label: "Size"; from: 28; to: 96; value: sizePx; shown: Math.round(sizePx) + "px"
+            onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); sizePx = Math.round(v); writeT.restart(); if (!mac) classicSizeT.restart() }
           }
           SliderRow {
             txtC: ldr.txtC; accC: ldr.accC; selC: ldr.selC; bgC: ldr.bgC

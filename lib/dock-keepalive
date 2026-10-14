@@ -9,12 +9,13 @@ while true; do
   [ "$(cat "$HOME/.cache/dock-style" 2>/dev/null)" = classic ] || touch "$HOME/.cache/dock-mac"
   [ -e "$HOME/.cache/dock-mac" ] && pgrep -x nwg-dock-hyprla >/dev/null && pkill -x nwg-dock-hyprla
   if [ ! -e "$HOME/.cache/dock-mac" ] && ! pgrep -x nwg-dock-hyprla >/dev/null; then
-    case "$(cat "$HOME/.cache/dock-size" 2>/dev/null)" in small) I=32;; large) I=80;; *) I=56;; esac
+    sz=$(cat "$HOME/.cache/dock-size" 2>/dev/null)
+    case "$sz" in small) I=32;; large) I=80;; [0-9]*) I=$(( sz * 122 / 100 )); [ $I -lt 28 ] && I=28; [ $I -gt 110 ] && I=110;; *) I=56;; esac   # numeric = the Size slider
     F=""; [ -e "$HOME/.cache/dock-full" ] && F="-f"
     if [ -e "$HOME/.cache/dock-hidden" ]; then
-      nwg-dock-hyprland -d -i $I $F -c "/usr/lib/legal-dock/drawer-toggle" >/dev/null 2>&1 9>&-
+      nwg-dock-hyprland -d -i $I $F -c "$HOME/.local/bin/drawer-toggle" >/dev/null 2>&1 9>&-
     else
-      nwg-dock-hyprland -r -x -i $I $F -c "/usr/lib/legal-dock/drawer-toggle" >/dev/null 2>&1 9>&-
+      nwg-dock-hyprland -r -x -i $I $F -c "$HOME/.local/bin/drawer-toggle" >/dev/null 2>&1 9>&-
     fi
   fi
   sleep 2
