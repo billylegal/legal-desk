@@ -710,6 +710,8 @@ print(json.dumps(out))
             Text { id: lbl; anchors.centerIn: parent; color: root.txtC; font.pixelSize: 12
               text: cell.modelData.cls === "__launcher__" ? "Apps" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
           }
+          // ring around the icon whose menu is open
+          Rectangle { visible: root.ctx !== "" && root.ctx === cell.modelData.cls; anchors.fill: parent; anchors.margins: -2; radius: width * 0.24; color: "transparent"; border.color: root.accC; border.width: 2 }
           // running dot
           Rectangle {
             visible: cell.modelData.cls !== "__launcher__" && !!root.running[cell.modelData.cls.toLowerCase()]
@@ -781,8 +783,8 @@ print(json.dumps(out))
   function ctxRows() {
     var rows = []
     var w = ctxWins
-    if (w.length > 0) rows.push({ l: w.length + (w.length > 1 ? " windows open" : " window open"), a: "hdr" })
-    for (var i = 0; i < w.length && i < 6; i++) rows.push({ l: " " + (w[i].t.length > 22 ? w[i].t.substring(0, 21) + "…" : (w[i].t || "(untitled)")), a: "focus", addr: w[i].a })
+    rows.push({ l: ((appmap[ctx] && appmap[ctx].name) || ctx.replace(/^chrome-/, "").replace(/-Default$/, "")) + (w.length > 0 ? "  ·  " + w.length : ""), a: "hdr" })
+    for (var i = 0; i < w.length && i < 6; i++) rows.push({ l: " " + (w[i].t.length > 20 ? w[i].t.substring(0, 19) + "…" : (w[i].t || "(untitled)")), a: "focus", addr: w[i].a })
     if (appmap[ctx]) rows.push({ l: "New window", a: "new" })
     if (isBrowser(ctx)) rows.push({ l: "New incognito window", a: "incog" })
     rows.push({ l: isPinned(ctx) ? "Unpin from dock" : "Pin to dock", a: "pin" })
@@ -798,26 +800,29 @@ print(json.dumps(out))
       required property var modelData
       property var rows: root.ctxRows()
       anchors { bottom: true; left: true }
-      margins { bottom: root.menuLine; left: Math.max(4, (win.screen.width - win.width) / 2 + root.ctxX - 95) }
-      implicitWidth: 190; implicitHeight: rows.length * 26 + 10
+      margins { bottom: root.menuLine; left: Math.max(4, (win.screen.width - win.width) / 2 + root.ctxX - 80) }
+      implicitWidth: 160; implicitHeight: rows.length * 22 + 14
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "macdockmenu"
       Rectangle {
-        anchors.fill: parent; radius: 8; color: root.bgC; border.color: root.accC; border.width: 1
+        anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom; bottomMargin: 6 }
+        radius: 7; color: root.bgC; border.color: root.accC; border.width: 1
+        Rectangle { width: 10; height: 10; rotation: 45; x: parent.width / 2 - 5; y: parent.height - 9; color: root.bgC; border.color: root.accC; border.width: 1; z: -1 }
         Column {
-          anchors.fill: parent; anchors.margins: 5; spacing: 0
+          anchors.fill: parent; anchors.margins: 4; spacing: 0
           Repeater {
             model: pm.rows
             Rectangle {
               required property var modelData
-              width: parent.width; height: 26; radius: 5
-              color: (modelData.a !== "hdr" && ma.containsMouse) ? root.selC : "transparent"
+              width: parent.width; height: 22; radius: 4
+              color: modelData.a === "hdr" ? root.selC : ((ma.containsMouse) ? root.selC : "transparent")
+              Image { visible: modelData.a === "hdr"; x: 4; width: 14; height: 14; anchors.verticalCenter: parent.verticalCenter; source: root.iconFor(root.ctx); sourceSize: Qt.size(32, 32); fillMode: Image.PreserveAspectFit }
               Text {
-                x: 8; width: parent.width - 14; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
+                x: modelData.a === "hdr" ? 22 : 7; width: parent.width - (modelData.a === "hdr" ? 28 : 12); elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter
                 text: modelData.a === "hdr" ? "●  " + root.cap2(modelData.l) : (modelData.a === "focus" ? modelData.l : root.cap2(modelData.l))
-                color: modelData.a === "hdr" ? root.accC : root.txtC; font.pixelSize: 11
+                color: modelData.a === "hdr" ? root.txtC : root.txtC; font.pixelSize: 10
                 font.bold: modelData.a === "hdr"
               }
               MouseArea {
