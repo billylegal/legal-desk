@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: 15 * 36 + 12
+  readonly property int menuH: 14 * 36 + 12
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -84,17 +84,6 @@ ShellRoot {
   Process { id: sizeW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-size\"", String(sizePx)] }
   Process { id: zoomW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-zoom\"", String(zoomRaw)] }
   Process { id: runner2; property var cmd: []; command: cmd }
-  property int iconIdx: 0
-  readonly property var iconNames: ["With skin", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
-  FileView {
-    id: icoFile
-    path: Quickshell.env("HOME") + "/.cache/dock-icon-style"
-    printErrors: false
-    onLoaded: { var n = parseInt(text()); ldr.iconIdx = (isNaN(n) || n < 0 || n >= ldr.iconNames.length) ? 0 : n }
-    onLoadFailed: ldr.iconIdx = 0
-  }
-  Timer { interval: 1000; running: true; repeat: true; onTriggered: icoFile.reload() }
-  Process { id: iconProc; property string a: "next"; command: ["/usr/lib/legal-dock/dock-icon-style", a]; onExited: icoFile.reload() }
   property string wallTxt: ""
   Process { id: wallProc; property string a: "name"; command: ["/usr/lib/legal-dock/dock-wallpaper", a]
     stdout: StdioCollector { onStreamFinished: wallTxt = text.trim() } }
@@ -472,22 +461,6 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             Rectangle { width: 34; height: 34; radius: 6; color: sna.containsMouse ? selC : "transparent"
               Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
               MouseArea { id: sna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "next"; skinProc.running = false; skinProc.running = true } } }
-          }
-          Row {
-            visible: mac
-            width: parent.width; height: mac ? 34 : 0; spacing: 4
-            Rectangle { width: 34; height: 34; radius: 6; color: ipa.containsMouse ? selC : "transparent"
-              Text { anchors.centerIn: parent; text: "\u2039"; color: txtC; font.pixelSize: 20 }
-              MouseArea { id: ipa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); iconProc.a = "prev"; iconProc.running = false; iconProc.running = true } } }
-            Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: accC; border.width: 1
-              Row { anchors.centerIn: parent; spacing: 8
-                Grid { anchors.verticalCenter: parent.verticalCenter; columns: 2; spacing: 2
-                  Repeater { model: ["#ef5350", "#66bb6a", "#42a5f5", "#ffa726"]
-                    Rectangle { required property string modelData; width: 7; height: 7; radius: 2; color: modelData } } }
-                Text { text: "Icons: " + iconNames[iconIdx]; color: txtC; font.pixelSize: 12 } } }
-            Rectangle { width: 34; height: 34; radius: 6; color: ina.containsMouse ? selC : "transparent"
-              Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
-              MouseArea { id: ina; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); iconProc.a = "next"; iconProc.running = false; iconProc.running = true } } }
           }
           Row {
             visible: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0

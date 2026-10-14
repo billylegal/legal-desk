@@ -62,8 +62,6 @@ A purple-nebula desktop theme with a matching dock skin, in every dock style (Cl
 
 The dock menus (the grid-button menu, the right-click app menu and the Reboot/Shut down popup) follow the chosen dock skin: change the skin and every menu changes colour with it. **Nebula is the standard** skin for a fresh install. The last skin, **Omarchy**, is the original look: its menus wear Omarchy's original colours (the Tokyo Night theme Omarchy installs with), so everyone knows it is the original look; the dock plate and icon tiles take their colours from the active Omarchy theme.
 
-**Icon colours** (Mac and Rubik): the icons follow the skin. Press the Skin ‹ › buttons and the skin and the icons change together (plain skins put each icon on a small plate in the skin's colours; Mono, Terminal, Amber and Blueprint tint them; the Rubik palettes and Bubbles use coloured tiles). The **Icons** row ‹ › changes only the icons, to the look of any other original skin, and leaves the skin and the menus alone, so you can mix and match. Picking a skin again puts the icons back with it.
-
 ## Minimize windows
 
 Hyprland has no minimize, so Legal Dock adds one: `/usr/lib/legal-dock/win-minimize` parks a window on a hidden workspace and brings it back later. Clicking a minimized app in the **Mac dock** restores it. To use it elsewhere:

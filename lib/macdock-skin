@@ -107,7 +107,6 @@ case "$1" in
   palette) write_palette; exit 0 ;;
   *) write_palette; echo "$cur"; exit 0 ;;
 esac
-rm -f "$H/dock-icon-style"   # choosing a skin: the icons follow it again
 echo "$cur" > "$F"
 write_palette
 [ "$style" = classic ] && apply_classic

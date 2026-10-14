@@ -148,35 +148,6 @@ ShellRoot {
       if (c.sel) root.pSel = c.sel
     }
   }
-  // Icon colours (menu: Icons < >), independent of the skin: the icons take the look of any ORIGINAL skin.
-  // Skins with their own icon tint (Mono, Terminal, Amber, Blueprint, Paper) tint the icons; skins with a tile palette (Rubik palettes, Bubbles) put
-  // the icons on coloured tiles; every other skin puts each icon on a small plate in that skin's colours. File: ~/.cache/dock-icon-style
-  property int iconStyle: 0
-  readonly property var iconNames: ["With skin", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
-  function styleSkin(n) {
-    for (var i = 0; i < rubikSkins.length; i++) if (rubikSkins[i].n === n && rubikSkins[i].t && rubikSkins[i].t.length >= 3) return rubikSkins[i]
-    for (var j = 0; j < macSkins.length; j++) if (macSkins[j].n === n) return macSkins[j]
-    for (var k = 0; k < rubikSkins.length; k++) if (rubikSkins[k].n === n) return rubikSkins[k]
-    return null
-  }
-  // With skin (0): plain skins put each icon on a plate in the skin's colours; skins with their own tiles/tint (Rubik, Bubbles, Mono, ...) already style the icons.
-  readonly property var istyle: iconStyle > 0 ? styleSkin(iconNames[iconStyle]) : ((rubik || (skin.tile || "") !== "" || !!skin.ic) ? null : skin)
-  readonly property bool iconTinted: !!istyle && !!istyle.ic
-  readonly property bool iconTiles: !!istyle && !istyle.ic
-  readonly property bool iconPal: iconTiles && !!istyle.t && istyle.t.length >= 3
-  readonly property string icEff: iconStyle > 0 ? ((istyle && istyle.ic) || "") : skin.ic
-  function icol(cls) { var h = 7; for (var i = 0; i < cls.length; i++) h = (h * 31 + cls.charCodeAt(i)) % 1000003; return istyle.t[h % istyle.t.length] }
-  function tc1(cls) { return iconPal ? icol(cls) : (iconStyle === 0 ? Qt.lighter(istyle.c1, 1.4) : istyle.c1) }
-  function tc2(cls) { return iconPal ? icol(cls) : (iconStyle === 0 ? Qt.lighter(istyle.c2, 1.4) : istyle.c2) }
-  readonly property color tcb: iconPal ? "#33ffffff" : (istyle ? istyle.b : "transparent")
-  FileView {
-    id: icoFile
-    path: Quickshell.env("HOME") + "/.cache/dock-icon-style"
-    printErrors: false
-    onLoaded: { var n = parseInt(text()); root.iconStyle = (isNaN(n) || n < 0 || n >= root.iconNames.length) ? 0 : n }
-    onLoadFailed: root.iconStyle = 0
-  }
-  Timer { interval: 1000; running: true; repeat: true; onTriggered: icoFile.reload() }
   property bool solid: true
   FileView {
     path: Quickshell.env("HOME") + "/.config/nwg-dock-hyprland/style.css"
@@ -516,7 +487,7 @@ print(json.dumps(out))
           Rectangle {
             visible: root.rubik && cell.modelData.cls !== "__launcher__"
             anchors.fill: parent; radius: width * (root.skin.rr !== undefined ? root.skin.rr : 0.2)
-            color: root.iconTiles ? root.tc1(cell.modelData.cls) : root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
+            color: root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
             rotation: cell.twist
             Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: "#33ffffff"; border.width: 1 }
           }
@@ -528,17 +499,10 @@ print(json.dumps(out))
             anchors.centerIn: parent
             width: parent.width * (kind === "circle" ? 0.96 : 0.98); height: width
             radius: kind === "circle" ? width / 2 : (kind === "hpill" ? 8 : 0)
-            color: kind === "circle" ? (root.iconTiles ? root.tc1(cell.modelData.cls) : (root.skin.t.length ? root.skin.t[cell.index % root.skin.t.length] : (root.skin.tc || "#33ffffff")))
+            color: kind === "circle" ? (root.skin.t.length ? root.skin.t[cell.index % root.skin.t.length] : (root.skin.tc || "#33ffffff"))
                    : (kind === "hpill" ? "#2cffffff" : "#c0c0c0")
             border.color: kind === "circle" ? "#40000000" : "transparent"; border.width: kind === "circle" ? 1 : 0
             Bevel { visible: stile.kind === "btn" || stile.kind === "hbtn" }
-          }
-          // Icon style tiles (non-Rubik skins): a rounded plate behind the icon in the chosen skin's colours.
-          Rectangle {
-            visible: root.iconTiles && !root.rubik && (root.skin.tile || "") !== "circle" && cell.modelData.cls !== "__launcher__"
-            anchors.centerIn: parent; width: parent.width * 0.98; height: width; radius: width * 0.22
-            gradient: Gradient { GradientStop { position: 0; color: root.tc1(cell.modelData.cls) } GradientStop { position: 1; color: root.tc2(cell.modelData.cls) } }
-            border.color: root.tcb; border.width: 1
           }
           Rectangle {
             visible: root.iconFor(cell.modelData.cls) === ""
@@ -549,19 +513,19 @@ print(json.dumps(out))
           Image {
             visible: cell.modelData.cls !== "__launcher__" && cell.modelData.cls !== "chrome-127.0.0.1__globe_-Default"
             anchors.fill: parent
-            scale: root.scaleOf(cell.modelData.cls) * ((root.rubik || (root.iconTiles && (root.skin.tile || "") !== "circle")) ? 0.74 : (root.skin.ik || 1))
+            scale: root.scaleOf(cell.modelData.cls) * (root.rubik ? 0.74 : (root.skin.ik || 1))
             rotation: cell.twist
             source: root.iconFor(cell.modelData.cls)
             sourceSize: Qt.size(256, 256)
             fillMode: Image.PreserveAspectFit
             smooth: true
             mipmap: true
-            layer.enabled: root.icEff !== ""
+            layer.enabled: root.skin.ic !== ""
             layer.smooth: true
             layer.effect: MultiEffect {
-              saturation: root.icEff === "gray" ? -1 : 0
-              colorization: root.icEff === "gray" ? 0 : 1
-              colorizationColor: root.icEff === "gray" ? "#ffffff" : root.icEff
+              saturation: root.skin.ic === "gray" ? -1 : 0
+              colorization: root.skin.ic === "gray" ? 0 : 1
+              colorizationColor: root.skin.ic === "gray" ? "#ffffff" : root.skin.ic
             }
           }
           // Rubik's Cube launcher: solved with no windows open, scrambles a little more with every window you open.
