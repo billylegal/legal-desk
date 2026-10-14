@@ -397,7 +397,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             width: parent.width; height: 40; spacing: 4
             Repeater {
               model: [
-                { label: moving ? "Done" : "Move", icon: "\uf0b2", act: "move", on: true },
+                { label: moving ? "Done Moving" : "Move Icons", icon: "\uf0b2", act: "move", on: true },
                 { label: hidden ? "Show" : "Hide", icon: hidden ? "\uf077" : "\uf078", act: "hide", on: !mac },
                 { label: "Mouse", icon: "\uf245", act: "mouse", on: true },
                 { label: "Shut Down", icon: "\uf011", act: "shutdown", on: true }
