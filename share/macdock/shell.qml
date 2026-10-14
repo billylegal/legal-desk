@@ -109,13 +109,14 @@ ShellRoot {
   property date nowD: new Date()
   Timer { interval: 20000; running: true; repeat: true; onTriggered: root.nowD = new Date() }
   function isSep(c) { return c.indexOf("__sep") === 0 }
+  function fixedCls(c) { return c === "__sepfix__" || c === "__snap__" }   // the screenshot button + its divider always sit at the very end of the dock
   function dockItems(pin, run, lay, own) {
     var def = pin.slice(), low = {}
     run.forEach(function (c) { if (!pin.some(p => p.toLowerCase() === c.toLowerCase())) def.push(c) })
     def = def.concat(["__launcher__", "__folder__", "__trash__"])
     var li = def.indexOf("__launcher__")
     own.forEach(function (t) { if (def.indexOf(t) < 0) { def.splice(li, 0, t); li++ } })
-    if (!lay.length) return def.map(c => ({ cls: c }))
+    if (!lay.length) return def.concat(["__sepfix__", "__snap__"]).map(c => ({ cls: c }))
     def.forEach(function (c) { low[c.toLowerCase()] = c })
     var out = [], used = {}
     lay.forEach(function (t) {
@@ -127,7 +128,7 @@ ShellRoot {
     extra = extra.filter(c => true)
     out.splice.apply(out, [at, 0].concat(extra.filter(c => !(c === "__launcher__" || c === "__folder__" || c === "__trash__"))))
     extra.filter(c => (c === "__launcher__" || c === "__folder__" || c === "__trash__")).forEach(c => out.push(c))
-    return out.map(c => ({ cls: c }))
+    return out.concat(["__sepfix__", "__snap__"]).map(c => ({ cls: c }))
   }
   property var items: dockItems(pinned, runCls, layoutTokens, ownTokens)
   FileView {
@@ -141,7 +142,7 @@ ShellRoot {
     pinned = order.filter(c => pinned.some(p => p.toLowerCase() === c.toLowerCase()))
     sh(["/usr/lib/legal-dock/dock-layout-save"].concat(order))
   }
-  function curOrder() { return items.map(i => i.cls).filter(c => isSep(c) || c.indexOf("__") === 0 || isPinned(c)) }
+  function curOrder() { return items.map(i => i.cls).filter(c => !fixedCls(c) && (isSep(c) || c.indexOf("__") === 0 || isPinned(c))) }
   function addDivider() { var o = curOrder(), at = o.indexOf("__launcher__"); if (at < 0) at = o.length; o.splice(at, 0, "__sep__" + Date.now()); saveLayout(o) }
   function removeAt(i) { var o = curOrder(), c = items[i].cls; saveLayout(o.filter(x => x !== c)) }
   readonly property real sepW: 10                                  // a divider is a narrow cell, so icons sit close to it
@@ -429,6 +430,7 @@ print(json.dumps(out))
     if (cls === "__launcher__") { sh(["/usr/lib/legal-dock/drawer-toggle"]); return }
     if (cls === "__calendar__") { sh(["/usr/lib/legal-dock/legal-calendar"]); return }
     if (cls === "__notes__") { sh(["/usr/lib/legal-dock/legal-notes"]); return }
+    if (cls === "__snap__") { sh(["omarchy-capture-screenshot"]); return }
     if (cls === "__tasks__") { sh(["/usr/lib/legal-dock/legal-tasks"]); return }
     if (cls === "reboot") { sh(["/usr/lib/legal-dock/reboot-confirm"]); return }
     if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-dock/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
@@ -558,9 +560,11 @@ print(json.dumps(out))
     hoverIdx = nearestIdx(p - L0)
   }
   function moveTo(from, to) {
-    if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return
+    var last = items.length - 3   // the last two cells (divider + screenshot) are fixed
+    if (to > last) to = last
+    if (from === to || from < 0 || to < 0 || from > last) return
     var o = items.map(i => i.cls); o.splice(to, 0, o.splice(from, 1)[0])
-    saveLayout(o.filter(c => isSep(c) || c.indexOf("__") === 0 || isPinned(c)))
+    saveLayout(o.filter(c => !fixedCls(c) && (isSep(c) || c.indexOf("__") === 0 || isPinned(c))))
   }
 
   PanelWindow {
@@ -644,7 +648,7 @@ print(json.dumps(out))
           required property int index
           readonly property bool dragged: root.dragIdx === index
           readonly property bool isSep: root.isSep(modelData.cls)
-          readonly property bool ownIcon: modelData.cls === "__calendar__" || modelData.cls === "__notes__" || modelData.cls === "__tasks__"   // draw their own tile
+          readonly property bool ownIcon: modelData.cls === "__calendar__" || modelData.cls === "__notes__" || modelData.cls === "__tasks__" || modelData.cls === "__snap__"   // draw their own tile
           readonly property real lift: dragged ? 1.18 : 1
           width: (root.lay.ws[index] || root.base) * lift
           height: isSep ? root.base : width
@@ -683,7 +687,7 @@ print(json.dumps(out))
               color: root.moveMode ? root.accC : Qt.rgba(root.accC.r, root.accC.g, root.accC.b, 0.55)
             }
             Rectangle {
-              visible: root.moveMode; width: 16; height: 16; radius: 8; color: root.bgC; border.color: root.accC; border.width: 1
+              visible: root.moveMode && !root.fixedCls(cell.modelData.cls); width: 16; height: 16; radius: 8; color: root.bgC; border.color: root.accC; border.width: 1
               anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top
               Text { anchors.centerIn: parent; text: "\u00d7"; color: root.txtC; font.pixelSize: 12 }
             }
@@ -818,6 +822,13 @@ print(json.dumps(out))
                 text: root.nowD.getDate(); color: root.skin.n === "Nebula" ? "#2A1B52" : "#1d1d1f"; font.pixelSize: parent.height * 0.5; font.weight: Font.DemiBold }
             }
           }
+          // Screenshot: a camera on the skin's plate (fixed at the end of the dock)
+          Item {
+            visible: cell.modelData.cls === "__snap__"
+            anchors.centerIn: parent
+            width: parent.width * 0.74; height: width
+            Text { anchors.centerIn: parent; text: "\uf030"; color: root.accC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: parent.height * 0.62 }
+          }
           // Task Manager: three activity bars
           Item {
             visible: cell.modelData.cls === "__tasks__"
@@ -906,7 +917,7 @@ print(json.dumps(out))
             width: lbl.width + 16; height: lbl.height + 8; radius: 7
             color: Qt.rgba(root.bgC.r, root.bgC.g, root.bgC.b, 0.92); border.color: root.accC; border.width: 1
             Text { id: lbl; anchors.centerIn: parent; color: root.txtC; font.pixelSize: 12
-              text: cell.modelData.cls === "__launcher__" ? "Legal Control" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
+              text: cell.modelData.cls === "__launcher__" ? "Legal Control" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__snap__" ? "Screenshot" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
           }
           // ring around the icon whose menu is open
           Rectangle { visible: root.ctx !== "" && root.ctx === cell.modelData.cls; anchors.fill: parent; anchors.margins: -2; radius: width * 0.24; color: "transparent"; border.color: root.accC; border.width: 2 }
@@ -927,7 +938,7 @@ print(json.dumps(out))
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             property real px0: 0
             property bool moved: false
-            readonly property bool canDrag: (!root.locked || root.moveMode) && !(root.rubik && false)
+            readonly property bool canDrag: (!root.locked || root.moveMode) && !root.fixedCls(cell.modelData.cls)
             function rx(m) { return cma.mapToItem(rowArea, m.x, 0).x }
             onPressed: (m) => { px0 = rx(m); moved = false }
             onPositionChanged: (m) => {
@@ -937,7 +948,7 @@ print(json.dumps(out))
               if (moved && root.dragIdx === cell.index) {
                 root.dragX = x
                 var L0 = (win.width - root.baseTotal) / 2
-                root.dropIdx = root.nearestIdx(x - L0)
+                root.dropIdx = Math.min(root.items.length - 3, root.nearestIdx(x - L0))
               }
             }
             onReleased: {
@@ -955,7 +966,7 @@ print(json.dumps(out))
             }
             onClicked: (m) => {
               if (moved) { moved = false; return }
-              if (cell.isSep) { if (root.moveMode) root.removeAt(cell.index); return }
+              if (cell.isSep) { if (root.moveMode && !root.fixedCls(cell.modelData.cls)) root.removeAt(cell.index); return }
               if (cell.modelData.cls === "__launcher__") { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate("__launcher__"); return }
               if (m.button === Qt.LeftButton) { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.closeMain(); root.activate(cell.modelData.cls) }
               else if (m.button === Qt.MiddleButton) { root.sh(["/usr/lib/legal-dock/dock-pin-toggle", cell.modelData.cls]) }
@@ -990,6 +1001,7 @@ print(json.dumps(out))
     if (ctx === "__folder__") return [{ l: "Downloads", a: "hdr" }, { l: "Open folder", a: "open" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__") return [{ l: ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "settings") return [{ l: "Settings", a: "hdr" }, { l: "Open settings", a: "open" }, { l: "Task manager", a: "tasks" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === "__snap__") return [{ l: "Screenshot", a: "hdr" }, { l: "Take screenshot", a: "open" }, { l: "Cancel", a: "cancel" }]
     var w = ctxWins
     rows.push({ l: ((appmap[ctx] && appmap[ctx].name) || ctx.replace(/^chrome-/, "").replace(/-Default$/, "")) + (w.length > 0 ? "  ·  " + w.length : ""), a: "hdr" })
     for (var i = 0; i < w.length && i < 6; i++) rows.push({ l: " " + (w[i].t.length > 20 ? w[i].t.substring(0, 19) + "…" : (w[i].t || "(untitled)")), a: "focus", addr: w[i].a })

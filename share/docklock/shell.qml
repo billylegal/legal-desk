@@ -259,7 +259,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
       anchors { bottom: true; left: clockPos === "left"; right: clockPos === "right" }
       margins { bottom: 6; left: 6; right: 6 }
-      implicitWidth: ctxt.implicitWidth + 16 + 26 + 8; implicitHeight: 40
+      implicitWidth: ctxt.implicitWidth + 16 + (mac ? 0 : 26 + 8); implicitHeight: 40
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.layer: WlrLayer.Top
@@ -269,7 +269,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
         Column { x: 8; anchors.verticalCenter: parent.verticalCenter; spacing: 0
           Text { id: ctxt; text: clockTxt; color: txtC; font.pixelSize: 13; font.bold: true }
           Text { text: clockDate; color: accC; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 } }
-        Rectangle { width: 24; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
+        Rectangle { visible: !mac; width: 24; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
           color: snapMa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
           Text { anchors.centerIn: parent; text: "\uf030"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
           MouseArea { id: snapMa; anchors.fill: parent; hoverEnabled: true; onClicked: { snapProc.running = false; snapProc.running = true } } }
