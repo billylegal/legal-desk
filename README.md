@@ -74,7 +74,7 @@ The menu's action buttons, **Move** (rearrange icons), **Mouse** (pointer settin
 
 The **Mouse** popup has a **Pointer** row ‹ ›: **Original**, **Solid** (a filled pointer in the skin's colour) or **Outlined** (a hollow pointer with a skin-coloured outline). The pointer keeps matching the skin when you change it; hands, text cursors and resize cursors stay as your theme has them. `legal-dock pointer` also works from a terminal.
 
-On the **Classic** dock the menu also has the **Size** slider (the dock restarts when you stop dragging). The **Zoom** slider is only on the Mac and Rubik docks, because the classic dock has no magnification.
+The menu is identical for Classic, Mac and Rubik: same buttons, same size, nothing moves when you change style. The few things the classic dock can't do (**Zoom** magnification and the **Icons** looks) are shown dimmed there.
 
 ## Minimize windows
 

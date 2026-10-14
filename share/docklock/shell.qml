@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: mac ? 232 : 212
+  readonly property int menuH: 232
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -437,13 +437,13 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             Repeater {
               model: [
                 { label: moving ? "Done Moving" : "Move Icons", icon: "\uf0b2", act: "move", on: true },
-                { label: hidden ? "Show" : "Hide", icon: hidden ? "\uf077" : "\uf078", act: "hide", on: !mac },
+                { label: hidden ? "Show" : "Hide", icon: hidden ? "\uf077" : "\uf078", act: "hide", on: true },
                 { label: "Mouse", icon: "\uf245", act: "mouse", on: true },
                 { label: "Shut Down", icon: "\uf011", act: "shutdown", on: true }
               ].filter(i => i.on)
               Rectangle {
                 required property var modelData
-                width: (parent.width - (mac ? 8 : 12)) / (mac ? 3 : 4); height: 40; radius: 6
+                width: (parent.width - 12) / 4; height: 40; radius: 6
                 opacity: (locked && modelData.act === "move") ? 0.35 : 1
                 color: bta.containsMouse ? selC : hiC; border.color: accC; border.width: 1
                 Column { anchors.centerIn: parent; spacing: 1
@@ -496,28 +496,27 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           }
           SliderRow {
             txtC: ldr.txtC; accC: ldr.accC; selC: ldr.selC; bgC: ldr.bgC
-            visible: mac; width: parent.width; label: "Zoom"; from: 1.0; to: 3.2; value: zoomEff; shown: zoomEff < 1.03 ? "off" : zoomEff.toFixed(2) + "x"
+            enabled: mac; opacity: mac ? 1 : 0.4; width: parent.width; label: "Zoom"; from: 1.0; to: 3.2; value: zoomEff; shown: zoomEff < 1.03 ? "off" : zoomEff.toFixed(2) + "x"
             onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); zoomRaw = Math.round(v * 20) / 20; if (zoomRaw < 1.03) zoomRaw = 1.0; writeT.restart() }
           }
           // Skin, wallpaper and icon look as compact cycle buttons: ‹ › inside each one steps back / forward.
           Row {
             width: parent.width; height: 34; spacing: 4
             CycleButton {
-              width: (parent.width - (mac ? 8 : 4)) / (mac ? 3 : 2)
+              width: (parent.width - 8) / 3
               enabled: !locked; opacity: locked ? 0.35 : 1
               label: skinNames[skinIdx]
               onStep: (d) => { menuT.restart(); skinProc.a = d > 0 ? "next" : "prev"; skinProc.running = false; skinProc.running = true }
             }
             CycleButton {
-              visible: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0
-              width: visible ? (parent.width - (mac ? 8 : 4)) / (mac ? 3 : 2) : 0
+              enabled: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0; opacity: enabled ? 1 : 0.35
+              width: (parent.width - 8) / 3
               label: "Wall " + (wallTxt.split(" ")[0] || "...")
               onStep: (d) => { menuT.restart(); wallProc.a = d > 0 ? "next" : "prev"; wallProc.running = false; wallProc.running = true }
             }
             CycleButton {
-              visible: mac
-              width: mac ? (parent.width - 8) / 3 : 0
-              enabled: !locked; opacity: locked ? 0.35 : 1
+              width: (parent.width - 8) / 3
+              enabled: !locked && mac; opacity: (locked || !mac) ? 0.35 : 1
               label: iconIdx === 0 ? "Icons" : iconNames[iconIdx]
               onStep: (d) => { menuT.restart(); iconProc.a = d > 0 ? "next" : "prev"; iconProc.running = false; iconProc.running = true }
             }
