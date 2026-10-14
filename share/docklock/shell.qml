@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: mac ? 478 : 408
+  readonly property int menuH: mac ? 406 : 372
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -429,56 +429,35 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               }
             }
           }
+          // Three cycle buttons on one line: every press moves to the next choice (look, dock style, icon size).
           Row {
             width: parent.width; height: 34; spacing: 4
-            Repeater {
-              model: [ { l: "Transparent", k: "transparent" }, { l: "Solid", k: "solid" }, { l: "Block", k: "block" } ]
-              Rectangle {
-                required property var modelData
-                readonly property bool on: modelData.k === "block" ? blocksOn : (modelData.k === "transparent" ? (transparent && !blocksOn) : (!transparent && !blocksOn))
-                width: (parent.width - 8) / 3; height: 34; radius: 6
-                color: on ? hiC : (lka.containsMouse ? selC : "transparent")
-                border.color: accC; border.width: on ? 1 : 0
-                Text { anchors.centerIn: parent; text: modelData.l; color: txtC; font.pixelSize: 11 }
-                MouseArea {
-                  id: lka; anchors.fill: parent; hoverEnabled: true
-                  onClicked: { menuT.restart(); lookProc.a = modelData.k; lookProc.running = false; lookProc.running = true }
-                }
-              }
+            Rectangle {
+              readonly property var opts: [ { l: "Transparent", k: "transparent" }, { l: "Solid", k: "solid" }, { l: "Block", k: "block" } ]
+              readonly property int cur: blocksOn ? 2 : (transparent ? 0 : 1)
+              width: (parent.width - 8) / 3; height: 34; radius: 6
+              color: cya.containsMouse ? selC : hiC; border.color: accC; border.width: 1
+              Text { anchors.centerIn: parent; text: parent.opts[parent.cur].l; color: txtC; font.pixelSize: 11 }
+              MouseArea { id: cya; anchors.fill: parent; hoverEnabled: true
+                onClicked: { menuT.restart(); lookProc.a = parent.opts[(parent.cur + 1) % 3].k; lookProc.running = false; lookProc.running = true } }
             }
-          }
-          Row {
-            width: parent.width; height: 34; spacing: 4
-            Repeater {
-              model: [ { l: "Classic", k: "off" }, { l: "Mac", k: "on" }, { l: "Rubik", k: "rubik" } ]
-              Rectangle {
-                required property var modelData
-                width: (parent.width - 8) / 3; height: 34; radius: 6
-                color: (modelData.k === "off" ? !mac : (modelData.k === "on" ? (mac && !rubik) : (mac && rubik))) ? hiC : (sta.containsMouse ? selC : "transparent")
-                border.color: accC; border.width: (modelData.k === "off" ? !mac : (modelData.k === "on" ? (mac && !rubik) : (mac && rubik))) ? 1 : 0
-                Text { anchors.centerIn: parent; text: modelData.l; color: txtC; font.pixelSize: 12 }
-                MouseArea {
-                  id: sta; anchors.fill: parent; hoverEnabled: true
-                  onClicked: { menuOpen = false; styler.which = modelData.k; styler.running = true }
-                }
-              }
+            Rectangle {
+              readonly property var opts: [ { l: "Classic", k: "off" }, { l: "Mac", k: "on" }, { l: "Rubik", k: "rubik" } ]
+              readonly property int cur: !mac ? 0 : (rubik ? 2 : 1)
+              width: (parent.width - 8) / 3; height: 34; radius: 6
+              color: cyb.containsMouse ? selC : hiC; border.color: accC; border.width: 1
+              Text { anchors.centerIn: parent; text: parent.opts[parent.cur].l; color: txtC; font.pixelSize: 11 }
+              MouseArea { id: cyb; anchors.fill: parent; hoverEnabled: true
+                onClicked: { menuOpen = false; styler.which = parent.opts[(parent.cur + 1) % 3].k; styler.running = true } }
             }
-          }
-          Row {
-            width: parent.width; height: 34; spacing: 4
-            Repeater {
-              model: [ { l: "Small", k: "small" }, { l: "Medium", k: "medium" }, { l: "Large", k: "large" } ]
-              Rectangle {
-                required property var modelData
-                width: (parent.width - 8) / 3; height: 34; radius: 6
-                color: presetOn(modelData.k) ? hiC : (sma.containsMouse ? selC : "transparent")
-                border.color: accC; border.width: presetOn(modelData.k) ? 1 : 0
-                Text { anchors.centerIn: parent; text: modelData.l; color: txtC; font.pixelSize: 12 }
-                MouseArea {
-                  id: sma; anchors.fill: parent; hoverEnabled: true
-                  onClicked: { if (mac) menuT.restart(); else menuOpen = false; sizer.which = modelData.k; sizer.running = true }
-                }
-              }
+            Rectangle {
+              readonly property var opts: [ { l: "Small", k: "small" }, { l: "Medium", k: "medium" }, { l: "Large", k: "large" } ]
+              readonly property int cur: presetOn("small") ? 0 : (presetOn("large") ? 2 : 1)
+              width: (parent.width - 8) / 3; height: 34; radius: 6
+              color: cyc.containsMouse ? selC : hiC; border.color: accC; border.width: 1
+              Text { anchors.centerIn: parent; text: parent.opts[parent.cur].l; color: txtC; font.pixelSize: 11 }
+              MouseArea { id: cyc; anchors.fill: parent; hoverEnabled: true
+                onClicked: { if (mac) menuT.restart(); else menuOpen = false; sizer.which = parent.opts[(parent.cur + 1) % 3].k; sizer.running = true } }
             }
           }
           SliderRow {
