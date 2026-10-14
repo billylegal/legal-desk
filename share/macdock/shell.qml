@@ -662,7 +662,7 @@ print(json.dumps(out))
             onClicked: (m) => {
               if (moved) { moved = false; return }
               if (cell.modelData.cls === "__launcher__") { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate("__launcher__"); return }
-              if (m.button === Qt.LeftButton) { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate(cell.modelData.cls) }
+              if (m.button === Qt.LeftButton) { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.closeMain(); root.activate(cell.modelData.cls) }
               else if (m.button === Qt.MiddleButton) { root.sh(["/usr/lib/legal-dock/dock-pin-toggle", cell.modelData.cls]) }
               else { root.ctxX = cell.mapToItem(null, cell.width / 2, 0).x; root.ctx = cell.modelData.cls }
             }
@@ -674,11 +674,13 @@ print(json.dumps(out))
 
   // Right-click menu on an icon: open windows, New window, Pin/Unpin, Close.
   IpcHandler { target: "macdockact"; function activate(cls: string): void { root.activate(cls) } }
-  IpcHandler { target: "macdock"; function menu(cls: string): void { root.ctxX = 800; root.ctx = cls } function moveMode(on: bool): void { root.moveMode = on; root.ctx = ""; root.mag = 0 } }
+  IpcHandler { target: "macdock"; function closeMenu(): void { root.ctx = "" } function menu(cls: string): void { root.ctxX = 800; root.ctx = cls } function moveMode(on: bool): void { root.moveMode = on; root.ctx = ""; root.mag = 0 } }
   property string ctx: ""
+  // Opening a right-click menu, or clicking any icon, closes the grid-button menu if it is open.
+  function closeMain() { sh([Quickshell.env("HOME") + "/.local/bin/dock-menu-close", "main"]) }
   property real ctxX: 0
   property var ctxWins: []
-  onCtxChanged: { ctxWins = []; if (ctx !== "") { winsProc.cls = ctx; winsProc.running = false; winsProc.running = true } }
+  onCtxChanged: { ctxWins = []; if (ctx !== "") { closeMain(); winsProc.cls = ctx; winsProc.running = false; winsProc.running = true } }
   Process {
     id: winsProc; property string cls: ""
     command: ["python3", "-c", "import json,subprocess,sys\nc=sys.argv[1].lower()\nprint(json.dumps([{'a':w['address'],'t':w['title']} for w in json.loads(subprocess.run(['hyprctl','clients','-j'],capture_output=True,text=True).stdout or '[]') if w['class'].lower()==c]))", cls]

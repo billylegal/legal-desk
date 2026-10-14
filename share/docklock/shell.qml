@@ -48,7 +48,7 @@ ShellRoot {
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
   property real frozenTop: 0
-  onMenuOpenChanged: if (menuOpen) { placeMenu(); wallProc.a = "name"; wallProc.running = false; wallProc.running = true }
+  onMenuOpenChanged: if (menuOpen) { runner2.cmd = ["/usr/lib/legal-dock/dock-menu-close", "ctx"]; runner2.running = false; runner2.running = true; placeMenu(); wallProc.a = "name"; wallProc.running = false; wallProc.running = true }
   function screenH(mon) { var sc = Quickshell.screens.find(s => s.name === mon); return sc ? sc.height : 1080 }
   function placeMenu() {
     if (!lastDock) return
@@ -62,6 +62,7 @@ ShellRoot {
   Timer { id: writeT; interval: 50; onTriggered: { sizeW.running = false; sizeW.running = true; zoomW.running = false; zoomW.running = true } }
   Process { id: sizeW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-size\"", String(sizePx)] }
   Process { id: zoomW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-zoom\"", String(zoomRaw)] }
+  Process { id: runner2; property var cmd: []; command: cmd }
   property string wallTxt: ""
   Process { id: wallProc; property string a: "name"; command: ["/usr/lib/legal-dock/dock-wallpaper", a]
     stdout: StdioCollector { onStreamFinished: wallTxt = text.trim() } }
@@ -102,7 +103,7 @@ ShellRoot {
   // Every second word of a menu label gets a capital: "Lock dock" -> "Lock Dock".
   function cap2(s) { var w = String(s).split(" "); for (var i = 1; i < w.length; i += 2) if (w[i].length) w[i] = w[i].charAt(0).toUpperCase() + w[i].slice(1); return w.join(" ") }
   Timer { id: menuT; interval: 8000; running: menuOpen; repeat: false; onTriggered: menuOpen = false }
-  IpcHandler { target: "dockmenu"; function toggle(): void { menuOpen = !menuOpen } function mouse(): void { openMouse() } function moveDone(): void { endMove() } }
+  IpcHandler { target: "dockmenu"; function toggle(): void { menuOpen = !menuOpen } function close(): void { menuOpen = false; mouseOpen = false } function mouse(): void { openMouse() } function moveDone(): void { endMove() } }
   readonly property int cpitch: iconSize === "small" ? 40 : (iconSize === "large" ? 69 : 53)
 
   Process {
