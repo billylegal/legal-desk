@@ -3,7 +3,7 @@
 # 0 = Original (the skin's own plain look, icons untouched; choosing a skin always returns here), then every skin: Emerald, Glass, ... Nebula, Omarchy, and the Rubik palettes (Cube, Pastel, Ocean, Candy, Jungle, Circles).
 # Remembered in ~/.cache/dock-icon-style. It never changes the skin or the menu colours.
 F="$HOME/.cache/dock-icon-style"
-NAMES=("Original" "Emerald" "Glass" "Midnight" "Neon" "Aluminum" "Aqua" "Sunset" "Mono" "Paper" "Terminal" "Amber" "Blueprint" "Bubbles" "Pearls" "Windows 95" "Windows 98" "Windows 11" "Polybar" "Tint2" "Nebula" "Nebula 2" "Omarchy" "Cube" "Pastel" "Ocean" "Candy" "Jungle" "Circles")
+NAMES=("Original" "Match skin" "Nebula" "Omarchy" "Emerald" "Sunset" "Ocean" "Neon" "Amber" "Rose" "Gold" "Mono" "Pearls" "Bubbles" "Blocks" "Cube")
 N=${#NAMES[@]}
 cur=$(cat "$F" 2>/dev/null); [[ $cur =~ ^[0-9]+$ ]] && [ "$cur" -lt $N ] || cur=0
 case "$1" in

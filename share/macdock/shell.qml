@@ -148,28 +148,28 @@ ShellRoot {
       if (c.sel) root.pSel = c.sel
     }
   }
-  // Icon colours (menu: Icons < >), independent of the skin: the icons take the look of any ORIGINAL skin.
-  // Skins with their own icon tint (Mono, Terminal, Amber, Blueprint, Paper) tint the icons; skins with a tile palette (Rubik palettes, Bubbles) put
-  // the icons on coloured tiles; every other skin puts each icon on a small plate in that skin's colours. File: ~/.cache/dock-icon-style
+  // Icon colours (menu: Icons < >), independent of the skin. Mostly colour swaps: the icons are tinted in one colour (Match skin = the skin's own colour).
+  // A few shapes too: Pearls and Bubbles (circles), Blocks (every icon on a block in the skin's colours) and Cube (Rubik blocks). File: ~/.cache/dock-icon-style
   property int iconStyle: 0
-  readonly property var iconNames: ["Original", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Nebula 2", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
+  readonly property var iconNames: ["Original", "Match skin", "Nebula", "Omarchy", "Emerald", "Sunset", "Ocean", "Neon", "Amber", "Rose", "Gold", "Mono", "Pearls", "Bubbles", "Blocks", "Cube"]
+  readonly property var iconDefs: [
+    {}, { ic: "skin" }, { ic: "#B8A2FF" }, { ic: "#7aa2f7" }, { ic: "#7fd6a0" }, { ic: "#ff9a3d" }, { ic: "#4cc9f0" }, { ic: "#39ff14" }, { ic: "#ffb000" }, { ic: "#ff7aa8" }, { ic: "#e8c547" }, { ic: "gray" },
+    { sk: "Pearls" }, { sk: "Bubbles" }, { blk: true }, { sk: "Cube" }
+  ]
   function styleSkin(n) {
-    if (n === "Nebula 2") return { n: "Nebula 2", c1: "#3a1c8e", c2: "#0a0715", b: "#8B5CF6", ic: "", t: [] }
-    for (var i = 0; i < rubikSkins.length; i++) if (rubikSkins[i].n === n && rubikSkins[i].t && rubikSkins[i].t.length >= 3) return rubikSkins[i]
     for (var j = 0; j < macSkins.length; j++) if (macSkins[j].n === n) return macSkins[j]
     for (var k = 0; k < rubikSkins.length; k++) if (rubikSkins[k].n === n) return rubikSkins[k]
     return null
   }
-  // Original (0): the skin looks exactly as designed; any other entry gives the icons that original skin's look.
-  readonly property var istyle: iconStyle > 0 ? styleSkin(iconNames[iconStyle]) : null
-  readonly property bool iconTinted: !!istyle && !!istyle.ic
-  readonly property bool iconTiles: !!istyle && !istyle.ic
-  readonly property bool iconCircle: iconTiles && !!istyle && (istyle.tile === "circle" || (istyle.rr !== undefined && istyle.rr >= 0.5))
-  readonly property bool iconPal: iconTiles && !!istyle.t && istyle.t.length >= 3
-  readonly property string icEff: iconStyle > 0 ? ((istyle && istyle.ic) || "") : skin.ic
+  readonly property var idef: iconDefs[iconStyle] || iconDefs[0]
+  readonly property var istyle: idef.sk ? styleSkin(idef.sk) : (idef.blk ? skin : null)
+  readonly property bool iconTiles: !!istyle
+  readonly property bool iconCircle: iconTiles && !!idef.sk && (istyle.tile === "circle" || (istyle.rr !== undefined && istyle.rr >= 0.5))
+  readonly property bool iconPal: iconTiles && !!idef.sk && !!istyle.t && istyle.t.length >= 3
+  readonly property string icEff: idef.ic ? (idef.ic === "skin" ? ("" + accC) : idef.ic) : (iconTiles ? "" : skin.ic)
   function icol(cls) { var h = 7; for (var i = 0; i < cls.length; i++) h = (h * 31 + cls.charCodeAt(i)) % 1000003; return istyle.t[h % istyle.t.length] }
-  function tc1(cls) { return (iconCircle && !iconPal) ? (istyle.tc || "#f2f2f2") : iconPal ? icol(cls) : (iconStyle === 0 ? Qt.lighter(istyle.c1, 1.4) : istyle.c1) }
-  function tc2(cls) { return (iconCircle && !iconPal) ? (istyle.tc || "#f2f2f2") : iconPal ? icol(cls) : (iconStyle === 0 ? Qt.lighter(istyle.c2, 1.4) : istyle.c2) }
+  function tc1(cls) { if (!istyle) return "transparent"; return (iconCircle && !iconPal) ? (istyle.tc || "#f2f2f2") : iconPal ? icol(cls) : Qt.lighter(istyle.c1, 1.4) }
+  function tc2(cls) { if (!istyle) return "transparent"; return (iconCircle && !iconPal) ? (istyle.tc || "#f2f2f2") : iconPal ? icol(cls) : Qt.lighter(istyle.c2, 1.4) }
   readonly property color tcb: iconCircle ? "#40000000" : iconPal ? "#33ffffff" : (istyle ? istyle.b : "transparent")
   FileView {
     id: icoFile
@@ -538,7 +538,7 @@ print(json.dumps(out))
           Rectangle {
             visible: root.rubik && cell.modelData.cls !== "__launcher__"
             anchors.fill: parent; radius: width * (root.skin.rr !== undefined ? root.skin.rr : 0.2)
-            color: root.iconTiles ? root.tc1(cell.modelData.cls) : root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
+            color: root.iconTiles ? root.tc1(cell.modelData.cls) : ((root.rpal && root.rpal.length) ? root.rpal[cell.index % root.rpal.length] : "#333333"); border.color: "#0d0d0d"; border.width: 2
             rotation: cell.twist
             Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: "#33ffffff"; border.width: 1 }
           }

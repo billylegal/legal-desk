@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: 14 * 36 + 12 + 6
+  readonly property int menuH: mac ? 514 : 444
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -85,7 +85,7 @@ ShellRoot {
   Process { id: zoomW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-zoom\"", String(zoomRaw)] }
   Process { id: runner2; property var cmd: []; command: cmd }
   property int iconIdx: 0
-  readonly property var iconNames: ["Original", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
+  readonly property var iconNames: ["Original", "Match skin", "Nebula", "Omarchy", "Emerald", "Sunset", "Ocean", "Neon", "Amber", "Rose", "Gold", "Mono", "Pearls", "Bubbles", "Blocks", "Cube"]
   FileView {
     id: icoFile
     path: Quickshell.env("HOME") + "/.cache/dock-icon-style"
