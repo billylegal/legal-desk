@@ -14,20 +14,29 @@ ShellRoot {
   property bool rubik: false
   property int sizePx: 46
   property real zoomRaw: 0
+  property real launcherX: 0
+  property real menuLine: 0
   property string skinTxt: "auto"
   property bool dragging: false
   readonly property real zoomEff: zoomRaw >= 1 ? zoomRaw : (sizePx >= 56 ? 2.3 : (sizePx <= 36 ? 2.8 : 2.5))
-  readonly property var skinNames: ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Cube"]
-  readonly property int skinIdx: /^[0-7]$/.test(skinTxt) ? parseInt(skinTxt) : (rubik ? 7 : 0)
-  readonly property int menuH: mac ? 10 * 36 + 12 : 10 * 36 + 12
+  readonly property var skinNames: rubik ? ["Cube", "Pastel", "Mono", "Neon", "Sunset", "Ocean", "Candy", "Jungle", "Circles"]
+    : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2"]
+           : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2"])
+  readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? 0 : n }
+  readonly property int menuH: 13 * 36 + 12
+  function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
   property real frozenTop: 0
-  onMenuOpenChanged: {
-    if (!menuOpen || !lastDock) return
+  onMenuOpenChanged: if (menuOpen) placeMenu()
+  function screenH(mon) { var sc = Quickshell.screens.find(s => s.name === mon); return sc ? sc.height : 1080 }
+  function placeMenu() {
+    if (!lastDock) return
     var d = lastDock
-    frozenLeft = d.x + (mac ? d.w - 100 - (sizePx + 8) / 2 : Math.max(0, (d.w - (pinCount + 1) * cpitch) / 2) + pinCount * cpitch - 100 + cpitch / 2)
-    frozenTop = d.y - menuH - 10
+    // centred over the last icon (the launcher): measured by the Mac dock itself, or the right end of the classic dock
+    var cx = (mac && launcherX > 0) ? launcherX : d.x + d.w - cpitch / 2
+    frozenLeft = Math.max(4, Math.min((d.mon && Quickshell.screens.find(s => s.name === d.mon) ? Quickshell.screens.find(s => s.name === d.mon).width : 1920) - 210, cx - 100))
+    frozenTop = (mac && menuLine > 0) ? screenH(d.mon) - menuLine - menuH : d.y - menuH - 10
   }
   Timer { id: dragT; interval: 1500; onTriggered: dragging = false }
   Timer { id: writeT; interval: 50; onTriggered: { sizeW.running = false; sizeW.running = true; zoomW.running = false; zoomW.running = true } }
@@ -66,7 +75,7 @@ ShellRoot {
   // Every second word of a menu label gets a capital: "Lock dock" -> "Lock Dock".
   function cap2(s) { var w = String(s).split(" "); for (var i = 1; i < w.length; i += 2) if (w[i].length) w[i] = w[i].charAt(0).toUpperCase() + w[i].slice(1); return w.join(" ") }
   Timer { id: menuT; interval: 8000; running: menuOpen; repeat: false; onTriggered: menuOpen = false }
-  IpcHandler { target: "dockmenu"; function toggle(): void { menuOpen = !menuOpen } }
+  IpcHandler { target: "dockmenu"; function toggle(): void { menuOpen = !menuOpen } function mouse(): void { openMouse() } function moveDone(): void { endMove() } }
   readonly property int cpitch: iconSize === "small" ? 40 : (iconSize === "large" ? 69 : 53)
 
   Process {
@@ -101,13 +110,14 @@ if out is None and mac:
 ss = "org.omarchy.screensaver" in subprocess.run(["hyprctl","clients","-j"],capture_output=True,text=True).stdout
 if ss: out = None
 n=len([x for x in open(os.path.expanduser("~/.cache/nwg-dock-pinned")).read().split(chr(10)) if x.strip()])
-print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-skin", "auto"), "transparent": "background: transparent" in open(os.path.expanduser("~/.config/nwg-dock-hyprland/style.css")).read(), "hidden": (not ss) and os.path.exists(os.path.expanduser("~/.cache/dock-hidden")), "dock": out, "n": n, "mac": mac, "rubik": os.path.exists(os.path.expanduser("~/.cache/dock-mac")) and open(os.path.expanduser("~/.cache/dock-style")).read().strip() == "rubik" if os.path.exists(os.path.expanduser("~/.cache/dock-style")) else False, "locked": os.path.exists(os.path.expanduser("~/.cache/dock-locked")), "full": os.path.exists(os.path.expanduser("~/.cache/dock-full")), "size": (open(os.path.expanduser("~/.cache/dock-size")).read().strip() if os.path.exists(os.path.expanduser("~/.cache/dock-size")) else "medium")}))
+_rk = os.path.exists(os.path.expanduser("~/.cache/dock-mac")) and _rd("dock-style") == "rubik"
+print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("dock-launcher", "0") or "0").split()[0]), "ly": float(((_rd("dock-launcher", "0") or "0").split() + ["0"])[1]), "skin": _rd("dock-skin-" + ("classic" if not mac else ("rubik" if _rk else "mac")), "0"), "transparent": "background: transparent" in open(os.path.expanduser("~/.config/nwg-dock-hyprland/style.css")).read(), "hidden": (not ss) and os.path.exists(os.path.expanduser("~/.cache/dock-hidden")), "dock": out, "n": n, "mac": mac, "rubik": os.path.exists(os.path.expanduser("~/.cache/dock-mac")) and open(os.path.expanduser("~/.cache/dock-style")).read().strip() == "rubik" if os.path.exists(os.path.expanduser("~/.cache/dock-style")) else False, "locked": os.path.exists(os.path.expanduser("~/.cache/dock-locked")), "full": os.path.exists(os.path.expanduser("~/.cache/dock-full")), "size": (open(os.path.expanduser("~/.cache/dock-size")).read().strip() if os.path.exists(os.path.expanduser("~/.cache/dock-size")) else "medium")}))
 `]
     stdout: StdioCollector {
-      onStreamFinished: { try { var r = JSON.parse(text); var nd = JSON.stringify(r.dock); if (nd !== dockJson) { dockJson = nd; dock = r.dock; if (r.dock) lastDock = r.dock }; locked = r.locked; mac = r.mac; if (!dragging) { sizePx = r.px; zoomRaw = parseFloat(r.zoom) || 0 }; skinTxt = r.skin; rubik = r.rubik; full = r.full; iconSize = r.size; hidden = r.hidden; transparent = r.transparent; pinCount = r.n } catch (e) { } }
+      onStreamFinished: { try { var r = JSON.parse(text); var nd = JSON.stringify(r.dock); if (nd !== dockJson) { dockJson = nd; dock = r.dock; if (r.dock) lastDock = r.dock }; locked = r.locked; mac = r.mac; if (!dragging) { sizePx = r.px; zoomRaw = parseFloat(r.zoom) || 0 }; launcherX = r.lx; menuLine = r.ly; skinTxt = r.skin; rubik = r.rubik; full = r.full; iconSize = r.size; hidden = r.hidden; transparent = r.transparent; pinCount = r.n } catch (e) { } }
     }
   }
-  Timer { interval: 500; running: true; repeat: true; onTriggered: if (!poll.running) poll.running = true }
+  Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: true; onTriggered: if (!poll.running) poll.running = true }
   Process { id: mover; property int a: 0; property int b: 0
     command: ["/home/aigazoo/.local/bin/dock-move-pin", String(a), String(b)] }
   Process { id: toggle; command: ["/home/aigazoo/.local/bin/dock-lock-toggle"]; onExited: poll.running = true }
@@ -160,6 +170,94 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-ski
     }
   }
 
+  // ---- Mouse pointer panel: speed, scroll direction, left-handed buttons, acceleration (dock-mouse) ----
+  property bool mouseOpen: false
+  property real mSpeed: 0
+  property bool mNatural: false
+  property bool mLeft: false
+  property bool mFlat: false
+  readonly property int mouseH: 262
+  function openMouse() { if (!menuOpen) placeMenu(); mouseTop = (mac && menuLine > 0 && lastDock) ? screenH(lastDock.mon) - menuLine - mouseH : (lastDock ? lastDock.y : 600) - mouseH - 10; mouseProc.running = false; mouseProc.running = true; mouseOpen = true; mouseT.restart() }
+  property real mouseTop: 400
+  Timer { id: mouseT; interval: 20000; onTriggered: mouseOpen = false }
+  Process {
+    id: mouseProc
+    command: ["/home/aigazoo/.local/bin/dock-mouse", "show"]
+    stdout: StdioCollector { onStreamFinished: { try { var r = JSON.parse(text); mSpeed = r.speed; mNatural = r.natural; mLeft = r.left; mFlat = r.flat } catch (e) { } } }
+  }
+  Process { id: mouseSet; property var a: []; command: ["/home/aigazoo/.local/bin/dock-mouse"].concat(a) }
+  function mset(args) { mouseT.restart(); mouseSet.running = false; mouseSet.a = args; mouseSet.running = true }
+  Process { id: mouseBoot; command: ["/home/aigazoo/.local/bin/dock-mouse", "apply"]; running: true }
+  Variants {
+    model: lastDock && mouseOpen ? [lastDock.mon] : []
+    PanelWindow {
+      required property var modelData
+      screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
+      anchors { top: true; left: true }
+      margins { left: Math.max(4, frozenLeft - 10); top: mouseTop }
+      implicitWidth: 220; implicitHeight: mouseH
+      color: "transparent"
+      exclusionMode: ExclusionMode.Ignore
+      WlrLayershell.layer: WlrLayer.Overlay
+      WlrLayershell.namespace: "dockmouse"
+      WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+      Rectangle {
+        anchors.fill: parent; radius: 10; color: "#111c18"; border.color: "#C1C497"; border.width: 1
+        focus: true
+        Keys.onEscapePressed: mouseOpen = false
+        Column {
+          anchors.fill: parent; anchors.margins: 6; spacing: 2
+          Text { height: 24; width: parent.width; text: "\uf245   Mouse Pointer"; color: "#8fd18f"; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
+          SliderRow {
+            width: parent.width; label: "Speed"; from: -1; to: 1; value: mSpeed; shown: (mSpeed > 0 ? "+" : "") + mSpeed.toFixed(2)
+            onMoved: (v) => { mSpeed = Math.round(v * 20) / 20; mouseT.restart(); speedT.restart() }
+          }
+          Timer { id: speedT; interval: 120; onTriggered: mset(["speed", String(mSpeed)]) }
+          Repeater {
+            model: [
+              { l: "Scroll: Natural", l2: "Scroll: Traditional", k: "natural" },
+              { l: "Left-Handed Buttons", l2: "Right-Handed Buttons", k: "left" },
+              { l: "Acceleration: Flat", l2: "Acceleration: Adaptive", k: "flat" }
+            ]
+            Rectangle {
+              required property var modelData
+              readonly property bool on: modelData.k === "natural" ? mNatural : (modelData.k === "left" ? mLeft : mFlat)
+              width: parent.width; height: 34; radius: 6
+              color: mta.containsMouse ? "#2a3a30" : "transparent"
+              Text { x: 10; anchors.verticalCenter: parent.verticalCenter; color: "#C1C497"; font.pixelSize: 13; text: parent.on ? cap2(modelData.l) : cap2(modelData.l2) }
+              Text { anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; color: "#8fd18f"; font.pixelSize: 11; text: "\u21c4" }
+              MouseArea {
+                id: mta; anchors.fill: parent; hoverEnabled: true
+                onClicked: {
+                  var v = !parent.on
+                  if (modelData.k === "natural") mNatural = v; else if (modelData.k === "left") mLeft = v; else mFlat = v
+                  mset([modelData.k, v ? "on" : "off"])
+                }
+              }
+            }
+          }
+          Rectangle {
+            width: parent.width; height: 34; radius: 6; color: mra.containsMouse ? "#2a3a30" : "transparent"
+            Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: "Reset To Default"; color: "#C1C497"; font.pixelSize: 13 }
+            MouseArea { id: mra; anchors.fill: parent; hoverEnabled: true; onClicked: { mSpeed = 0; mNatural = false; mLeft = false; mFlat = false; mset(["reset"]) } }
+          }
+          Rectangle {
+            width: parent.width; height: 34; radius: 6; color: mca.containsMouse ? "#2a3a30" : "transparent"
+            Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: "Close"; color: "#C1C497"; font.pixelSize: 13 }
+            MouseArea { id: mca; anchors.fill: parent; hoverEnabled: true; onClicked: mouseOpen = false }
+          }
+        }
+      }
+    }
+  }
+
+  // ---- Move Icons: unlock the order while moving, put the lock back when done ----
+  property bool moving: false
+  property bool wasLocked: false
+  function startMove() { wasLocked = locked; if (locked) toggle.running = true; moving = true; if (mac) moveIpc("true") }
+  function endMove() { if (!moving) return; moving = false; if (wasLocked) toggle.running = true; if (mac) moveIpc("false") }
+  function moveIpc(v) { mvProc.running = false; mvProc.v = v; mvProc.running = true }
+  Process { id: mvProc; property string v: "true"; command: ["quickshell", "-p", Quickshell.env("HOME") + "/.config/macdock", "ipc", "call", "macdock", "moveMode", v] }
   Process { id: hideToggle; command: ["/home/aigazoo/.local/bin/dock-hide-toggle"]; onExited: poll.running = true }
   Process { id: sizer; property string which: "medium"; command: ["/home/aigazoo/.local/bin/dock-size-set", which]; onExited: poll.running = true }
   Process { id: styler; property string which: "off"; command: ["/home/aigazoo/.local/bin/macdock-toggle", which]; onExited: poll.running = true }
@@ -224,13 +322,15 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-ski
             model: [
               { label: "All apps", icon: "\uf00a", act: "apps" },
               { label: locked ? "Unlock dock" : "Lock dock", icon: locked ? "\uf09c" : "\uf023", act: "lock" },
+              { label: moving ? "Done Moving" : "Move Icons", icon: "\uf0b2", act: "move" },
               { label: hidden ? "Keep dock up" : "Hide dock", icon: hidden ? "\uf077" : "\uf078", act: "hide" },
               { label: transparent ? "Solid dock" : "Transparent dock", icon: "\uf1fc", act: "trans" },
               { label: full ? "Floating dock" : "Full-width dock", icon: "\uf337", act: "full" },
+              { label: "Mouse", icon: "\uf245", act: "mouse" },
               { label: "Reboot", icon: "\uf01e", act: "reboot" },
               { label: "Shut down", icon: "\uf011", act: "shutdown" },
               { label: "Close menu", icon: "\uf00d", act: "close" }
-            ].filter(i => !mac || i.act === "close" || i.act === "trans" || i.act === "lock" || i.act === "apps" || i.act === "reboot" || i.act === "shutdown")
+            ].filter(i => !mac || i.act === "close" || i.act === "move" || i.act === "mouse" || i.act === "trans" || i.act === "lock" || i.act === "apps" || i.act === "reboot" || i.act === "shutdown")
             Rectangle {
               required property var modelData
               width: parent.width; height: 34; radius: 6
@@ -249,6 +349,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-ski
                   else if (modelData.act === "hide") hideToggle.running = true
                   else if (modelData.act === "full") fullToggle.running = true
                   else if (modelData.act === "trans") transToggle.running = true
+                  else if (modelData.act === "mouse") openMouse()
+                  else if (modelData.act === "move") { if (moving) endMove(); else startMove() }
                   else if (modelData.act === "reboot") rebootProc.running = true
                   else if (modelData.act === "shutdown") shutdownProc.running = true
                 }
@@ -272,6 +374,23 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-ski
               }
             }
           }
+          Row {
+            width: parent.width; height: 34; spacing: 4
+            Repeater {
+              model: [ { l: "Small", k: "small" }, { l: "Medium", k: "medium" }, { l: "Large", k: "large" } ]
+              Rectangle {
+                required property var modelData
+                width: (parent.width - 8) / 3; height: 34; radius: 6
+                color: presetOn(modelData.k) ? "#3a5a44" : (sma.containsMouse ? "#2a3a30" : "transparent")
+                border.color: "#C1C497"; border.width: presetOn(modelData.k) ? 1 : 0
+                Text { anchors.centerIn: parent; text: modelData.l; color: "#C1C497"; font.pixelSize: 12 }
+                MouseArea {
+                  id: sma; anchors.fill: parent; hoverEnabled: true
+                  onClicked: { if (mac) menuT.restart(); else menuOpen = false; sizer.which = modelData.k; sizer.running = true }
+                }
+              }
+            }
+          }
           SliderRow {
             visible: mac; width: parent.width; label: "Size"; from: 28; to: 96; value: sizePx; shown: Math.round(sizePx) + "px"
             onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); sizePx = Math.round(v); writeT.restart() }
@@ -281,7 +400,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-ski
             onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); zoomRaw = Math.round(v * 20) / 20; if (zoomRaw < 1.03) zoomRaw = 1.0; writeT.restart() }
           }
           Row {
-            visible: mac; width: parent.width; height: 34; spacing: 4
+            width: parent.width; height: 34; spacing: 4
             Rectangle { width: 34; height: 34; radius: 6; color: spa.containsMouse ? "#2a3a30" : "transparent"
               Text { anchors.centerIn: parent; text: "\u2039"; color: "#C1C497"; font.pixelSize: 20 }
               MouseArea { id: spa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "prev"; skinProc.running = false; skinProc.running = true } } }
@@ -290,23 +409,6 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-ski
             Rectangle { width: 34; height: 34; radius: 6; color: sna.containsMouse ? "#2a3a30" : "transparent"
               Text { anchors.centerIn: parent; text: "\u203a"; color: "#C1C497"; font.pixelSize: 20 }
               MouseArea { id: sna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "next"; skinProc.running = false; skinProc.running = true } } }
-          }
-          Row {
-            visible: !mac; width: parent.width; height: 34; spacing: 4
-            Repeater {
-              model: [ { l: "Small", k: "small" }, { l: "Medium", k: "medium" }, { l: "Large", k: "large" } ]
-              Rectangle {
-                required property var modelData
-                width: (parent.width - 8) / 3; height: 34; radius: 6
-                color: iconSize === modelData.k ? "#3a5a44" : (sma.containsMouse ? "#2a3a30" : "transparent")
-                border.color: "#C1C497"; border.width: iconSize === modelData.k ? 1 : 0
-                Text { anchors.centerIn: parent; text: modelData.l; color: "#C1C497"; font.pixelSize: 12 }
-                MouseArea {
-                  id: sma; anchors.fill: parent; hoverEnabled: true
-                  onClicked: { menuOpen = false; sizer.which = modelData.k; sizer.running = true }
-                }
-              }
-            }
           }
         }
       }

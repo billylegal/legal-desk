@@ -1,12 +1,92 @@
 #!/bin/bash
-# macdock-skin next|prev|0-7|auto|show : choose the Mac/Rubik dock skin (Emerald, Glass, Midnight, Neon, Aluminum, Aqua, Sunset, Cube).
-F="$HOME/.cache/dock-skin"; N=8
-cur=$(cat "$F" 2>/dev/null)
-if ! [[ "$cur" =~ ^[0-7]$ ]]; then [ "$(cat "$HOME/.cache/dock-style" 2>/dev/null)" = rubik ] && cur=7 || cur=0; fi
+# macdock-skin next|prev|N|show|apply : choose the skin of the current dock style.
+#   classic: 13 themes (colours, Windows 95/98/11, Polybar, Tint2; written to the nwg-dock style.css)   mac: 19 plates/icon looks   rubik: 9 tile palettes
+# Each style remembers its own skin in ~/.cache/dock-skin-<style>.
+H="$HOME/.cache"; C="$HOME/.config/nwg-dock-hyprland/style.css"
+style=classic
+if [ -e "$H/dock-mac" ]; then [ "$(cat "$H/dock-style" 2>/dev/null)" = rubik ] && style=rubik || style=mac; fi
+case $style in classic) N=13;; mac) N=19;; rubik) N=9;; esac
+F="$H/dock-skin-$style"
+get() { local v; v=$(cat "$1" 2>/dev/null); [[ $v =~ ^[0-9]+$ ]] && [ "$v" -lt "$2" ] && echo "$v" || echo 0; }
+
+# apply_classic : write the nwg-dock stylesheet for the chosen classic skin (keeps solid/transparent as it is).
+apply_classic() {
+  local i; i=$(get "$H/dock-skin-classic" 13)
+  mkdir -p "$(dirname "$C")"
+  [ -e "$C" ] && [ ! -e "$C.orig" ] && cp "$C" "$C.orig"
+  [ -e "$H/dock-transparent" ] || { [ -e "$C" ] && grep -q "background: transparent" "$C" && touch "$H/dock-transparent"; }
+  #        bg                 radius border-colour(s)         text      hover bg                  active-underline   border-width  extra-window-css  extra-hover-css
+  case $i in
+    0) t=("#111c18" 10 "transparent"            "#C1C497" "rgba(255,255,255,0.15)" "rgba(255,255,255,0.3)" 1 "" "");;
+    1) t=("#0a1030" 14 "rgba(122,106,255,0.5)"  "#aab4ff" "rgba(122,140,255,0.28)" "#5b7cff" 1 "" "");;
+    2) t=("rgba(255,255,255,0.18)" 16 "rgba(255,255,255,0.65)" "#ffffff" "rgba(255,255,255,0.3)" "#ffffff" 1 "" "");;
+    3) t=("#000000" 4  "#ffffff"               "#ffffff" "rgba(255,255,255,0.22)" "#ffffff" 1 "" "");;
+    4) t=("#06080c" 8  "#39ff14"               "#39ff14" "rgba(57,255,20,0.2)"    "#39ff14" 1 "" "");;
+    5) t=("#d8dadf" 8  "#ffffff"               "#2a2d33" "rgba(0,0,0,0.12)"       "#2a2d33" 1 "" "");;
+    6) t=("#a8124a" 16 "#ffd9b0"               "#fff1d6" "rgba(255,217,176,0.28)" "#ffd500" 1 "" "");;
+    7) t=("#f6f3ea" 12 "#c9c3b0"               "#2b2b2b" "rgba(0,0,0,0.08)"       "#2b2b2b" 1 "" "");;
+    8) t=("#c0c0c0" 0  "#ffffff #404040 #404040 #ffffff" "#000000" "#c0c0c0" "#000080" 2 "" "border: 1px solid; border-color: #ffffff #404040 #404040 #ffffff; border-radius: 0px;");;
+    9) t=("linear-gradient(to bottom, #dcdcdc, #bababa)" 0 "#ffffff #404040 #404040 #ffffff" "#000000" "rgba(0,0,0,0.0)" "#0a246a" 2 "" "border: 1px solid; border-color: #ffffff #404040 #404040 #ffffff; border-radius: 0px;");;
+    10) t=("rgba(32,32,32,0.92)" 10 "rgba(255,255,255,0.16)" "#ffffff" "rgba(255,255,255,0.12)" "#60cdff" 1 "" "border-radius: 6px;");;
+    11) t=("#1d2021" 0 "#fabd2f" "#ebdbb2" "rgba(250,189,47,0.2)" "#fabd2f" 1 "" "border-radius: 0px;");;
+    12) t=("linear-gradient(to bottom, rgba(80,80,80,0.88), rgba(14,14,14,0.88))" 6 "rgba(255,255,255,0.4)" "#ffffff" "rgba(255,255,255,0.22)" "#ffffff" 1 "" "border-radius: 4px;");;
+  esac
+  local bg="${t[0]}"; [ -e "$H/dock-transparent" ] && bg="transparent"
+  cat > "$C" <<CSS
+window {
+  background: $bg;
+	border-radius: ${t[1]}px;
+	border-style: solid;
+	border-width: ${t[6]}px;
+	border-color: ${t[2]};
+	${t[7]}
+}
+
+#box {
+  padding: 0px
+}
+
+#active {
+	border-bottom: solid 1px;
+	border-color: ${t[5]}
+}
+
+button, image {
+	background: none;
+	border-style: none;
+	box-shadow: none;
+	color: ${t[3]}
+}
+
+button {
+	padding: 4px;
+	margin-left: 4px;
+	margin-right: 4px;
+	color: ${t[3]};
+  font-size: 12px
+}
+
+button:hover {
+	background-color: ${t[4]};
+	border-radius: 4px;
+	${t[8]}
+}
+
+button:focus {
+	box-shadow: none
+}
+CSS
+  [ "$style" = classic ] && pkill -x nwg-dock-hyprla    # keepalive brings it back with the new look
+}
+
+cur=$(get "$F" $N)
 case "$1" in
-  next) echo $(( (cur + 1) % N )) > "$F" ;;
-  prev) echo $(( (cur + N - 1) % N )) > "$F" ;;
-  [0-7]) echo "$1" > "$F" ;;
-  auto) echo auto > "$F" ;;
-  *) echo "$cur" ;;
+  next) cur=$(( (cur + 1) % N )) ;;
+  prev) cur=$(( (cur + N - 1) % N )) ;;
+  [0-9]|[0-9][0-9]) [ "$1" -lt $N ] && cur=$1 ;;
+  apply) apply_classic; exit 0 ;;
+  *) echo "$cur"; exit 0 ;;
 esac
+echo "$cur" > "$F"
+[ "$style" = classic ] && apply_classic
+exit 0

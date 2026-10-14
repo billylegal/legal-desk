@@ -1,0 +1,3 @@
+#!/bin/bash
+# Called by the dock's Done button: ends Move Icons mode (menu process puts the lock back).
+exec quickshell -p "$HOME/.config/docklock" ipc call dockmenu moveDone

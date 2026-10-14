@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
@@ -9,6 +10,14 @@ import Quickshell.Io
 ShellRoot {
   id: root
   property var pinned: []
+  // 3D Windows edge: light top/left, dark bottom/right
+  component Bevel: Item {
+    anchors.fill: parent
+    Rectangle { width: parent.width; height: 1; color: "#ffffff" }
+    Rectangle { width: 1; height: parent.height; color: "#ffffff" }
+    Rectangle { y: parent.height - 1; width: parent.width; height: 1; color: "#404040" }
+    Rectangle { x: parent.width - 1; width: 1; height: parent.height; color: "#404040" }
+  }
   property var running: ({})
   property int winCount: 0                  // open windows -> how scrambled the cube is
   property var launching: ({})              // apps that were just clicked -> their icon bounces until the window appears
@@ -23,22 +32,51 @@ ShellRoot {
   property string styleName: "mac"
   readonly property bool rubik: styleName === "rubik"
   property real zoomVal: 0      // 0 = automatic (depends on size); else the magnification chosen with the Zoom slider
-  readonly property int base: { var n = parseInt(sizeName); return isNaN(n) ? (sizeName === "small" ? 34 : (sizeName === "large" ? 58 : 46)) : Math.max(24, Math.min(110, n)) }
-  readonly property real maxScale: rubik ? 1.12 : (zoomVal >= 1 ? Math.min(3.2, zoomVal) : (base >= 56 ? 2.3 : (base <= 36 ? 2.8 : 2.5)))
+  readonly property int reqBase: { var n = parseInt(sizeName); return isNaN(n) ? (sizeName === "small" ? 34 : (sizeName === "large" ? 58 : 46)) : Math.max(24, Math.min(110, n)) }
+  // Never wider than the screen: shrink the icons (zoom room included) when the chosen size doesn't fit all of them.
+  readonly property real screenW: win.screen ? win.screen.width : 1920
+  readonly property int base: Math.max(24, Math.min(reqBase, Math.floor((screenW - 48 - items.length * gap) / (items.length + (maxScale - 1) * 3.6))))
+  readonly property real maxScale: rubik ? 1.12 : (skin.nz ? 1.0 : (zoomVal >= 1 ? Math.min(3.2, zoomVal) : (reqBase >= 56 ? 2.3 : (reqBase <= 36 ? 2.8 : 2.5))))
   readonly property real radius: base * 3.6
   readonly property int gap: rubik ? 5 : 6
   property string skinTxt: "auto"
-  readonly property int skinIdx: /^[0-7]$/.test(skinTxt) ? parseInt(skinTxt) : (rubik ? 7 : 0)
-  readonly property var skins: [
-    { n: "Emerald",  c1: "#111c18", c2: "#111c18", b: "#55C1C497", r: 16, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
-    { n: "Glass",    c1: "#70ffffff", c2: "#30ffffff", b: "#aaffffff", r: 18, t: ["#ffffff", "#9fd8ff", "#ffc2d4", "#b8f5c8", "#ffe2a8", "#d9c8ff"] },
-    { n: "Midnight", c1: "#0f1a4a", c2: "#04061a", b: "#554a7aff", r: 16, t: ["#5b7cff", "#8a5bff", "#2ad4ff", "#3b4bd6", "#a3b4ff", "#e8ecff"] },
-    { n: "Neon",     c1: "#06080c", c2: "#06080c", b: "#39ff14", r: 14, t: ["#39ff14", "#00e5ff", "#ff2a2a", "#ffe066", "#d946ff", "#ff6a00"] },
-    { n: "Aluminum", c1: "#f0f0f2", c2: "#a4a8b0", b: "#ffffff", r: 10, t: ["#f4f4f4", "#d8dadf", "#c2c6cd", "#eceef1", "#b6bac2", "#ffffff"] },
-    { n: "Aqua",     c1: "#8fd0ff", c2: "#1565d0", b: "#d8eeff", r: 20, t: ["#ffffff", "#bfe3ff", "#7cc2ff", "#e6f4ff", "#a0d4ff", "#5aaaf0"] },
-    { n: "Sunset",   c1: "#ff9a3d", c2: "#a8124a", b: "#ffd9b0", r: 18, t: ["#ffd500", "#ff5a00", "#c41e3a", "#ff8fb1", "#7a1fa2", "#fff1d6"] },
-    { n: "Cube",     c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 12, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] }
+  readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skins.length) ? 0 : n }
+  // ic = how the icons look on that plate: "" as they are, "gray" black & white, "#rrggbb" tinted in one colour.
+  readonly property var macSkins: [
+    { n: "Emerald",   c1: "#111c18", c2: "#111c18", b: "#55C1C497", r: 16, ic: "", t: [] },
+    { n: "Glass",     c1: "#70ffffff", c2: "#30ffffff", b: "#aaffffff", r: 18, ic: "", t: [] },
+    { n: "Midnight",  c1: "#0f1a4a", c2: "#04061a", b: "#554a7aff", r: 16, ic: "", t: [] },
+    { n: "Neon",      c1: "#06080c", c2: "#06080c", b: "#39ff14", r: 14, ic: "", t: [] },
+    { n: "Aluminum",  c1: "#f0f0f2", c2: "#a4a8b0", b: "#ffffff", r: 10, ic: "", t: [] },
+    { n: "Aqua",      c1: "#8fd0ff", c2: "#1565d0", b: "#d8eeff", r: 20, ic: "", t: [] },
+    { n: "Sunset",    c1: "#ff9a3d", c2: "#a8124a", b: "#ffd9b0", r: 18, ic: "", t: [] },
+    { n: "Mono",      c1: "#000000", c2: "#1c1c1c", b: "#ffffff", r: 14, ic: "gray", t: [] },
+    { n: "Paper",     c1: "#fbfaf6", c2: "#e2dfd5", b: "#bdb8a8", r: 12, ic: "gray", t: [] },
+    { n: "Terminal",  c1: "#020a02", c2: "#020a02", b: "#33ff33", r: 6, ic: "#33ff33", t: [] },
+    { n: "Amber",     c1: "#0e0700", c2: "#0e0700", b: "#ffb000", r: 6, ic: "#ffb000", t: [] },
+    { n: "Blueprint", c1: "#0d4a9a", c2: "#082a5a", b: "#ffffff", r: 4, ic: "#d6ecff", t: [] },
+    // tile = what sits behind every icon: circle | btn (raised Windows button) | hbtn (raises on hover) | hpill (rounded hover highlight)
+    // ik = icon size inside the tile, plate = always draw the bar, nz = no zoom (flat bar), bevel = 3D Windows edge
+    { n: "Bubbles",    c1: "#0b1020", c2: "#0b1020", b: "#334466", r: 26, ic: "", tile: "circle", ik: 0.7, t: ["#ff6b6b", "#ffd166", "#06d6a0", "#4cc9f0", "#8338ec", "#ff9f1c"] },
+    { n: "Pearls",     c1: "#15181f", c2: "#0b0d12", b: "#44ffffff", r: 26, ic: "", tile: "circle", ik: 0.7, tc: "#f2f2f2", t: [] },
+    { n: "Windows 95", c1: "#c0c0c0", c2: "#c0c0c0", b: "transparent", r: 0, ic: "", plate: true, nz: true, bevel: true, tile: "btn", ik: 0.78, t: [] },
+    { n: "Windows 98", c1: "#d8d8d8", c2: "#bcbcbc", b: "transparent", r: 0, ic: "", plate: true, nz: true, bevel: true, tile: "hbtn", ik: 0.86, t: [] },
+    { n: "Windows 11", c1: "#ee202020", c2: "#ee181818", b: "#33ffffff", r: 12, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.86, t: [] },
+    { n: "Polybar",    c1: "#1d2021", c2: "#1d2021", b: "#fabd2f", r: 0, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.9, t: [] },
+    { n: "Tint2",      c1: "#e0505050", c2: "#e0101010", b: "#66ffffff", r: 6, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.88, t: [] }
   ]
+  readonly property var rubikSkins: [
+    { n: "Cube",   c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 12, ic: "", t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
+    { n: "Pastel", c1: "#f4eef7", c2: "#e4d8ea", b: "#d2c3da", r: 14, ic: "", t: ["#ffb3c1", "#b5ead7", "#c7ceea", "#ffdac1", "#e2f0cb", "#fff1a8"] },
+    { n: "Mono",   c1: "#000000", c2: "#000000", b: "#ffffff", r: 12, ic: "gray", t: ["#ffffff", "#bdbdbd", "#7d7d7d", "#3d3d3d", "#e8e8e8", "#9a9a9a"] },
+    { n: "Neon",   c1: "#06080c", c2: "#06080c", b: "#39ff14", r: 12, ic: "", t: ["#39ff14", "#00e5ff", "#ff2a2a", "#ffe066", "#d946ff", "#ff6a00"] },
+    { n: "Sunset", c1: "#3a0a2a", c2: "#1c0614", b: "#ffd9b0", r: 12, ic: "", t: ["#ffd500", "#ff5a00", "#c41e3a", "#ff8fb1", "#7a1fa2", "#fff1d6"] },
+    { n: "Ocean",  c1: "#04202e", c2: "#021520", b: "#0096c7", r: 12, ic: "", t: ["#00b4d8", "#0077b6", "#90e0ef", "#023e8a", "#48cae4", "#caf0f8"] },
+    { n: "Candy",  c1: "#2b0a3d", c2: "#1a0626", b: "#ff4d9d", r: 12, ic: "", t: ["#ff4d9d", "#ffd166", "#06d6a0", "#8338ec", "#ff6b6b", "#4cc9f0"] },
+    { n: "Jungle", c1: "#0a1f0a", c2: "#061106", b: "#52b788", r: 12, ic: "", t: ["#2d6a4f", "#52b788", "#95d5b2", "#d8f3dc", "#1b4332", "#b7e4c7"] },
+    { n: "Circles", c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 26, ic: "", rr: 0.5, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] }
+  ]
+  readonly property var skins: rubik ? rubikSkins : macSkins
   readonly property var skin: skins[skinIdx]
   readonly property var rpal: skin.t
   readonly property bool testMode: Quickshell.env("MACDOCK_TEST") === "1" || Quickshell.env("MACDOCK_TEST") === "2"
@@ -80,7 +118,7 @@ ShellRoot {
     onLoaded: root.styleName = text().trim() === "rubik" ? "rubik" : "mac"
   }
   FileView {
-    path: Quickshell.env("HOME") + "/.cache/dock-skin"
+    path: Quickshell.env("HOME") + "/.cache/dock-skin-" + (root.rubik ? "rubik" : "mac")
     watchChanges: true
     onFileChanged: reload()
     onLoaded: root.skinTxt = text().trim()
@@ -108,7 +146,7 @@ ShellRoot {
       }
     }
   }
-  Timer { interval: 1500; running: true; repeat: true; triggeredOnStart: true; onTriggered: { if (!poll.running) poll.running = true; if (!countProc.running) countProc.running = true; hidChk.running = true; lockChk.running = true } }
+  Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: true; onTriggered: { if (hover.hovered || root.dragIdx >= 0) return; if (!poll.running) poll.running = true; if (!countProc.running) countProc.running = true; hidChk.running = true; lockChk.running = true } }
 
   property var appmap: ({})
   Process {
@@ -223,15 +261,28 @@ print(json.dumps(out))
   // and um is solved so the icon under the pointer really stays under it (no feedback from the animated icons -> no jitter).
   // mag (0..1) and umS are spring-animated, which gives the elastic pop when the mouse arrives, moves and leaves.
   property real mag: 0
-  Behavior on mag { SpringAnimation { spring: 3.2; damping: 0.2; epsilon: 0.002 } }
+  Behavior on mag { SpringAnimation { spring: 5; damping: 0.3; epsilon: 0.002 } }
   property real umT: 0
   property real umS: 0
-  Behavior on umS { enabled: root.mag > 0.15; SpringAnimation { spring: 7; damping: 0.6; epsilon: 0.05 } }
+  // umS chases umT with our own per-frame spring. (A Behavior/SpringAnimation restarts on every mouse event and a mouse
+  // reports faster than the screen refreshes, so it never got to advance: the wave froze and then jumped.)
+  property real umV: 0
+  FrameAnimation {
+    running: root.mag > 0.01 && (Math.abs(root.umS - root.umT) > 0.05 || Math.abs(root.umV) > 0.05)
+    onTriggered: {
+      var dt = Math.min(frameTime, 0.05), n = Math.max(1, Math.ceil(dt / 0.006)), h = dt / n
+      var x = root.umS, v = root.umV
+      for (var i = 0; i < n; i++) { v += (-1000 * (x - root.umT) - 46 * v) * h; x += v * h }
+      root.umV = v; root.umS = x
+    }
+  }
   property int hoverIdx: -1
   property int dragIdx: -1
   property int dropIdx: -1
   property real dragX: 0
   property bool locked: false
+  // Move Icons mode (from the menu): icons wiggle, drag to rearrange, no zoom, Done button.
+  property bool moveMode: false
   Process { id: lockChk; command: ["test", "-e", Quickshell.env("HOME") + "/.cache/dock-locked"]; onExited: (c) => root.locked = (c === 0) }
 
   function layoutFor(p, m, W) {
@@ -254,8 +305,20 @@ print(json.dumps(out))
     return { xs: xs, ws: ws, tot: tot }
   }
   readonly property var lay: layoutFor(umS, mag, win.width)
+  // Where the last icon (the launcher) sits on the screen at rest; the menus above the dock line up with it.
+  readonly property real launcherX: { var l = layoutFor(0, 0, win.width), k = items.length - 1; return k < 0 ? 0 : Math.round(((win.screen ? win.screen.width : 1920) - win.width) / 2 + l.xs[k] + l.ws[k] / 2) }
+  onLauncherXChanged: lxT.restart()
+  Timer { id: lxT; interval: 400; onTriggered: lxW.running = true }
+  // Menus open on one line just above the dock: its distance from the bottom of the screen goes next to the launcher position.
+  readonly property int menuLine: base + 39
+  onMenuLineChanged: lxT.restart()
+  Process { id: lxW; command: ["bash", "-c", "echo \"$0 $1\" > \"$HOME/.cache/dock-launcher\"", String(root.launcherX), String(root.menuLine)] }
 
-  function pointer(mx) {
+  // Mouse events can arrive at 1000 Hz; solve for the latest position at most every 8 ms.
+  property real pmx: 0
+  Timer { id: ptT; interval: 8; onTriggered: root.solvePointer(root.pmx) }
+  function pointer(mx) { pmx = mx; if (!ptT.running) ptT.start() }
+  function solvePointer(mx) {
     var n = items.length; if (n < 1) return
     var step = base + gap, L0 = (win.width - baseTotal) / 2
     var p = (mag > 0.15) ? umT : mx
@@ -266,7 +329,8 @@ print(json.dumps(out))
       var sx = off < 0 ? l.xs[i] + off : (off <= base ? l.xs[i] + off / base * l.ws[i] : l.xs[i] + l.ws[i] + (off - base))
       p += (mx - sx) * 0.5
     }
-    umT = p; umS = p
+    umT = p
+    if (mag <= 0.15) { umS = p; umV = 0 }
     hoverIdx = Math.max(0, Math.min(n - 1, Math.round((p - L0 - base / 2) / step)))
   }
   function moveTo(from, to) {
@@ -295,12 +359,12 @@ print(json.dumps(out))
       anchors.bottom: parent.bottom
       anchors.horizontalCenter: parent.horizontalCenter
       width: parent.width
-      height: hover.containsMouse ? parent.height : root.base + 16
+      height: (hover.containsMouse || root.moveMode) ? parent.height : root.base + 16
 
       HoverHandler {
         id: hover
         onPointChanged: if (root.dragIdx < 0) root.pointer(point.position.x)
-        onHoveredChanged: root.mag = (hovered && root.dragIdx < 0) ? 1 : 0
+        onHoveredChanged: root.mag = (hovered && root.dragIdx < 0 && !root.moveMode) ? 1 : 0
         property real mx: point.position.x
         readonly property bool containsMouse: hovered
       }
@@ -308,13 +372,26 @@ print(json.dumps(out))
 
     // Solid dock: a plate behind the row (Rubik: black cube-plastic frame). Transparent dock: icons float.
     Rectangle {
-      visible: root.solid
+      visible: root.solid || !!root.skin.plate
       opacity: rowArea.opacity
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.bottom: parent.bottom; anchors.bottomMargin: 3
-      width: root.lay.tot + 18; height: root.base + 22; radius: root.skin.r
+      width: root.lay.tot + 18; height: root.base + 10; radius: root.skin.r
       gradient: Gradient { GradientStop { position: 0; color: root.skin.c1 } GradientStop { position: 1; color: root.skin.c2 } }
       border.color: root.skin.b; border.width: 1
+      Bevel { visible: !!root.skin.bevel }
+    }
+    // Move Icons mode: a Done button above the dock
+    Rectangle {
+      visible: root.moveMode
+      anchors.horizontalCenter: parent.horizontalCenter
+      anchors.bottom: parent.bottom; anchors.bottomMargin: root.base + 36
+      width: 190; height: 30; radius: 15; color: dma.containsMouse ? "#3a5a44" : "#111c18"; border.color: "#C1C497"; border.width: 1
+      Text { anchors.centerIn: parent; text: "Drag To Move  ·  Done \u2713"; color: "#C1C497"; font.pixelSize: 12 }
+      MouseArea {
+        id: dma; anchors.fill: parent; hoverEnabled: true
+        onClicked: { root.moveMode = false; root.sh([Quickshell.env("HOME") + "/.local/bin/dock-move-done"]) }
+      }
     }
     // Row of icons, centred. Positions come from the cumulative scaled widths, so neighbours push apart.
     Item {
@@ -340,6 +417,13 @@ print(json.dumps(out))
           x: dragged ? root.dragX - width / 2 : (root.lay.xs[index] || 0)
           Behavior on x { enabled: root.dragIdx >= 0 && !cell.dragged; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
           z: dragged ? 10 : 0
+          property real jig: 0
+          rotation: root.moveMode && !dragged ? jig : 0
+          SequentialAnimation on jig {
+            running: root.moveMode; loops: Animation.Infinite
+            NumberAnimation { to: -2.6; duration: 95 + (cell.index % 4) * 17 }
+            NumberAnimation { to: 2.6; duration: 95 + (cell.index % 3) * 21 }
+          }
           opacity: dragged ? 0.92 : 1
           anchors.bottom: parent.bottom
           property real bounce: 0
@@ -358,10 +442,23 @@ print(json.dumps(out))
             PropertyAction { target: cell; property: "twist"; value: 0 } }
           Rectangle {
             visible: root.rubik && cell.modelData.cls !== "__launcher__"
-            anchors.fill: parent; radius: width * 0.2
+            anchors.fill: parent; radius: width * (root.skin.rr !== undefined ? root.skin.rr : 0.2)
             color: root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
             rotation: cell.twist
             Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: "#33ffffff"; border.width: 1 }
+          }
+          // Mac skins: circle / raised button / hover highlight behind each icon
+          Rectangle {
+            id: stile
+            readonly property string kind: root.skin.tile || ""
+            visible: !root.rubik && kind !== "" && (kind === "circle" || kind === "btn" || (hover.hovered && root.hoverIdx === cell.index && root.dragIdx < 0))
+            anchors.centerIn: parent
+            width: parent.width * (kind === "circle" ? 0.96 : 0.98); height: width
+            radius: kind === "circle" ? width / 2 : (kind === "hpill" ? 8 : 0)
+            color: kind === "circle" ? (root.skin.t.length ? root.skin.t[cell.index % root.skin.t.length] : (root.skin.tc || "#33ffffff"))
+                   : (kind === "hpill" ? "#2cffffff" : "#c0c0c0")
+            border.color: kind === "circle" ? "#40000000" : "transparent"; border.width: kind === "circle" ? 1 : 0
+            Bevel { visible: stile.kind === "btn" || stile.kind === "hbtn" }
           }
           Rectangle {
             visible: root.iconFor(cell.modelData.cls) === ""
@@ -372,27 +469,37 @@ print(json.dumps(out))
           Image {
             visible: cell.modelData.cls !== "__launcher__" && cell.modelData.cls !== "chrome-127.0.0.1__globe_-Default"
             anchors.fill: parent
-            scale: root.scaleOf(cell.modelData.cls) * (root.rubik ? 0.74 : 1)
+            scale: root.scaleOf(cell.modelData.cls) * (root.rubik ? 0.74 : (root.skin.ik || 1))
             rotation: cell.twist
             source: root.iconFor(cell.modelData.cls)
             sourceSize: Qt.size(256, 256)
             fillMode: Image.PreserveAspectFit
             smooth: true
             mipmap: true
+            layer.enabled: root.skin.ic !== ""
+            layer.smooth: true
+            layer.effect: MultiEffect {
+              saturation: root.skin.ic === "gray" ? -1 : 0
+              colorization: root.skin.ic === "gray" ? 0 : 1
+              colorizationColor: root.skin.ic === "gray" ? "#ffffff" : root.skin.ic
+            }
           }
           // Rubik's Cube launcher: solved with no windows open, scrambles a little more with every window you open.
           Canvas {
             id: cube
             visible: cell.modelData.cls === "__launcher__"
-            anchors.fill: parent
+            // Painted once at a fixed size and scaled as a texture, so the hover zoom never repaints it.
+            width: 192; height: 192
+            anchors.centerIn: parent
+            property real pk: 1
+            scale: cell.width / 192 * pk
             property int n: root.winCount
             onNChanged: { requestPaint(); pop.restart() }
-            onWidthChanged: requestPaint()
             Component.onCompleted: requestPaint()
             SequentialAnimation {
               id: pop
-              NumberAnimation { target: cube; property: "scale"; to: 1.14; duration: 110; easing.type: Easing.OutQuad }
-              NumberAnimation { target: cube; property: "scale"; to: 1.0; duration: 220; easing.type: Easing.OutBack }
+              NumberAnimation { target: cube; property: "pk"; to: 1.14; duration: 110; easing.type: Easing.OutQuad }
+              NumberAnimation { target: cube; property: "pk"; to: 1.0; duration: 220; easing.type: Easing.OutBack }
             }
             onPaint: {
               var ctx = getContext("2d"); ctx.reset()
@@ -430,9 +537,10 @@ print(json.dumps(out))
           Canvas {
             id: gb
             visible: cell.modelData.cls === "chrome-127.0.0.1__globe_-Default"
-            anchors.fill: parent
-            onWidthChanged: requestPaint()
-            Timer { interval: 66; running: gb.visible; repeat: true; onTriggered: gb.requestPaint() }
+            width: 192; height: 192
+            anchors.centerIn: parent
+            scale: cell.width / 192
+            Timer { interval: 100; running: gb.visible && !hover.hovered; repeat: true; onTriggered: gb.requestPaint() }
             onPaint: {
               var ctx = getContext("2d"); ctx.reset()
               var S = Math.min(width, height), cx = width / 2, cy = height / 2, now = Date.now()
@@ -507,7 +615,7 @@ print(json.dumps(out))
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             property real px0: 0
             property bool moved: false
-            readonly property bool canDrag: !root.locked && cell.index < root.pinned.length
+            readonly property bool canDrag: (!root.locked || root.moveMode) && cell.index < root.pinned.length
             function rx(m) { return cma.mapToItem(rowArea, m.x, 0).x }
             onPressed: (m) => { px0 = rx(m); moved = false }
             onPositionChanged: (m) => {
@@ -525,7 +633,7 @@ print(json.dumps(out))
                 var f = root.dragIdx, t = root.dropIdx
                 root.dragIdx = -1
                 root.moveTo(f, t)
-                root.mag = hover.hovered ? 1 : 0
+                root.mag = (hover.hovered && !root.moveMode) ? 1 : 0
                 root.pointer(hover.point.position.x)
               }
             }
@@ -544,7 +652,7 @@ print(json.dumps(out))
 
   // Right-click menu on an icon: open windows, New window, Pin/Unpin, Close.
   IpcHandler { target: "macdockact"; function activate(cls: string): void { root.activate(cls) } }
-  IpcHandler { target: "macdock"; function menu(cls: string): void { root.ctxX = 800; root.ctx = cls } }
+  IpcHandler { target: "macdock"; function menu(cls: string): void { root.ctxX = 800; root.ctx = cls } function moveMode(on: bool): void { root.moveMode = on; root.ctx = ""; root.mag = 0 } }
   property string ctx: ""
   property real ctxX: 0
   property var ctxWins: []
@@ -577,7 +685,7 @@ print(json.dumps(out))
       required property var modelData
       property var rows: root.ctxRows()
       anchors { bottom: true; left: true }
-      margins { bottom: root.base + 24; left: Math.max(4, (win.screen.width - win.width) / 2 + root.ctxX - 115) }
+      margins { bottom: root.menuLine; left: Math.max(4, (win.screen.width - win.width) / 2 + root.ctxX - 115) }
       implicitWidth: 230; implicitHeight: rows.length * 34 + 12
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore

@@ -1,6 +1,6 @@
 # Maintainer: 5ive7 Development Labs <5ive7@mail.com>
 pkgname=legal-dock
-pkgver=1.0.0
+pkgver=1.0.1
 pkgrel=1
 pkgdesc='Classic or Mac-style dock for Hyprland/Omarchy with size, lock, hide and transparency controls'
 arch=('any')

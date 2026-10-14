@@ -1,0 +1,25 @@
+#!/bin/bash
+# dock-mouse show | apply | speed <-1..1> | natural on|off | left on|off | flat on|off | reset
+# Pointer speed, scroll direction, left-handed buttons and acceleration, applied live to Hyprland and remembered in ~/.cache/dock-mouse.
+S="$HOME/.cache/dock-mouse"
+get() { local v; v=$(sed -n "s/^$1=//p" "$S" 2>/dev/null | head -1); echo "${v:-$2}"; }
+put() { grep -v "^$1=" "$S" 2>/dev/null > "$S.tmp"; echo "$1=$2" >> "$S.tmp"; mv "$S.tmp" "$S"; }
+b() { [ "$1" = on ] && echo true || echo false; }
+apply() {
+  local sp nat left flat acc
+  sp=$(get speed 0); nat=$(get natural off); left=$(get left off); flat=$(get flat off)
+  [ "$flat" = on ] && acc=flat || acc=adaptive
+  if [ -e "${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua" ]; then
+    hyprctl eval "hl.config({ input = { sensitivity = $sp, natural_scroll = $(b "$nat"), left_handed = $(b "$left"), accel_profile = '$acc' } })" >/dev/null
+  else
+    hyprctl keyword input:sensitivity "$sp" >/dev/null; hyprctl keyword input:natural_scroll "$(b "$nat")" >/dev/null
+    hyprctl keyword input:left_handed "$(b "$left")" >/dev/null; hyprctl keyword input:accel_profile "$acc" >/dev/null
+  fi
+}
+case "${1:-show}" in
+  show) printf '{"speed": %s, "natural": %s, "left": %s, "flat": %s}\n' "$(get speed 0)" "$(b "$(get natural off)")" "$(b "$(get left off)")" "$(b "$(get flat off)")" ;;
+  apply) [ -e "$S" ] && apply ;;
+  speed) v=$(awk -v v="${2:-0}" 'BEGIN{ if (v<-1) v=-1; if (v>1) v=1; printf "%.2f", v }'); put speed "$v"; apply ;;
+  natural|left|flat) put "$1" "${2:-off}"; apply ;;
+  reset) rm -f "$S"; echo "x=1" > "$S"; apply ;;
+esac

@@ -1,9 +1,8 @@
 #!/bin/bash
 # Toggle the dock's background between solid and transparent, then restart it (keepalive brings it back).
-C="$HOME/.config/nwg-dock-hyprland/style.css"
-if grep -q "background: transparent" "$C"; then
-  sed -i '0,/^  background: transparent;/s//  background: #111c18;/' "$C"
-else
-  sed -i '0,/^  background: #[0-9a-fA-F]*;/s//  background: transparent;/' "$C"
-fi
+H="$HOME/.cache"; C="$HOME/.config/nwg-dock-hyprland/style.css"
+if [ -e "$H/dock-transparent" ] || grep -q "background: transparent" "$C" 2>/dev/null; then rm -f "$H/dock-transparent"; sed -i "s/background: transparent;/background: #000000;/" "$C"
+else touch "$H/dock-transparent"; fi
+B="$(dirname "$(readlink -f "$0")")"
+"$B/macdock-skin" apply     # rewrites the stylesheet for the current classic skin, solid or transparent
 pkill -x nwg-dock-hyprla
