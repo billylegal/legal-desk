@@ -436,8 +436,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             width: parent.width; height: 40; spacing: 4
             Repeater {
               model: [
+                { label: "Apps", icon: "\uf00a", act: "apps", on: true },
                 { label: moving ? "Done Moving" : "Move Icons", icon: "\uf0b2", act: "move", on: true },
-                { label: hidden ? "Show" : "Hide", icon: hidden ? "\uf077" : "\uf078", act: "hide", on: true },
                 { label: "Mouse", icon: "\uf245", act: "mouse", on: true },
                 { label: "Shut Down", icon: "\uf011", act: "shutdown", on: true }
               ].filter(i => i.on)
@@ -454,7 +454,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
                   onClicked: {
                     if (locked && modelData.act === "move") return
                     menuOpen = false
-                    if (modelData.act === "hide") hideToggle.running = true
+                    if (modelData.act === "apps") appsProc.running = true
                     else if (modelData.act === "mouse") openMouse()
                     else if (modelData.act === "move") { if (moving) endMove(); else startMove() }
                     else if (modelData.act === "shutdown") shutdownProc.running = true
@@ -530,11 +530,11 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
                 Text { text: "\uf00d"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
                 Text { text: "Close"; color: txtC; font.pixelSize: 10 } }
               MouseArea { id: cla; anchors.fill: parent; hoverEnabled: true; onClicked: menuOpen = false } }
-            Rectangle { width: parent.bw; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: apa.containsMouse ? selC : hiC; border.color: accC; border.width: 1
+            Rectangle { width: parent.bw; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: hda.containsMouse ? selC : (hidden ? accC : hiC); border.color: accC; border.width: 1
               Row { anchors.centerIn: parent; spacing: 4
-                Text { text: "\uf00a"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
-                Text { text: "Apps"; color: txtC; font.pixelSize: 10 } }
-              MouseArea { id: apa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuOpen = false; appsProc.running = true } } }
+                Text { text: hidden ? "\uf077" : "\uf078"; color: hidden ? bgC : txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
+                Text { text: hidden ? "Show" : "Hide"; color: hidden ? bgC : txtC; font.pixelSize: 10 } }
+              MouseArea { id: hda; anchors.fill: parent; hoverEnabled: true; onClicked: { menuOpen = false; hideToggle.running = true } } }
             Rectangle { width: parent.bw; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: lka2.containsMouse ? selC : (locked ? accC : hiC); border.color: accC; border.width: 1
               Text { anchors.centerIn: parent; text: locked ? "\uf023" : "\uf09c"; color: locked ? bgC : txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
               MouseArea { id: lka2; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); toggle.running = true } } }
@@ -550,7 +550,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           Row {
             width: parent.width; height: 12; spacing: 4
             readonly property real bw: (width - 16) / 5
-            Text { width: parent.bw * 2 + 4; height: 12; text: "LEGAL DOCK"; color: accC; font.pixelSize: 8; font.bold: true; font.letterSpacing: 0.8; horizontalAlignment: Text.AlignLeft; leftPadding: 2; verticalAlignment: Text.AlignVCenter }
+            Text { width: parent.bw; height: 12; text: "LEGAL DOCK"; color: accC; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.2; horizontalAlignment: Text.AlignLeft; verticalAlignment: Text.AlignVCenter; wrapMode: Text.NoWrap; clip: false }
+            Text { width: parent.bw; height: 12; text: "BAR"; color: txtC; opacity: 0.85; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.4; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             Text { width: parent.bw; height: 12; text: "LOCK BAR"; color: txtC; opacity: 0.85; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.4; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             Text { width: parent.bw; height: 12; text: "REBOOT"; color: txtC; opacity: 0.85; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.4; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             Text { width: parent.bw; height: 12; text: "NEBULA"; color: txtC; opacity: 0.85; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.4; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
