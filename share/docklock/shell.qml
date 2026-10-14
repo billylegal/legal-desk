@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: 15 * 36 + 12 + 6
+  readonly property int menuH: 14 * 36 + 12 + 6
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -394,7 +394,6 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           anchors.fill: parent; anchors.margins: 6; spacing: 2
           Repeater {
             model: [
-              { label: locked ? "Unlock dock" : "Lock dock", icon: locked ? "\uf09c" : "\uf023", act: "lock" },
               { label: moving ? "Done Moving" : "Move Icons", icon: "\uf0b2", act: "move" },
               { label: hidden ? "Keep dock up" : "Hide dock", icon: hidden ? "\uf077" : "\uf078", act: "hide" },
               { label: full ? "Floating dock" : "Full-width dock", icon: "\uf337", act: "full" },
@@ -528,23 +527,34 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               MouseArea { id: wna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); wallProc.a = "next"; wallProc.running = false; wallProc.running = true } } }
           }
           Row {
+            id: bottomRow
             width: parent.width; height: 28; spacing: 6
-            Rectangle { width: 74; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: apa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
-              Row { anchors.centerIn: parent; spacing: 5
+            Rectangle { width: 54; height: 24; radius: 6; opacity: locked ? 0.4 : 1; anchors.verticalCenter: parent.verticalCenter; color: apa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+              Row { anchors.centerIn: parent; spacing: 4
                 Text { text: "\uf00a"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
-                Text { text: "Apps"; color: txtC; font.pixelSize: 11 } }
-              MouseArea { id: apa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuOpen = false; appsProc.running = true } } }
-            Rectangle { width: 74; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: cla.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
-              Row { anchors.centerIn: parent; spacing: 5
+                Text { text: "Apps"; color: txtC; font.pixelSize: 10 } }
+              MouseArea { id: apa; anchors.fill: parent; hoverEnabled: true; enabled: !locked; onClicked: { menuOpen = false; appsProc.running = true } } }
+            Rectangle { width: 54; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: cla.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+              Row { anchors.centerIn: parent; spacing: 4
                 Text { text: "\uf00d"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
-                Text { text: "Close"; color: txtC; font.pixelSize: 11 } }
+                Text { text: "Close"; color: txtC; font.pixelSize: 10 } }
               MouseArea { id: cla; anchors.fill: parent; hoverEnabled: true; onClicked: menuOpen = false } }
-            Item { width: parent.width - 74 - 74 - 30 - 12; height: 1 }
-            Rectangle { id: rsBtn; width: 30; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter
+            Rectangle { width: 30; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: lka2.containsMouse ? selC : (locked ? hiC : "transparent"); border.color: accC; border.width: locked ? 2 : 1
+              Text { anchors.centerIn: parent; text: locked ? "\uf023" : "\uf09c"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+              MouseArea { id: lka2; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); toggle.running = true } } }
+            Item { width: Math.max(0, parent.width - 54 - 54 - 30 - 30 - 18); height: 1 }
+            Rectangle { id: rsBtn; width: 30; height: 24; radius: 6; opacity: locked ? 0.4 : 1; anchors.verticalCenter: parent.verticalCenter
               color: rsa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
               Text { anchors.centerIn: parent; text: "\uf0e2"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-              MouseArea { id: rsa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); resetProc.running = false; resetProc.running = true } } }
+              MouseArea { id: rsa; anchors.fill: parent; hoverEnabled: true; enabled: !locked; onClicked: { menuT.restart(); resetProc.running = false; resetProc.running = true } } }
           }
+        }
+        // Locked: everything above the bottom row is frozen (dimmed and not clickable) until the lock is opened again.
+        Rectangle {
+          visible: locked
+          anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom; margins: 4; bottomMargin: 6 + 28 + 6 }
+          radius: 6; color: Qt.rgba(0, 0, 0, 0.5)
+          MouseArea { anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.AllButtons; onClicked: menuT.restart() }
         }
       }
     }

@@ -66,6 +66,8 @@ The dock menu's look row has three buttons, **Transparent** (icons float), **Sol
 
 The **Apps** and **Close** buttons sit at the bottom of the dock menu next to the reset button. The app drawer (Apps) wears the skin's colours too and is rewritten whenever the skin changes; press Apps again, the X, or Esc to close it.
 
+The **lock** button (a padlock, bottom row of the dock menu) freezes everything: while the dock is locked the menu is dimmed and nothing in it can be changed (look, style, size, skin, icons, wallpaper, reboot ...), and icons can't be rearranged, until you unlock it again.
+
 ## Minimize windows
 
 Hyprland has no minimize, so Legal Dock adds one: `/usr/lib/legal-dock/win-minimize` parks a window on a hidden workspace and brings it back later. Clicking a minimized app in the **Mac dock** restores it. To use it elsewhere:
