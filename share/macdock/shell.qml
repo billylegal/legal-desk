@@ -64,7 +64,7 @@ ShellRoot {
     { n: "Windows 11", c1: "#ee202020", c2: "#ee181818", b: "#33ffffff", r: 12, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.86, t: [] },
     { n: "Polybar",    c1: "#1d2021", c2: "#1d2021", b: "#fabd2f", r: 0, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.9, t: [] },
     { n: "Tint2",      c1: "#e0505050", c2: "#e0101010", b: "#66ffffff", r: 6, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.88, t: [] },
-    { n: "Purple Space", c1: "#2a1466", c2: "#07050f", b: "#8B5CF6", r: 18, ic: "", t: [] }
+    { n: "Nebula", c1: "#2a1466", c2: "#07050f", b: "#8B5CF6", r: 18, ic: "", t: [] }
   ]
   readonly property var rubikSkins: [
     { n: "Cube",   c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 12, ic: "", t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
@@ -76,7 +76,7 @@ ShellRoot {
     { n: "Candy",  c1: "#2b0a3d", c2: "#1a0626", b: "#ff4d9d", r: 12, ic: "", t: ["#ff4d9d", "#ffd166", "#06d6a0", "#8338ec", "#ff6b6b", "#4cc9f0"] },
     { n: "Jungle", c1: "#0a1f0a", c2: "#061106", b: "#52b788", r: 12, ic: "", t: ["#2d6a4f", "#52b788", "#95d5b2", "#d8f3dc", "#1b4332", "#b7e4c7"] },
     { n: "Circles", c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 26, ic: "", rr: 0.5, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
-    { n: "Purple Space", c1: "#1a0f3d", c2: "#07050f", b: "#8B5CF6", r: 12, ic: "", t: ["#8B5CF6", "#B061FF", "#6C8CFF", "#5CC8F5", "#CC8CFF", "#E6E1FA"] }
+    { n: "Nebula", c1: "#1a0f3d", c2: "#07050f", b: "#8B5CF6", r: 12, ic: "", t: ["#8B5CF6", "#B061FF", "#6C8CFF", "#5CC8F5", "#CC8CFF", "#E6E1FA"] }
   ]
   readonly property var skins: rubik ? rubikSkins : macSkins
   readonly property var skin: skins[skinIdx]
@@ -496,6 +496,8 @@ print(json.dumps(out))
             property real pk: 1
             scale: cell.width / 192 * pk
             property int n: root.winCount
+            readonly property bool nb: root.skin.n === "Nebula"   // Nebula skin: the cube wears the theme's purples
+            onNbChanged: requestPaint()
             onNChanged: { requestPaint(); pop.restart() }
             Component.onCompleted: requestPaint()
             SequentialAnimation {
@@ -506,12 +508,12 @@ print(json.dumps(out))
             onPaint: {
               var ctx = getContext("2d"); ctx.reset()
               var S = Math.min(width, height), u = S * 0.148, cx = width / 2, cy = height / 2 + u * 0.1
-              var pal = ["#f4f4f4", "#ffd500", "#c41e3a", "#ff5a00", "#0b57d0", "#00a152"]   // W Y R O B G
+              var pal = nb ? ["#E6E1FA", "#B8A2FF", "#8B5CF6", "#CC8CFF", "#6C8CFF", "#5CC8F5"] : ["#f4f4f4", "#ffd500", "#c41e3a", "#ff5a00", "#0b57d0", "#00a152"]   // W Y R O B G
               var solved = [0, 5, 2]                                                          // top white, left green, right red
               var ax = u * 0.866, ay = u * 0.5
               function poly(px, py, v1x, v1y, v2x, v2y, col) {
                 ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px + v1x, py + v1y); ctx.lineTo(px + v1x + v2x, py + v1y + v2y); ctx.lineTo(px + v2x, py + v2y); ctx.closePath()
-                ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = Math.max(1, S * 0.012); ctx.strokeStyle = "#0d0d0d"; ctx.stroke()
+                ctx.fillStyle = col; ctx.fill(); ctx.lineWidth = Math.max(1, S * 0.012); ctx.strokeStyle = nb ? "#120b2b" : "#0d0d0d"; ctx.stroke()
               }
               function colorOf(face, i, j) {
                 var s = face * 9 + i * 3 + j

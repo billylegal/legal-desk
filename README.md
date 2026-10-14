@@ -36,7 +36,7 @@ legal-dock uninstall  stop Legal Dock and bring the classic dock back
 legal-dock mac        switch to the Mac-style dock
 legal-dock rubik      switch to the Rubik's Cube style
 legal-dock skin next|prev|N|auto     browse the dock skins
-legal-dock theme      install + apply the Purple Space desktop theme and dock skin
+legal-dock theme      install + apply the Nebula desktop theme and dock skin
 legal-dock small|medium|large
 legal-dock restart
 legal-dock status
@@ -56,9 +56,9 @@ Your pinned apps live in `~/.cache/nwg-dock-pinned` (one app class per line). Yo
 - **Restart / Shut down** live in the dock menu (grid button) and always ask "Do you really want to ...?" first.
 - **Mac-style window animations** (spring-open, shrink-and-fade close, minimize slides toward the dock). Hyprland cannot do a true genie effect. Copy `/usr/share/legal-dock/mac-animations.lua` into your Hyprland Lua config (or `source` it) to enable them.
 
-## Purple Space (special edition)
+## Nebula (special edition)
 
-A purple-nebula desktop theme with a matching dock skin, in every dock style (Classic, Mac and Rubik). Run `legal-dock theme` to install and apply the Omarchy theme (wallpaper, window borders, panel colours) and switch the dock to its Purple Space skin. Switch back any time with the Omarchy theme menu or the skin buttons in the dock menu.
+A purple-nebula desktop theme with a matching dock skin, in every dock style (Classic, Mac and Rubik). Run `legal-dock theme` to install and apply the Omarchy theme (wallpaper, window borders, panel colours) and switch the dock to its Nebula skin. Switch back any time with the Omarchy theme menu or the skin buttons in the dock menu.
 
 ## Minimize windows
 

@@ -27,10 +27,10 @@ case "${1:-menu}" in
   classic) "$B/macdock-toggle" off ;;
   mac) "$B/macdock-toggle" on ;;
   rubik) "$B/macdock-toggle" rubik ;;
-  theme)  # Purple Space special edition: install the desktop theme and apply it (plus the matching dock skin)
-    src=/usr/share/legal-dock/themes/purple-space; [ -d "$src" ] || src="$(dirname "$(readlink -f "$0")")/share/themes/purple-space"
-    mkdir -p "$HOME/.config/omarchy/themes" && rm -rf "$HOME/.config/omarchy/themes/purple-space" && cp -r "$src" "$HOME/.config/omarchy/themes/purple-space" || exit 1
-    omarchy-theme-set purple-space 2>/dev/null || echo "Theme copied to ~/.config/omarchy/themes/purple-space - pick Purple Space in the Omarchy theme menu."
+  theme)  # Nebula special edition: install the desktop theme and apply it (plus the matching dock skin)
+    src=/usr/share/legal-dock/themes/nebula; [ -d "$src" ] || src="$(dirname "$(readlink -f "$0")")/share/themes/nebula"
+    mkdir -p "$HOME/.config/omarchy/themes" && rm -rf "$HOME/.config/omarchy/themes/nebula" && cp -r "$src" "$HOME/.config/omarchy/themes/nebula" || exit 1
+    omarchy-theme-set nebula 2>/dev/null || echo "Theme copied to ~/.config/omarchy/themes/nebula - pick Nebula in the Omarchy theme menu."
     echo 19 > "$HOME/.cache/dock-skin-mac"; echo 13 > "$HOME/.cache/dock-skin-classic"; echo 9 > "$HOME/.cache/dock-skin-rubik"; "$B/macdock-skin" apply >/dev/null 2>&1 ;;
   skin) "$B/macdock-skin" "${2:-show}" ;;
   small|medium|large) "$B/dock-size-set" "$1" ;;
