@@ -117,6 +117,7 @@ print(json.dumps(out))
   }
   onPinnedChanged: resolver.running = true
   Process { id: runner; property var cmd: []; command: cmd }
+  function launch(args) { sh(["setsid", "-f", "bash", "-c", "\"$@\" >/dev/null 2>&1 </dev/null", "x"].concat(args)) }
   function sh(args) { runner.cmd = args; runner.running = false; runner.running = true }
 
   function activate(cls) {
@@ -124,8 +125,8 @@ print(json.dumps(out))
     if (cls === "reboot") { sh(["/usr/lib/legal-dock/reboot-confirm"]); return }
     if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-dock/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
     var r = appmap[cls]
-    if (r) sh(["gtk-launch", r.id + ".desktop"])
-    else sh(["bash", "-c", "gtk-launch \"$1\" 2>/dev/null || (command -v \"$1\" >/dev/null && setsid \"$1\" >/dev/null 2>&1 &)", "x", cls])
+    if (r) launch(["gtk-launch", r.id + ".desktop"])
+    else launch(["bash", "-c", "gtk-launch \"$1\" || { command -v \"$1\" >/dev/null && setsid \"$1\"; }", "x", cls])
   }
   function iconFor(cls) {
     if (cls === "__launcher__") return "file:///usr/share/nwg-dock-hyprland/images/grid.svg"
@@ -142,6 +143,27 @@ print(json.dumps(out))
   }
   function letterOf(cls) { var m = cls.replace(/^chrome-/, "").replace(/^org\./, "").match(/[A-Za-z0-9]/); return m ? m[0].toUpperCase() : "?" }
   function tint(cls) { var h = 0; for (var i = 0; i < cls.length; i++) h = (h * 31 + cls.charCodeAt(i)) % 360; return Qt.hsla(h / 360, 0.45, 0.38, 1) }
+
+  // Per-icon scale so every icon fills the same share of its square (measured by dock-icon-scale).
+  property var iscale: ({})
+  property string iconKey: ""
+  function plainPath(s) { return s.startsWith("file://") ? s.substring(7) : s }
+  function scaleOf(cls) { var s = iscale[plainPath(iconFor(cls))]; return s ? s : 1 }
+  function remeasure() {
+    var ps = []
+    for (var i = 0; i < items.length; i++) { var u = iconFor(items[i].cls); if (u !== "") ps.push(plainPath(u)) }
+    var k = ps.join("|")
+    if (k === iconKey) return
+    iconKey = k
+    measurer.cmd = ["/usr/lib/legal-dock/dock-icon-scale"].concat(ps)
+    measurer.running = false; measurer.running = true
+  }
+  Process {
+    id: measurer; property var cmd: []; command: cmd
+    stdout: StdioCollector { onStreamFinished: { try { root.iscale = JSON.parse(text) } catch (e) { } } }
+  }
+  onAppmapChanged: remeasure()
+  onItemsChanged: remeasure()
 
   PanelWindow {
     id: win
@@ -203,12 +225,13 @@ print(json.dumps(out))
 
           Rectangle {
             visible: root.iconFor(cell.modelData.cls) === ""
-            anchors.fill: parent; radius: width * 0.22
+            anchors.centerIn: parent; width: parent.width * 0.88; height: parent.height * 0.88; radius: width * 0.22
             color: root.tint(cell.modelData.cls)
             Text { anchors.centerIn: parent; text: root.letterOf(cell.modelData.cls); color: "white"; font.bold: true; font.pixelSize: parent.height * 0.55 }
           }
           Image {
             anchors.fill: parent
+            scale: root.scaleOf(cell.modelData.cls)
             source: root.iconFor(cell.modelData.cls)
             sourceSize: Qt.size(256, 256)
             fillMode: Image.PreserveAspectFit
@@ -241,6 +264,7 @@ print(json.dumps(out))
   }
 
   // Right-click menu on an icon: open windows, New window, Pin/Unpin, Close.
+  IpcHandler { target: "macdockact"; function activate(cls: string): void { root.activate(cls) } }
   IpcHandler { target: "macdock"; function menu(cls: string): void { root.ctxX = 800; root.ctx = cls } }
   property string ctx: ""
   property real ctxX: 0
@@ -300,7 +324,7 @@ print(json.dumps(out))
                   if (act === "pin") root.sh(["/usr/lib/legal-dock/dock-pin-toggle", c])
                   else if (act === "close") root.sh(["/usr/lib/legal-dock/dock-close-app", c])
                   else if (act === "focus") root.sh(["hyprctl", "dispatch", "hl.dsp.focus({window='address:" + addr + "'})"])
-                  else if (act === "new") { var r = root.appmap[c]; if (r) root.sh(["gtk-launch", r.id + ".desktop"]) }
+                  else if (act === "new") { var r = root.appmap[c]; if (r) root.launch(["gtk-launch", r.id + ".desktop"]) }
                   root.ctx = ""
                 }
               }

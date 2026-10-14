@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+"""Prints {icon path: scale} so every dock icon fills the same share of its square.
+Measures the visible (non-transparent) bounding box of each icon; results are cached by path+mtime."""
+import json, os, subprocess, sys
+CACHE = os.path.expanduser('~/.cache/dock-icon-scale.json')
+TARGET, LO, HI = 0.86, 0.7, 1.35
+try: cache = json.load(open(CACHE))
+except Exception: cache = {}
+
+def theme_order():
+    try: th = subprocess.run(['gsettings','get','org.gnome.desktop.interface','icon-theme'],capture_output=True,text=True,timeout=3).stdout.strip().strip("'")
+    except Exception: th = ''
+    roots = [os.path.expanduser('~/.local/share/icons'), '/usr/share/icons']
+    names = [n for n in (th, 'hicolor') if n]
+    for r in roots:
+        try: names += [n for n in sorted(os.listdir(r)) if n not in names]
+        except Exception: pass
+    return roots, names
+
+def resolve(name):
+    """image://icon/NAME -> file path (scalable first, else largest raster)."""
+    best, bsz = None, -1
+    roots, names = theme_order()
+    for n in names:
+        for r in roots:
+            base = os.path.join(r, n)
+            if not os.path.isdir(base): continue
+            for dp, _, fs in os.walk(base):
+                for ext in ('svg', 'png'):
+                    if name + '.' + ext in fs:
+                        f = os.path.join(dp, name + '.' + ext)
+                        if ext == 'svg' or 'scalable' in dp: return f
+                        import re
+                        m = re.search(r'(\d+)x\d+', dp)
+                        sz = int(m.group(1)) if m else 0
+                        if sz > bsz: best, bsz = f, sz
+        if best: return best
+    for ext in ('svg', 'png', 'xpm'):
+        f = '/usr/share/pixmaps/%s.%s' % (name, ext)
+        if os.path.isfile(f): return f
+    return best
+
+def frac(p):
+    try:
+        if p.endswith('.svg') or p.endswith('.svgz'):
+            png = subprocess.run(['rsvg-convert', '-w', '128', '-h', '128', '--keep-aspect-ratio', p], capture_output=True, timeout=10).stdout
+            src, inp = 'png:-', png
+        else:
+            src, inp = p + '[0]', None
+        o = subprocess.run(['magick', src, '-background', 'none', '-resize', '128x128', '-gravity', 'center', '-extent', '128x128',
+                            '-alpha', 'extract', '-threshold', '12%', '-format', '%@', 'info:'],
+                           input=inp, capture_output=True, timeout=10).stdout.decode().strip()
+        w, h = o.split('+')[0].split('x')
+        return max(int(w), int(h)) / 128.0
+    except Exception:
+        return None
+
+out, dirty = {}, False
+for arg in sys.argv[1:]:
+    p = arg
+    if arg.startswith('image://icon/'):
+        p = resolve(arg[len('image://icon/'):]) or ''
+    if not os.path.isfile(p): continue
+    key = '%s|%s' % (p, int(os.path.getmtime(p)))
+    if key not in cache:
+        f = frac(p)
+        cache[key] = round(min(HI, max(LO, TARGET / f)), 3) if f else 1.0
+        dirty = True
+    out[arg] = cache[key]
+if dirty:
+    try: json.dump(cache, open(CACHE, 'w'))
+    except Exception: pass
+print(json.dumps(out))

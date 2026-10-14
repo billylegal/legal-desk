@@ -16,6 +16,7 @@ ShellRoot {
   property string dockJson: ""
   property var lastDock: null
   property int pinCount: 0
+  Timer { interval: 8000; running: menuOpen; repeat: false; onTriggered: menuOpen = false }
   IpcHandler { target: "dockmenu"; function toggle(): void { menuOpen = !menuOpen } }
   readonly property int cpitch: iconSize === "small" ? 40 : (iconSize === "large" ? 69 : 53)
 
