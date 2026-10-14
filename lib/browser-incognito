@@ -1,0 +1,16 @@
+#!/bin/bash
+# browser-incognito <window class>: open a private/incognito window in that browser. Exits 1 if the class isn't a known browser.
+case "$(echo "${1:?window class}" | tr '[:upper:]' '[:lower:]')" in
+  google-chrome*)        bin=google-chrome-stable; flag=--incognito ;;
+  chromium*)             bin=chromium; flag=--incognito ;;
+  brave-browser|brave*)  bin=brave; flag=--incognito ;;
+  microsoft-edge*)       bin=microsoft-edge-stable; flag=--inprivate ;;
+  vivaldi*)              bin=vivaldi; flag=--incognito ;;
+  helium*)               bin=helium; flag=--incognito ;;
+  firefox*)              bin=firefox; flag=--private-window ;;
+  zen*)                  bin=zen-browser; flag=--private-window ;;
+  librewolf*)            bin=librewolf; flag=--private-window ;;
+  *) exit 1 ;;
+esac
+command -v "$bin" >/dev/null || exit 1
+exec setsid "$bin" "$flag" >/dev/null 2>&1 </dev/null

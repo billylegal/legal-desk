@@ -341,12 +341,14 @@ print(json.dumps(out))
     command: ["python3", "-c", "import json,subprocess,sys\nc=sys.argv[1].lower()\nprint(json.dumps([{'a':w['address'],'t':w['title']} for w in json.loads(subprocess.run(['hyprctl','clients','-j'],capture_output=True,text=True).stdout or '[]') if w['class'].lower()==c]))", cls]
     stdout: StdioCollector { onStreamFinished: { try { root.ctxWins = JSON.parse(text) } catch (e) { } } }
   }
+  function isBrowser(c) { return /^(google-chrome|chromium|brave|microsoft-edge|vivaldi|helium|firefox|zen|librewolf)/i.test(c) }
   function ctxRows() {
     var rows = []
     var w = ctxWins
     if (w.length > 0) rows.push({ l: w.length + (w.length > 1 ? " windows open" : " window open"), a: "hdr" })
     for (var i = 0; i < w.length && i < 6; i++) rows.push({ l: "   " + (w[i].t.length > 26 ? w[i].t.substring(0, 25) + "…" : (w[i].t || "(untitled)")), a: "focus", addr: w[i].a })
     if (appmap[ctx]) rows.push({ l: "New window", a: "new" })
+    if (isBrowser(ctx)) rows.push({ l: "New incognito window", a: "incog" })
     rows.push({ l: isPinned(ctx) ? "Unpin from dock" : "Pin to dock", a: "pin" })
     if (w.length > 0) rows.push({ l: "Close app", a: "close" })
     rows.push({ l: "Cancel", a: "cancel" })
@@ -390,6 +392,7 @@ print(json.dumps(out))
                   if (act === "pin") root.sh(["/usr/lib/legal-dock/dock-pin-toggle", c])
                   else if (act === "close") root.sh(["/usr/lib/legal-dock/dock-close-app", c])
                   else if (act === "focus") root.sh(["/usr/lib/legal-dock/hypr-dispatch", "focus", addr])
+                  else if (act === "incog") root.launch(["/usr/lib/legal-dock/browser-incognito", c])
                   else if (act === "new") { var r = root.appmap[c]; if (r) root.launch(["gtk-launch", r.id + ".desktop"]) }
                   root.ctx = ""
                 }

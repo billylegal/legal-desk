@@ -38,6 +38,7 @@ Your pinned apps live in `~/.cache/nwg-dock-pinned` (one app class per line). Yo
 ## Mac touches
 
 - **Rubik's Cube launcher** (Mac dock): solved with no windows open, and it scrambles a little more with every window you open.
+- **Right-click a browser** (Chrome, Chromium, Brave, Edge, Vivaldi, Firefox, Zen, LibreWolf, Helium) for **New incognito window**.
 - **Launch bounce**: an app's icon bounces until its window appears.
 - **Restart / Shut down** live in the dock menu (grid button) and always ask "Do you really want to ...?" first.
 - **Mac-style window animations** (spring-open, shrink-and-fade close, minimize slides toward the dock). Hyprland cannot do a true genie effect. Copy `/usr/share/legal-dock/mac-animations.lua` into your Hyprland Lua config (or `source` it) to enable them.
