@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: 14 * 36 + 12
+  readonly property int menuH: 16 * 36 + 12
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -316,6 +316,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   // Restart / Shut down always ask first ("Do you really want to ...?"), popup centered on screen.
   Process { id: rebootProc; command: ["/usr/lib/legal-dock/reboot-confirm", "reboot", "center"] }
   Process { id: shutdownProc; command: ["/usr/lib/legal-dock/reboot-confirm", "shutdown", "center"] }
+  Process { id: colorProc; property string a: "off"; command: ["/usr/lib/legal-dock/dock-icon-colors", a] }
   Process { id: transToggle; command: ["/usr/lib/legal-dock/dock-transparent-toggle"]; onExited: poll.running = true }
 
   // One gear button at the right end of the dock; opens a small menu above it.
@@ -375,12 +376,14 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               { label: moving ? "Done Moving" : "Move Icons", icon: "\uf0b2", act: "move" },
               { label: hidden ? "Keep dock up" : "Hide dock", icon: hidden ? "\uf077" : "\uf078", act: "hide" },
               { label: transparent ? "Solid dock" : "Transparent dock", icon: "\uf1fc", act: "trans" },
+              { label: "Shuffle colors", icon: "\uf074", act: "shuffle" },
+              { label: "Original colors", icon: "\uf0e2", act: "orig" },
               { label: full ? "Floating dock" : "Full-width dock", icon: "\uf337", act: "full" },
               { label: "Mouse", icon: "\uf245", act: "mouse" },
               { label: "Reboot", icon: "\uf01e", act: "reboot" },
               { label: "Shut down", icon: "\uf011", act: "shutdown" },
               { label: "Close menu", icon: "\uf00d", act: "close" }
-            ].filter(i => !mac || i.act === "close" || i.act === "move" || i.act === "mouse" || i.act === "trans" || i.act === "lock" || i.act === "apps" || i.act === "reboot" || i.act === "shutdown")
+            ].filter(i => !mac || i.act === "close" || i.act === "move" || i.act === "mouse" || i.act === "trans" || i.act === "lock" || i.act === "apps" || i.act === "reboot" || i.act === "shutdown" || i.act === "shuffle" || i.act === "orig")
             Rectangle {
               required property var modelData
               width: parent.width; height: 34; radius: 6
@@ -399,6 +402,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
                   else if (modelData.act === "hide") hideToggle.running = true
                   else if (modelData.act === "full") fullToggle.running = true
                   else if (modelData.act === "trans") transToggle.running = true
+                  else if (modelData.act === "shuffle") { colorProc.a = "shuffle"; colorProc.running = false; colorProc.running = true }
+                  else if (modelData.act === "orig") { colorProc.a = "off"; colorProc.running = false; colorProc.running = true }
                   else if (modelData.act === "mouse") openMouse()
                   else if (modelData.act === "move") { if (moving) endMove(); else startMove() }
                   else if (modelData.act === "reboot") rebootProc.running = true

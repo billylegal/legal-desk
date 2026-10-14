@@ -148,6 +148,20 @@ ShellRoot {
       if (c.sel) root.pSel = c.sel
     }
   }
+  // Random icon colours (menu: Shuffle colors / Original colors): a coloured tile behind every icon, picked at random from the skin's palette.
+  property int rndSeed: 0
+  readonly property bool randOn: rndSeed > 0
+  readonly property var rndPal: (skin.t && skin.t.length >= 3) ? skin.t
+    : [0, 1, 2, 3, 4, 5].map(function (i) { return Qt.hsla((accC.hslHue + i / 6) % 1, Math.max(0.55, accC.hslSaturation), 0.5, 1) })
+  function rcol(cls) { var h = rndSeed; for (var i = 0; i < cls.length; i++) h = (h * 31 + cls.charCodeAt(i)) % 1000003; return rndPal[h % rndPal.length] }
+  FileView {
+    id: rndFile
+    path: Quickshell.env("HOME") + "/.cache/dock-icon-colors"
+    printErrors: false
+    onLoaded: { var n = parseInt(text()); root.rndSeed = isNaN(n) ? 0 : Math.max(1, n) }
+    onLoadFailed: root.rndSeed = 0
+  }
+  Timer { interval: 1200; running: true; repeat: true; onTriggered: rndFile.reload() }
   property bool solid: true
   FileView {
     path: Quickshell.env("HOME") + "/.config/nwg-dock-hyprland/style.css"
@@ -487,7 +501,7 @@ print(json.dumps(out))
           Rectangle {
             visible: root.rubik && cell.modelData.cls !== "__launcher__"
             anchors.fill: parent; radius: width * (root.skin.rr !== undefined ? root.skin.rr : 0.2)
-            color: root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
+            color: root.randOn ? root.rcol(cell.modelData.cls) : root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
             rotation: cell.twist
             Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: "#33ffffff"; border.width: 1 }
           }
@@ -499,10 +513,16 @@ print(json.dumps(out))
             anchors.centerIn: parent
             width: parent.width * (kind === "circle" ? 0.96 : 0.98); height: width
             radius: kind === "circle" ? width / 2 : (kind === "hpill" ? 8 : 0)
-            color: kind === "circle" ? (root.skin.t.length ? root.skin.t[cell.index % root.skin.t.length] : (root.skin.tc || "#33ffffff"))
+            color: kind === "circle" ? (root.randOn ? root.rcol(cell.modelData.cls) : (root.skin.t.length ? root.skin.t[cell.index % root.skin.t.length] : (root.skin.tc || "#33ffffff")))
                    : (kind === "hpill" ? "#2cffffff" : "#c0c0c0")
             border.color: kind === "circle" ? "#40000000" : "transparent"; border.width: kind === "circle" ? 1 : 0
             Bevel { visible: stile.kind === "btn" || stile.kind === "hbtn" }
+          }
+          // Random colours on skins without their own tiles: a rounded coloured tile behind the icon.
+          Rectangle {
+            visible: root.randOn && !root.rubik && (root.skin.tile || "") !== "circle" && cell.modelData.cls !== "__launcher__"
+            anchors.centerIn: parent; width: parent.width * 0.98; height: width; radius: width * 0.22
+            color: root.rcol(cell.modelData.cls); border.color: "#33ffffff"; border.width: 1
           }
           Rectangle {
             visible: root.iconFor(cell.modelData.cls) === ""
@@ -513,7 +533,7 @@ print(json.dumps(out))
           Image {
             visible: cell.modelData.cls !== "__launcher__" && cell.modelData.cls !== "chrome-127.0.0.1__globe_-Default"
             anchors.fill: parent
-            scale: root.scaleOf(cell.modelData.cls) * (root.rubik ? 0.74 : (root.skin.ik || 1))
+            scale: root.scaleOf(cell.modelData.cls) * ((root.rubik || (root.randOn && (root.skin.tile || "") !== "circle")) ? 0.74 : (root.skin.ik || 1))
             rotation: cell.twist
             source: root.iconFor(cell.modelData.cls)
             sourceSize: Qt.size(256, 256)
