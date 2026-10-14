@@ -1,0 +1,18 @@
+#!/bin/bash
+# dock-wallpaper next|prev|name : cycle the wallpapers of the current Omarchy theme (used by the Legal Dock menu).
+CUR="$HOME/.local/state/omarchy/current"
+THEME=$(cat "$CUR/theme.name" 2>/dev/null)
+mapfile -t W < <(find -L "$HOME/.config/omarchy/backgrounds/$THEME" "$CUR/theme/backgrounds" -maxdepth 1 -type f \
+  \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | sort)
+N=${#W[@]}
+now=$(readlink -f "$CUR/background" 2>/dev/null)
+i=-1; for k in "${!W[@]}"; do [ "$(readlink -f "${W[$k]}")" = "$now" ] && i=$k; done
+case "${1:-name}" in
+  next) [ $N -gt 0 ] && { i=$(( (i + 1) % N )); omarchy-theme-bg-set "${W[$i]}" >/dev/null 2>&1; } ;;
+  prev) [ $N -gt 0 ] && { i=$(( (i - 1 + N) % N )); omarchy-theme-bg-set "${W[$i]}" >/dev/null 2>&1; } ;;
+esac
+# print "<n>/<total> <name>"
+now=$(readlink -f "$CUR/background" 2>/dev/null); i=0
+for k in "${!W[@]}"; do [ "$(readlink -f "${W[$k]}")" = "$now" ] && i=$((k + 1)); done
+b=$(basename -- "${now:-none}"); b=${b%.*}; b=$(echo "$b" | sed 's/^[0-9]*-//; s/-/ /g')
+echo "$i/$N $b"

@@ -23,12 +23,12 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? 0 : n }
-  readonly property int menuH: 13 * 36 + 12
+  readonly property int menuH: 14 * 36 + 12
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
   property real frozenTop: 0
-  onMenuOpenChanged: if (menuOpen) placeMenu()
+  onMenuOpenChanged: if (menuOpen) { placeMenu(); wallProc.a = "name"; wallProc.running = false; wallProc.running = true }
   function screenH(mon) { var sc = Quickshell.screens.find(s => s.name === mon); return sc ? sc.height : 1080 }
   function placeMenu() {
     if (!lastDock) return
@@ -42,7 +42,10 @@ ShellRoot {
   Timer { id: writeT; interval: 50; onTriggered: { sizeW.running = false; sizeW.running = true; zoomW.running = false; zoomW.running = true } }
   Process { id: sizeW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-size\"", String(sizePx)] }
   Process { id: zoomW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-zoom\"", String(zoomRaw)] }
-  Process { id: skinProc; property string a: "next"; command: ["/home/aigazoo/.local/bin/macdock-skin", a]; onExited: poll.running = true }
+  property string wallTxt: ""
+  Process { id: wallProc; property string a: "name"; command: ["/usr/lib/legal-dock/dock-wallpaper", a]
+    stdout: StdioCollector { onStreamFinished: wallTxt = text.trim() } }
+  Process { id: skinProc; property string a: "next"; command: ["/usr/lib/legal-dock/macdock-skin", a]; onExited: poll.running = true }
   component SliderRow: Rectangle {
     id: sr
     property string label: ""
@@ -119,8 +122,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   }
   Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: true; onTriggered: if (!poll.running) poll.running = true }
   Process { id: mover; property int a: 0; property int b: 0
-    command: ["/home/aigazoo/.local/bin/dock-move-pin", String(a), String(b)] }
-  Process { id: toggle; command: ["/home/aigazoo/.local/bin/dock-lock-toggle"]; onExited: poll.running = true }
+    command: ["/usr/lib/legal-dock/dock-move-pin", String(a), String(b)] }
+  Process { id: toggle; command: ["/usr/lib/legal-dock/dock-lock-toggle"]; onExited: poll.running = true }
 
   // Edit mode (unlocked): drag an icon sideways and let go to move it.
   Variants {
@@ -182,12 +185,12 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   Timer { id: mouseT; interval: 20000; onTriggered: mouseOpen = false }
   Process {
     id: mouseProc
-    command: ["/home/aigazoo/.local/bin/dock-mouse", "show"]
+    command: ["/usr/lib/legal-dock/dock-mouse", "show"]
     stdout: StdioCollector { onStreamFinished: { try { var r = JSON.parse(text); mSpeed = r.speed; mNatural = r.natural; mLeft = r.left; mFlat = r.flat } catch (e) { } } }
   }
-  Process { id: mouseSet; property var a: []; command: ["/home/aigazoo/.local/bin/dock-mouse"].concat(a) }
+  Process { id: mouseSet; property var a: []; command: ["/usr/lib/legal-dock/dock-mouse"].concat(a) }
   function mset(args) { mouseT.restart(); mouseSet.running = false; mouseSet.a = args; mouseSet.running = true }
-  Process { id: mouseBoot; command: ["/home/aigazoo/.local/bin/dock-mouse", "apply"]; running: true }
+  Process { id: mouseBoot; command: ["/usr/lib/legal-dock/dock-mouse", "apply"]; running: true }
   Variants {
     model: lastDock && mouseOpen ? [lastDock.mon] : []
     PanelWindow {
@@ -258,15 +261,15 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   function endMove() { if (!moving) return; moving = false; if (wasLocked) toggle.running = true; if (mac) moveIpc("false") }
   function moveIpc(v) { mvProc.running = false; mvProc.v = v; mvProc.running = true }
   Process { id: mvProc; property string v: "true"; command: ["quickshell", "-p", Quickshell.env("HOME") + "/.config/macdock", "ipc", "call", "macdock", "moveMode", v] }
-  Process { id: hideToggle; command: ["/home/aigazoo/.local/bin/dock-hide-toggle"]; onExited: poll.running = true }
-  Process { id: sizer; property string which: "medium"; command: ["/home/aigazoo/.local/bin/dock-size-set", which]; onExited: poll.running = true }
-  Process { id: styler; property string which: "off"; command: ["/home/aigazoo/.local/bin/macdock-toggle", which]; onExited: poll.running = true }
-  Process { id: appsProc; command: ["/home/aigazoo/.local/bin/drawer-only"] }
-  Process { id: fullToggle; command: ["/home/aigazoo/.local/bin/dock-full-toggle"]; onExited: poll.running = true }
+  Process { id: hideToggle; command: ["/usr/lib/legal-dock/dock-hide-toggle"]; onExited: poll.running = true }
+  Process { id: sizer; property string which: "medium"; command: ["/usr/lib/legal-dock/dock-size-set", which]; onExited: poll.running = true }
+  Process { id: styler; property string which: "off"; command: ["/usr/lib/legal-dock/macdock-toggle", which]; onExited: poll.running = true }
+  Process { id: appsProc; command: ["/usr/lib/legal-dock/drawer-only"] }
+  Process { id: fullToggle; command: ["/usr/lib/legal-dock/dock-full-toggle"]; onExited: poll.running = true }
   // Restart / Shut down always ask first ("Do you really want to ...?"), popup centered on screen.
-  Process { id: rebootProc; command: ["/home/aigazoo/.local/bin/reboot-confirm", "reboot", "center"] }
-  Process { id: shutdownProc; command: ["/home/aigazoo/.local/bin/reboot-confirm", "shutdown", "center"] }
-  Process { id: transToggle; command: ["/home/aigazoo/.local/bin/dock-transparent-toggle"]; onExited: poll.running = true }
+  Process { id: rebootProc; command: ["/usr/lib/legal-dock/reboot-confirm", "reboot", "center"] }
+  Process { id: shutdownProc; command: ["/usr/lib/legal-dock/reboot-confirm", "shutdown", "center"] }
+  Process { id: transToggle; command: ["/usr/lib/legal-dock/dock-transparent-toggle"]; onExited: poll.running = true }
 
   // One gear button at the right end of the dock; opens a small menu above it.
   Variants {
@@ -409,6 +412,17 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             Rectangle { width: 34; height: 34; radius: 6; color: sna.containsMouse ? "#2a3a30" : "transparent"
               Text { anchors.centerIn: parent; text: "\u203a"; color: "#C1C497"; font.pixelSize: 20 }
               MouseArea { id: sna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "next"; skinProc.running = false; skinProc.running = true } } }
+          }
+          Row {
+            width: parent.width; height: 34; spacing: 4
+            Rectangle { width: 34; height: 34; radius: 6; color: wpa.containsMouse ? "#2a3a30" : "transparent"
+              Text { anchors.centerIn: parent; text: "\u2039"; color: "#C1C497"; font.pixelSize: 20 }
+              MouseArea { id: wpa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); wallProc.a = "prev"; wallProc.running = false; wallProc.running = true } } }
+            Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: "#C1C497"; border.width: 1
+              Text { anchors.centerIn: parent; width: parent.width - 8; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter; text: "Wallpaper " + (wallTxt.split(" ")[0] || "..."); color: "#C1C497"; font.pixelSize: 12 } }
+            Rectangle { width: 34; height: 34; radius: 6; color: wna.containsMouse ? "#2a3a30" : "transparent"
+              Text { anchors.centerIn: parent; text: "\u203a"; color: "#C1C497"; font.pixelSize: 20 }
+              MouseArea { id: wna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); wallProc.a = "next"; wallProc.running = false; wallProc.running = true } } }
           }
         }
       }

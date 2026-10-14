@@ -212,9 +212,9 @@ print(json.dumps(out))
   function sh(args) { runner.cmd = args; runner.running = false; runner.running = true }
 
   function activate(cls) {
-    if (cls === "__launcher__") { sh(["/home/aigazoo/.local/bin/drawer-toggle"]); return }
-    if (cls === "reboot") { sh(["/home/aigazoo/.local/bin/reboot-confirm"]); return }
-    if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/home/aigazoo/.local/bin/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
+    if (cls === "__launcher__") { sh(["/usr/lib/legal-dock/drawer-toggle"]); return }
+    if (cls === "reboot") { sh(["/usr/lib/legal-dock/reboot-confirm"]); return }
+    if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-dock/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
     markLaunch(cls)
     var r = appmap[cls]
     if (r) launch(["gtk-launch", r.id + ".desktop"])
@@ -247,7 +247,7 @@ print(json.dumps(out))
     var k = ps.join("|")
     if (k === iconKey) return
     iconKey = k
-    measurer.cmd = ["/home/aigazoo/.local/bin/dock-icon-scale"].concat(ps)
+    measurer.cmd = ["/usr/lib/legal-dock/dock-icon-scale"].concat(ps)
     measurer.running = false; measurer.running = true
   }
   Process {
@@ -338,7 +338,7 @@ print(json.dumps(out))
   function moveTo(from, to) {
     if (from === to || from < 0 || to < 0 || from >= pinned.length || to >= pinned.length) return
     var l = pinned.slice(); l.splice(to, 0, l.splice(from, 1)[0]); pinned = l
-    sh(["/home/aigazoo/.local/bin/dock-reorder", String(from), String(to)])
+    sh(["/usr/lib/legal-dock/dock-reorder", String(from), String(to)])
   }
 
   PanelWindow {
@@ -645,7 +645,7 @@ print(json.dumps(out))
               if (moved) { moved = false; return }
               if (cell.modelData.cls === "__launcher__") { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate("__launcher__"); return }
               if (m.button === Qt.LeftButton) { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate(cell.modelData.cls) }
-              else if (m.button === Qt.MiddleButton) { root.sh(["/home/aigazoo/.local/bin/dock-pin-toggle", cell.modelData.cls]) }
+              else if (m.button === Qt.MiddleButton) { root.sh(["/usr/lib/legal-dock/dock-pin-toggle", cell.modelData.cls]) }
               else { root.ctxX = cell.mapToItem(null, cell.width / 2, 0).x; root.ctx = cell.modelData.cls }
             }
           }
@@ -716,10 +716,10 @@ print(json.dumps(out))
                 onClicked: {
                   var c = root.ctx, act = modelData.a, addr = modelData.addr
                   if (act === "hdr") return
-                  if (act === "pin") root.sh(["/home/aigazoo/.local/bin/dock-pin-toggle", c])
-                  else if (act === "close") root.sh(["/home/aigazoo/.local/bin/dock-close-app", c])
+                  if (act === "pin") root.sh(["/usr/lib/legal-dock/dock-pin-toggle", c])
+                  else if (act === "close") root.sh(["/usr/lib/legal-dock/dock-close-app", c])
                   else if (act === "focus") root.sh(["hyprctl", "dispatch", "hl.dsp.focus({window='address:" + addr + "'})"])
-                  else if (act === "incog") root.launch(["/home/aigazoo/.local/bin/browser-incognito", c])
+                  else if (act === "incog") root.launch(["/usr/lib/legal-dock/browser-incognito", c])
                   else if (act === "new") { var r = root.appmap[c]; if (r) root.launch(["gtk-launch", r.id + ".desktop"]) }
                   root.ctx = ""
                 }
