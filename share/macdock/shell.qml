@@ -22,11 +22,25 @@ ShellRoot {
   property string sizeName: "medium"
   property string styleName: "mac"
   readonly property bool rubik: styleName === "rubik"
-  readonly property int base: sizeName === "small" ? 34 : (sizeName === "large" ? 58 : 46)
-  readonly property real maxScale: rubik ? 1.12 : (sizeName === "large" ? 1.4 : (sizeName === "small" ? 1.75 : 1.6))
-  readonly property real radius: base * 2.4
+  property real zoomVal: 0      // 0 = automatic (depends on size); else the magnification chosen with the Zoom slider
+  readonly property int base: { var n = parseInt(sizeName); return isNaN(n) ? (sizeName === "small" ? 34 : (sizeName === "large" ? 58 : 46)) : Math.max(24, Math.min(110, n)) }
+  readonly property real maxScale: rubik ? 1.12 : (zoomVal >= 1 ? Math.min(2.6, zoomVal) : (base >= 56 ? 1.7 : (base <= 36 ? 1.9 : 1.85)))
+  readonly property real radius: base * 3.2
   readonly property int gap: rubik ? 5 : 6
-  readonly property var rpal: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"]
+  property string skinTxt: "auto"
+  readonly property int skinIdx: /^[0-7]$/.test(skinTxt) ? parseInt(skinTxt) : (rubik ? 7 : 0)
+  readonly property var skins: [
+    { n: "Emerald",  c1: "#111c18", c2: "#111c18", b: "#55C1C497", r: 16, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
+    { n: "Glass",    c1: "#70ffffff", c2: "#30ffffff", b: "#aaffffff", r: 18, t: ["#ffffff", "#9fd8ff", "#ffc2d4", "#b8f5c8", "#ffe2a8", "#d9c8ff"] },
+    { n: "Midnight", c1: "#0f1a4a", c2: "#04061a", b: "#554a7aff", r: 16, t: ["#5b7cff", "#8a5bff", "#2ad4ff", "#3b4bd6", "#a3b4ff", "#e8ecff"] },
+    { n: "Neon",     c1: "#06080c", c2: "#06080c", b: "#39ff14", r: 14, t: ["#39ff14", "#00e5ff", "#ff2a2a", "#ffe066", "#d946ff", "#ff6a00"] },
+    { n: "Aluminum", c1: "#f0f0f2", c2: "#a4a8b0", b: "#ffffff", r: 10, t: ["#f4f4f4", "#d8dadf", "#c2c6cd", "#eceef1", "#b6bac2", "#ffffff"] },
+    { n: "Aqua",     c1: "#8fd0ff", c2: "#1565d0", b: "#d8eeff", r: 20, t: ["#ffffff", "#bfe3ff", "#7cc2ff", "#e6f4ff", "#a0d4ff", "#5aaaf0"] },
+    { n: "Sunset",   c1: "#ff9a3d", c2: "#a8124a", b: "#ffd9b0", r: 18, t: ["#ffd500", "#ff5a00", "#c41e3a", "#ff8fb1", "#7a1fa2", "#fff1d6"] },
+    { n: "Cube",     c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 12, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] }
+  ]
+  readonly property var skin: skins[skinIdx]
+  readonly property var rpal: skin.t
   readonly property bool testMode: Quickshell.env("MACDOCK_TEST") === "1" || Quickshell.env("MACDOCK_TEST") === "2"
   property string bg: "#000000"
   property bool hidden: false
@@ -43,7 +57,7 @@ ShellRoot {
   function isPinned(c) { return pinned.some(p => p.toLowerCase() === c.toLowerCase()) }
   property var items: pinned.map(c => ({ cls: c })).concat(runCls.filter(c => !isPinned(c)).map(c => ({ cls: c }))).concat([{ cls: "__launcher__" }])
   readonly property real baseTotal: items.length * (base + gap)
-  readonly property real panelW: baseTotal + base * (maxScale - 1) * 2.4 + 40
+  readonly property real panelW: baseTotal + base * (maxScale - 1) * 3.2 + 40
   readonly property real panelH: base * maxScale + 54
 
   FileView {
@@ -52,11 +66,30 @@ ShellRoot {
     onFileChanged: reload()
     onLoaded: root.pinned = text().split("\n").map(s => s.trim()).filter(s => s.length > 0)
   }
+  property bool solid: true
+  FileView {
+    path: Quickshell.env("HOME") + "/.config/nwg-dock-hyprland/style.css"
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: root.solid = text().indexOf("background: transparent") < 0
+  }
   FileView {
     path: Quickshell.env("HOME") + "/.cache/dock-style"
     watchChanges: true
     onFileChanged: reload()
     onLoaded: root.styleName = text().trim() === "rubik" ? "rubik" : "mac"
+  }
+  FileView {
+    path: Quickshell.env("HOME") + "/.cache/dock-skin"
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: root.skinTxt = text().trim()
+  }
+  FileView {
+    path: Quickshell.env("HOME") + "/.cache/dock-zoom"
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: { var z = parseFloat(text()); root.zoomVal = isNaN(z) ? 0 : z }
   }
   FileView {
     path: Quickshell.env("HOME") + "/.cache/dock-size"
@@ -184,6 +217,26 @@ print(json.dumps(out))
   onAppmapChanged: remeasure()
   onItemsChanged: remeasure()
 
+  // Mouse position in the UNSCALED layout, taken from whichever (already magnified) icon is really under the pointer,
+  // so the icon under the cursor is always the biggest one and the wave follows the pointer without jitter.
+  property real um: 0
+  function updateU() {
+    var n = rep.count; if (n < 1) return
+    var mx = hover.mx - row.x, step = base + gap
+    var L0 = (win.width - baseTotal) / 2
+    var first = rep.itemAt(0), last = rep.itemAt(n - 1)
+    if (!first || !last) { um = hover.mx; return }
+    if (mx < first.x) { um = L0 + (mx - first.x); return }
+    if (mx >= last.x + last.width) { um = L0 + (n - 1) * step + base + (mx - last.x - last.width); return }
+    for (var i = 0; i < n; i++) {
+      var c = rep.itemAt(i); if (!c) continue
+      if (mx < c.x + c.width + gap / 2 || i === n - 1) {
+        var f = Math.max(0, Math.min(1, (mx - c.x) / Math.max(1, c.width)))
+        um = L0 + i * step + f * base; return
+      }
+    }
+  }
+
   PanelWindow {
     id: win
     anchors { bottom: true }
@@ -208,19 +261,21 @@ print(json.dumps(out))
 
       HoverHandler {
         id: hover
+        onPointChanged: root.updateU()
         property real mx: point.position.x
         readonly property bool containsMouse: hovered
       }
     }
 
-    // Rubik style: black cube-plastic frame behind the row
+    // Solid dock: a plate behind the row (Rubik: black cube-plastic frame). Transparent dock: icons float.
     Rectangle {
-      visible: root.rubik
+      visible: root.solid
       opacity: row.opacity
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.bottom: parent.bottom; anchors.bottomMargin: 3
-      width: row.width + 18; height: root.base + 22; radius: 12
-      color: "#0d0d0d"; border.color: "#2a2a2a"; border.width: 1
+      width: row.width + 18; height: root.base + 22; radius: root.skin.r
+      gradient: Gradient { GradientStop { position: 0; color: root.skin.c1 } GradientStop { position: 1; color: root.skin.c2 } }
+      border.color: root.skin.b; border.width: 1
     }
     // Row of icons, centred. Positions come from the cumulative scaled widths, so neighbours push apart.
     Row {
@@ -233,6 +288,7 @@ print(json.dumps(out))
       anchors.horizontalCenter: parent.horizontalCenter
 
       Repeater {
+        id: rep
         model: root.items
         delegate: Item {
           id: cell
@@ -240,12 +296,12 @@ print(json.dumps(out))
           required property int index
           // centre of this icon in the UNSCALED layout, in window coordinates
           readonly property real unscaledCenter: (win.width - root.baseTotal) / 2 + index * (root.base + root.gap) + root.base / 2
-          readonly property real dist: Math.abs((root.simMode ? root.simX : hover.mx) - unscaledCenter)
+          readonly property real dist: Math.abs((root.simMode ? root.simX : root.um) - unscaledCenter)
           readonly property real target: (hover.containsMouse || root.simMode) && dist < root.radius
             ? 1 + (root.maxScale - 1) * (0.5 + 0.5 * Math.cos(Math.PI * dist / root.radius))
             : 1
           property real s: target
-          Behavior on s { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+          Behavior on s { NumberAnimation { duration: 70; easing.type: Easing.OutQuad } }
 
           width: root.base * s
           height: root.base * s

@@ -1,0 +1,12 @@
+#!/bin/bash
+# macdock-skin next|prev|0-7|auto|show : choose the Mac/Rubik dock skin (Emerald, Glass, Midnight, Neon, Aluminum, Aqua, Sunset, Cube).
+F="$HOME/.cache/dock-skin"; N=8
+cur=$(cat "$F" 2>/dev/null)
+if ! [[ "$cur" =~ ^[0-7]$ ]]; then [ "$(cat "$HOME/.cache/dock-style" 2>/dev/null)" = rubik ] && cur=7 || cur=0; fi
+case "$1" in
+  next) echo $(( (cur + 1) % N )) > "$F" ;;
+  prev) echo $(( (cur + N - 1) % N )) > "$F" ;;
+  [0-7]) echo "$1" > "$F" ;;
+  auto) echo auto > "$F" ;;
+  *) echo "$cur" ;;
+esac

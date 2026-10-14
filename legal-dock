@@ -27,6 +27,7 @@ case "${1:-menu}" in
   classic) "$B/macdock-toggle" off ;;
   mac) "$B/macdock-toggle" on ;;
   rubik) "$B/macdock-toggle" rubik ;;
+  skin) "$B/macdock-skin" "${2:-show}" ;;
   small|medium|large) "$B/dock-size-set" "$1" ;;
   restart)
     pkill -x nwg-dock-hyprla

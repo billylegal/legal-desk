@@ -6,7 +6,7 @@ A dock for [Hyprland](https://hypr.land) / [Omarchy](https://omarchy.org) with t
 - **Mac** – a magnifying, macOS-style dock built with [Quickshell](https://quickshell.org): running apps, right-click menu (windows / new window / pin / close), middle-click to pin, and hover name labels.
 - **Rubik** – the Mac dock dressed as a Rubik's Cube: black cube-plastic frame, every app on a coloured sticker tile, and a quarter-turn twist when you click it.
 
-Plus a menu (the grid button) with **Small / Medium / Large** icons (tight sizes; Large no longer balloons), **lock** icon order, **hide** (auto-hide), **full width** and **transparent** modes, an app drawer button, and a confirm-before-reboot button.
+Plus a menu (the grid button) with **Small / Medium / Large** icons (tight sizes, smooth wide magnification), **lock** icon order, **hide** (auto-hide), **full width** and **transparent** modes, an app drawer button, and a confirm-before-reboot button.
 
 ## Install
 
@@ -30,6 +30,7 @@ legal-dock menu       open the dock menu
 legal-dock classic    switch to the classic dock
 legal-dock mac        switch to the Mac-style dock
 legal-dock rubik      switch to the Rubik's Cube style
+legal-dock skin next|prev|0-7|auto   browse the 8 Mac/Rubik skins
 legal-dock small|medium|large
 legal-dock restart
 legal-dock status
@@ -38,6 +39,10 @@ legal-dock status
 Your pinned apps live in `~/.cache/nwg-dock-pinned` (one app class per line). Your dock colours live in `~/.config/nwg-dock-hyprland/style.css`; a default is copied there on first run and never overwritten.
 
 ## Mac touches
+
+- **Size and Zoom sliders** (Mac menu): resize the icons from 28 to 96 px and set the magnification from off to 2.4x, like macOS.
+- **8 skins** (Emerald, Glass, Midnight, Neon, Aluminum, Aqua, Sunset, Cube): browse with the ‹ › buttons in the menu. **Solid / Transparent** dock works in every style.
+- The magnification wave tracks the icon under the pointer, so it flows without jitter.
 
 - **Rubik's Cube launcher** (Mac dock): solved with no windows open, and it scrambles a little more with every window you open.
 - **Right-click a browser** (Chrome, Chromium, Brave, Edge, Vivaldi, Firefox, Zen, LibreWolf, Helium) for **New incognito window**.
