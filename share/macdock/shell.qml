@@ -122,7 +122,7 @@ print(json.dumps(out))
   function activate(cls) {
     if (cls === "__launcher__") { sh(["/usr/lib/legal-dock/drawer-toggle"]); return }
     if (cls === "reboot") { sh(["/usr/lib/legal-dock/reboot-confirm"]); return }
-    if (running[cls.toLowerCase()]) { sh(["bash", "-c", "a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
+    if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-dock/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
     var r = appmap[cls]
     if (r) sh(["gtk-launch", r.id + ".desktop"])
     else sh(["bash", "-c", "gtk-launch \"$1\" 2>/dev/null || (command -v \"$1\" >/dev/null && setsid \"$1\" >/dev/null 2>&1 &)", "x", cls])

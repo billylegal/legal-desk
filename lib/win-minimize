@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# win-minimize — real "minimize" for Hyprland (which has none): park windows on a hidden special workspace.
+#   win-minimize                    minimize the active window
+#   win-minimize hide [address]     same, for a given window
+#   win-minimize restore [address]  bring a window back (default: the most recently minimized one)
+#   win-minimize restore-class <c>  bring back every minimized window of that app class
+#   win-minimize list               show minimized windows
+# The workspace a window came from is remembered in ~/.cache/win-minimized/<address>.
+set -u
+D="$HOME/.cache/win-minimized"; mkdir -p "$D"
+SP="special:minimized"
+hc() { hyprctl dispatch "$1" >/dev/null; }
+
+win_json() { # $1 = address or empty (active)
+  if [ -n "${1:-}" ]; then hyprctl clients -j | python3 -c "import json,sys;a=sys.argv[1]
+for w in json.load(sys.stdin):
+    if w['address']==a: print(json.dumps(w)); break" "$1"
+  else hyprctl activewindow -j; fi
+}
+
+hide() {
+  local w addr ws
+  w=$(win_json "${1:-}"); [ -n "$w" ] || exit 0
+  addr=$(python3 -c "import json,sys;print(json.load(sys.stdin).get('address',''))" <<<"$w")
+  ws=$(python3 -c "import json,sys;print(json.load(sys.stdin).get('workspace',{}).get('name',''))" <<<"$w")
+  [ -n "$addr" ] || exit 0
+  case "$ws" in special:*) exit 0;; esac        # already minimized
+  printf '%s\n' "$ws" > "$D/$addr"
+  hc "hl.dsp.window.move({ workspace = '$SP', window = 'address:$addr', follow = false })"
+}
+
+restore_one() { # $1 = address
+  local addr="$1" ws
+  ws=$(cat "$D/$addr" 2>/dev/null || true)
+  [ -n "$ws" ] || ws=$(hyprctl activeworkspace -j | python3 -c "import json,sys;print(json.load(sys.stdin)['name'])")
+  case "$ws" in special:*|"") ws=$(hyprctl activeworkspace -j | python3 -c "import json,sys;print(json.load(sys.stdin)['name'])");; esac
+  hc "hl.dsp.window.move({ workspace = '$ws', window = 'address:$addr', follow = true })"
+  hc "hl.dsp.focus({ window = 'address:$addr' })"
+  rm -f "$D/$addr"
+}
+
+minimized_addrs() { # newest first
+  hyprctl clients -j | python3 -c "import json,sys,os
+d=os.path.expanduser('~/.cache/win-minimized')
+ws=[w for w in json.load(sys.stdin) if w['workspace']['name'].startswith('special:minimized')]
+ws.sort(key=lambda w: os.path.getmtime(os.path.join(d,w['address'])) if os.path.exists(os.path.join(d,w['address'])) else 0, reverse=True)
+for w in ws: print(w['address'])"
+}
+
+case "${1:-hide}" in
+  hide) hide "${2:-}" ;;
+  restore)
+    if [ -n "${2:-}" ]; then restore_one "$2"; else a=$(minimized_addrs | head -1); [ -n "$a" ] && restore_one "$a"; fi ;;
+  restore-class)
+    c="${2:?class}"
+    hyprctl clients -j | python3 -c "import json,sys
+c=sys.argv[1].lower()
+for w in json.load(sys.stdin):
+    if w['class'].lower()==c and w['workspace']['name'].startswith('special:minimized'): print(w['address'])" "$c" | while read -r a; do restore_one "$a"; done ;;
+  list)
+    hyprctl clients -j | python3 -c "import json,sys
+for w in json.load(sys.stdin):
+    if w['workspace']['name'].startswith('special:minimized'): print(w['address'], w['class'], '|', w['title'][:50])" ;;
+  *) echo "usage: win-minimize [hide|restore|restore-class|list] [address|class]"; exit 1 ;;
+esac
