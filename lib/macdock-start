@@ -1,0 +1,5 @@
+#!/bin/bash
+# Called at login: start the magnifying dock only if it is switched on.
+[ -e "$HOME/.cache/dock-mac" ] || exit 0
+pgrep -f "quickshell -n -p /usr/share/legal-dock/macdock" >/dev/null && exit 0
+exec quickshell -n -p "/usr/share/legal-dock/macdock"

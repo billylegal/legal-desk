@@ -1,0 +1,11 @@
+#!/bin/bash
+# dock-move-pin FROM TO : move pinned icon FROM (0-based) to position TO, then restart the dock.
+P="$HOME/.cache/nwg-dock-pinned"
+python3 - "$P" "$1" "$2" <<'PY'
+import sys
+p,a,b=sys.argv[1],int(sys.argv[2]),int(sys.argv[3])
+l=[x for x in open(p).read().split('\n') if x.strip()]
+if 0<=a<len(l) and 0<=b<len(l) and a!=b:
+    l.insert(b,l.pop(a)); open(p,'w').write('\n'.join(l)+'\n')
+PY
+pkill -x nwg-dock-hyprla

@@ -1,0 +1,9 @@
+#!/bin/bash
+# Toggle the dock's background between solid and transparent, then restart it (keepalive brings it back).
+C="$HOME/.config/nwg-dock-hyprland/style.css"
+if grep -q "background: transparent" "$C"; then
+  sed -i '0,/^  background: transparent;/s//  background: #111c18;/' "$C"
+else
+  sed -i '0,/^  background: #[0-9a-fA-F]*;/s//  background: transparent;/' "$C"
+fi
+pkill -x nwg-dock-hyprla

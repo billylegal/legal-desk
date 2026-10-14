@@ -1,0 +1,7 @@
+#!/bin/bash
+# Ask before rebooting (used by the dock's Reboot button): small popup above the clicked icon.
+# A stale popup is replaced instead of silently ignoring the click; Mac dock (flag ~/.cache/dock-mac) is taller, so the popup sits higher.
+pkill -f '^quickshell.*rebootconfirm' 2>/dev/null
+read -r x _ < <(hyprctl cursorpos | tr -d ',')
+B=72; [ -e "$HOME/.cache/dock-mac" ] && B=150
+RC_X=$x RC_B=$B exec setsid quickshell -n -p "/usr/share/legal-dock/rebootconfirm" >/dev/null 2>&1

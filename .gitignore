@@ -1,0 +1,5 @@
+.cache/
+*.pkg.tar.*
+/src/
+/pkg/
+*.tar.gz

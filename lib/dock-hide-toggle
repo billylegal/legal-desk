@@ -1,0 +1,5 @@
+#!/bin/bash
+# Hide/keep-up the dock. Hidden = auto-hide mode (pops up when the mouse goes to the bottom); keepalive restarts it in the right mode.
+F="$HOME/.cache/dock-hidden"
+if [ -e "$F" ]; then rm -f "$F"; else : > "$F"; fi
+pkill -x nwg-dock-hyprla

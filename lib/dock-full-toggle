@@ -1,0 +1,9 @@
+#!/bin/bash
+# Toggle the dock between a floating pill and a full-width bar (same width as the top bar), then restart it.
+F="$HOME/.cache/dock-full"; C="$HOME/.config/nwg-dock-hyprland/style.css"
+if [ -e "$F" ]; then
+  rm -f "$F"; sed -i 's/border-radius: 0px;/border-radius: 10px;/' "$C"
+else
+  : > "$F"; sed -i '0,/border-radius: 10px;/s//border-radius: 0px;/' "$C"
+fi
+pkill -x nwg-dock-hyprla

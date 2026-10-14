@@ -1,0 +1,18 @@
+#!/bin/bash
+# Keeps the dock running: restarts nwg-dock-hyprland whenever it exits.
+# If ~/.cache/dock-hidden exists the dock runs in auto-hide mode (-d): it only pops up when the mouse hits the bottom.
+# If ~/.cache/dock-full exists the dock stretches edge to edge (-f), flush with the bottom of the screen.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/dock-keepalive.lock"
+flock -n 9 || exit 0
+while true; do
+  if [ ! -e "$HOME/.cache/dock-mac" ] && ! pgrep -x nwg-dock-hyprla >/dev/null; then
+    case "$(cat "$HOME/.cache/dock-size" 2>/dev/null)" in small) I=32;; large) I=80;; *) I=56;; esac
+    F=""; [ -e "$HOME/.cache/dock-full" ] && F="-f"
+    if [ -e "$HOME/.cache/dock-hidden" ]; then
+      nwg-dock-hyprland -d -i $I $F -c "/usr/lib/legal-dock/drawer-toggle" >/dev/null 2>&1 9>&-
+    else
+      nwg-dock-hyprland -r -x -i $I $F -c "/usr/lib/legal-dock/drawer-toggle" >/dev/null 2>&1 9>&-
+    fi
+  fi
+  sleep 2
+done

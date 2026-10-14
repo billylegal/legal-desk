@@ -1,0 +1,4 @@
+#!/bin/bash
+# Lock/unlock the dock's icon order. Locked = guard puts the pins back if they get rearranged.
+P="$HOME/.cache/nwg-dock-pinned"; F="$HOME/.cache/dock-locked"; S="$P.locked"
+if [ -e "$F" ]; then rm -f "$F" "$S"; else cp "$P" "$S" && : > "$F"; fi

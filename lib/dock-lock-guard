@@ -1,0 +1,16 @@
+#!/bin/bash
+# While the dock is locked, undo any rearranging/pinning by restoring the saved order.
+exec 9>"${XDG_RUNTIME_DIR:-/tmp}/dock-lock-guard.lock"
+flock -n 9 || exit 0
+P="$HOME/.cache/nwg-dock-pinned"; F="$HOME/.cache/dock-locked"; S="$P.locked"
+while true; do
+  inotifywait -qq -t 5 -e modify,close_write,moved_to,create "$HOME/.cache" 2>/dev/null
+  if [ -e "$F" ] && [ -e "$S" ] && ! cmp -s "$P" "$S"; then
+    # newly pinned apps (lines appended after the saved order) are accepted; anything else is undone
+    if [ "$(wc -l < "$P")" -gt "$(wc -l < "$S")" ] && head -n "$(wc -l < "$S")" "$P" | cmp -s - "$S"; then
+      cp "$P" "$S"
+    else
+      cp "$S" "$P"; pkill -x nwg-dock-hyprla   # keepalive restarts it
+    fi
+  fi
+done

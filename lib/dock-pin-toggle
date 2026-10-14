@@ -1,0 +1,13 @@
+#!/bin/bash
+# dock-pin-toggle <class> : pin the app to the dock if it isn't pinned, unpin it if it is.
+# Works even while the dock is locked (the lock only stops rearranging): the lock snapshot is updated too.
+P="$HOME/.cache/nwg-dock-pinned"; C="$1"; F="$HOME/.cache/dock-locked"; S="$P.locked"
+[ -n "$C" ] || exit 1
+touch "$P"
+if grep -qixF -- "$C" "$P"; then
+  grep -vixF -- "$C" "$P" > "$P.tmp"; mv "$P.tmp" "$P"
+else
+  echo "$C" >> "$P"
+fi
+[ -e "$F" ] && cp "$P" "$S"
+exit 0

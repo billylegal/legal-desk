@@ -1,0 +1,7 @@
+#!/bin/bash
+# Rubik's-cube button: if the app drawer is open, close it right away; otherwise toggle the dock menu.
+if hyprctl layers 2>/dev/null | grep -q 'namespace: nwg-drawer'; then
+  nwg-drawer -close >/dev/null 2>&1
+else
+  quickshell -p "/usr/share/legal-dock/docklock" ipc call dockmenu toggle >/dev/null 2>&1
+fi

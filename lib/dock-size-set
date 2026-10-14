@@ -1,0 +1,4 @@
+#!/bin/bash
+# dock-size-set small|medium|large : choose the dock icon size, then restart the dock (keepalive brings it back).
+echo "${1:-medium}" > "$HOME/.cache/dock-size"
+pkill -x nwg-dock-hyprla

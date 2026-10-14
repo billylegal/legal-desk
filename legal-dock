@@ -1,0 +1,36 @@
+#!/bin/bash
+# Legal Dock — one command for the whole dock.
+# legal-dock [start|menu|classic|mac|small|medium|large|restart|status|version]
+B="/usr/lib/legal-dock"
+SH="/usr/share/legal-dock"
+VERSION="1.0.0"
+
+# First run: give the classic dock its default look (never overwrites your own style.css).
+ensure_config() {
+  local c="$HOME/.config/nwg-dock-hyprland"
+  mkdir -p "$c" "$HOME/.cache"
+  [ -e "$c/style.css" ] || cp "$SH/style.css" "$c/style.css"
+}
+
+start_all() {
+  ensure_config
+  pgrep -f "quickshell -n -p $SH/docklock" >/dev/null || setsid quickshell -n -p "$SH/docklock" >/dev/null 2>&1 &
+  pgrep -f "dock-keepalive" >/dev/null || setsid "$B/dock-keepalive" >/dev/null 2>&1 &
+  pgrep -f "dock-lock-guard" >/dev/null || setsid "$B/dock-lock-guard" >/dev/null 2>&1 &
+  "$B/macdock-start" >/dev/null 2>&1 &
+}
+
+case "${1:-menu}" in
+  start) start_all ;;
+  menu) start_all; sleep 0.3; quickshell -p "$SH/docklock" ipc call dockmenu toggle ;;
+  classic) "$B/macdock-toggle" off ;;
+  mac) "$B/macdock-toggle" on ;;
+  small|medium|large) "$B/dock-size-set" "$1" ;;
+  restart)
+    pkill -x nwg-dock-hyprla
+    for d in docklock macdock; do pkill -f "p $SH/$d\$"; done
+    sleep 1; start_all ;;
+  status) "$B/macdock-toggle" status; echo "size: $(cat "$HOME/.cache/dock-size" 2>/dev/null || echo medium)" ;;
+  version|--version|-v) echo "legal-dock $VERSION" ;;
+  *) echo "usage: legal-dock [start|menu|classic|mac|small|medium|large|restart|status|version]"; exit 1 ;;
+esac

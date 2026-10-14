@@ -1,0 +1,7 @@
+#!/bin/bash
+# dock-close-app <class> : close every window of that app class.
+hyprctl clients -j | python3 -c "
+import json,sys
+c=sys.argv[1].lower()
+for w in json.load(sys.stdin):
+    if w['class'].lower()==c: print(w['address'])" "$1" | while read a; do hyprctl dispatch "hl.dsp.window.close({window='address:$a'})" >/dev/null; done
