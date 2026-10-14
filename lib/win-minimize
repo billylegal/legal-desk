@@ -9,7 +9,7 @@
 set -u
 D="$HOME/.cache/win-minimized"; mkdir -p "$D"
 SP="special:minimized"
-hc() { hyprctl dispatch "$1" >/dev/null; }
+HD="$(dirname "$(readlink -f "$0")")/hypr-dispatch"
 
 win_json() { # $1 = address or empty (active)
   if [ -n "${1:-}" ]; then hyprctl clients -j | python3 -c "import json,sys;a=sys.argv[1]
@@ -26,7 +26,7 @@ hide() {
   [ -n "$addr" ] || exit 0
   case "$ws" in special:*) exit 0;; esac        # already minimized
   printf '%s\n' "$ws" > "$D/$addr"
-  hc "hl.dsp.window.move({ workspace = '$SP', window = 'address:$addr', follow = false })"
+  "$HD" move "$addr" "$SP" silent
 }
 
 restore_one() { # $1 = address
@@ -34,8 +34,8 @@ restore_one() { # $1 = address
   ws=$(cat "$D/$addr" 2>/dev/null || true)
   [ -n "$ws" ] || ws=$(hyprctl activeworkspace -j | python3 -c "import json,sys;print(json.load(sys.stdin)['name'])")
   case "$ws" in special:*|"") ws=$(hyprctl activeworkspace -j | python3 -c "import json,sys;print(json.load(sys.stdin)['name'])");; esac
-  hc "hl.dsp.window.move({ workspace = '$ws', window = 'address:$addr', follow = true })"
-  hc "hl.dsp.focus({ window = 'address:$addr' })"
+  "$HD" move "$addr" "$ws"
+  "$HD" focus "$addr"
   rm -f "$D/$addr"
 }
 

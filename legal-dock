@@ -14,10 +14,11 @@ ensure_config() {
 
 start_all() {
   ensure_config
-  pgrep -f "quickshell -n -p $SH/docklock" >/dev/null || setsid quickshell -n -p "$SH/docklock" >/dev/null 2>&1 &
-  pgrep -f "dock-keepalive" >/dev/null || setsid "$B/dock-keepalive" >/dev/null 2>&1 &
-  pgrep -f "dock-lock-guard" >/dev/null || setsid "$B/dock-lock-guard" >/dev/null 2>&1 &
-  "$B/macdock-start" >/dev/null 2>&1 &
+  # Each job is fully detached (output closed) so callers - terminals, scripts, ssh - never hang waiting on the dock.
+  { pgrep -f "quickshell -n -p $SH/docklock" >/dev/null || setsid quickshell -n -p "$SH/docklock"; } >/dev/null 2>&1 </dev/null &
+  { pgrep -f "dock-keepalive" >/dev/null || setsid "$B/dock-keepalive"; } >/dev/null 2>&1 </dev/null &
+  { pgrep -f "dock-lock-guard" >/dev/null || setsid "$B/dock-lock-guard"; } >/dev/null 2>&1 </dev/null &
+  "$B/macdock-start" >/dev/null 2>&1 </dev/null &
 }
 
 case "${1:-menu}" in

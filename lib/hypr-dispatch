@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# hypr-dispatch — one way to talk to Hyprland whether the user's config is Lua (hyprland.lua) or classic (hyprland.conf).
+#   hypr-dispatch close <address>
+#   hypr-dispatch focus <address>
+#   hypr-dispatch move  <address> <workspace> [silent]   (workspace may be "special:name")
+set -u
+op="${1:?op}"; addr="${2:?address}"; ws="${3:-}"; mode="${4:-}"
+cfg="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+if [ -e "$cfg/hyprland.lua" ]; then
+  case "$op" in
+    close) hyprctl dispatch "hl.dsp.window.close({ window = 'address:$addr' })" ;;
+    focus) hyprctl dispatch "hl.dsp.focus({ window = 'address:$addr' })" ;;
+    move)  [ "$mode" = silent ] && f=false || f=true
+           hyprctl dispatch "hl.dsp.window.move({ workspace = '$ws', window = 'address:$addr', follow = $f })" ;;
+    *) exit 1 ;;
+  esac
+else
+  case "$op" in
+    close) hyprctl dispatch closewindow "address:$addr" ;;
+    focus) hyprctl dispatch focuswindow "address:$addr" ;;
+    move)  if [ "$mode" = silent ]; then hyprctl dispatch movetoworkspacesilent "$ws,address:$addr"
+           else hyprctl dispatch movetoworkspace "$ws,address:$addr"; fi ;;
+    *) exit 1 ;;
+  esac
+fi >/dev/null

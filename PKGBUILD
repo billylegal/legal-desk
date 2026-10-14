@@ -14,7 +14,7 @@ package() {
   cd "$pkgname-$pkgver"
   install -Dm755 legal-dock "$pkgdir/usr/bin/legal-dock"
   install -d "$pkgdir/usr/lib/legal-dock" "$pkgdir/usr/share/legal-dock"
-  install -m755 lib/* "$pkgdir/usr/lib/legal-dock/"
+  find lib -maxdepth 1 -type f -exec install -m755 -t "$pkgdir/usr/lib/legal-dock/" {} +
   for d in docklock macdock rebootconfirm; do
     install -Dm644 "share/$d/shell.qml" "$pkgdir/usr/share/legal-dock/$d/shell.qml"
   done

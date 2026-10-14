@@ -1,7 +1,7 @@
 #!/bin/bash
 # macdock-toggle on|off|status — switch between the magnifying macOS-style dock and the classic nwg-dock.
 F="$HOME/.cache/dock-mac"
-start_mac() { pgrep -f "quickshell -n -p /usr/share/legal-dock/macdock" >/dev/null || setsid quickshell -n -p "/usr/share/legal-dock/macdock" >/dev/null 2>&1 & }
+start_mac() { { pgrep -f "quickshell -n -p /usr/share/legal-dock/macdock" >/dev/null || setsid quickshell -n -p "/usr/share/legal-dock/macdock"; } >/dev/null 2>&1 </dev/null & }
 stop_mac() { for p in $(pgrep -f "quickshell -n -p /usr/share/legal-dock/macdock"); do kill "$p"; done; }
 case "$1" in
   on)  touch "$F"; pkill -x nwg-dock-hyprla; start_mac ;;   # keepalive no longer restarts nwg-dock while the flag exists
