@@ -1,6 +1,6 @@
 #!/bin/bash
 # Legal Dock — one command for the whole dock.
-# legal-dock [start|menu|classic|mac|rubik|small|medium|large|restart|status|uninstall|version]
+# legal-dock [start|menu|classic|mac|rubik|theme|small|medium|large|restart|status|uninstall|version]
 B="/usr/lib/legal-dock"
 SH="/usr/share/legal-dock"
 VERSION="1.0.0"
@@ -27,6 +27,11 @@ case "${1:-menu}" in
   classic) "$B/macdock-toggle" off ;;
   mac) "$B/macdock-toggle" on ;;
   rubik) "$B/macdock-toggle" rubik ;;
+  theme)  # Purple Space special edition: install the desktop theme and apply it (plus the matching dock skin)
+    src=/usr/share/legal-dock/themes/purple-space; [ -d "$src" ] || src="$(dirname "$(readlink -f "$0")")/share/themes/purple-space"
+    mkdir -p "$HOME/.config/omarchy/themes" && rm -rf "$HOME/.config/omarchy/themes/purple-space" && cp -r "$src" "$HOME/.config/omarchy/themes/purple-space" || exit 1
+    omarchy-theme-set purple-space 2>/dev/null || echo "Theme copied to ~/.config/omarchy/themes/purple-space - pick Purple Space in the Omarchy theme menu."
+    echo 19 > "$HOME/.cache/dock-skin-mac"; echo 13 > "$HOME/.cache/dock-skin-classic"; echo 9 > "$HOME/.cache/dock-skin-rubik"; "$B/macdock-skin" apply >/dev/null 2>&1 ;;
   skin) "$B/macdock-skin" "${2:-show}" ;;
   small|medium|large) "$B/dock-size-set" "$1" ;;
   restart)
@@ -42,5 +47,5 @@ case "${1:-menu}" in
     sleep 1; { setsid nwg-dock-hyprland -r -x -i 56; } >/dev/null 2>&1 </dev/null &
     echo "Legal Dock stopped; the classic dock is back. Remove the package with: sudo pacman -R legal-dock" ;;
   version|--version|-v) echo "legal-dock $VERSION" ;;
-  *) echo "usage: legal-dock [start|menu|classic|mac|rubik|small|medium|large|restart|status|uninstall|version]"; exit 1 ;;
+  *) echo "usage: legal-dock [start|menu|classic|mac|rubik|theme|small|medium|large|restart|status|uninstall|version]"; exit 1 ;;
 esac

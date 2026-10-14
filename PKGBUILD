@@ -1,6 +1,6 @@
 # Maintainer: 5ive7 Development Labs <5ive7@mail.com>
 pkgname=legal-dock
-pkgver=1.0.2
+pkgver=1.1.0
 pkgrel=1
 pkgdesc='Classic or Mac-style dock for Hyprland/Omarchy with size, lock, hide and transparency controls'
 arch=('any')
@@ -19,6 +19,7 @@ package() {
   for d in docklock macdock rebootconfirm; do
     install -Dm644 "share/$d/shell.qml" "$pkgdir/usr/share/legal-dock/$d/shell.qml"
   done
+  cp -r share/themes "$pkgdir/usr/share/legal-dock/themes"
   install -Dm644 share/style.css "$pkgdir/usr/share/legal-dock/style.css"
   install -Dm644 share/mac-animations.lua "$pkgdir/usr/share/legal-dock/mac-animations.lua"
   install -Dm644 legal-dock.desktop "$pkgdir/usr/share/applications/legal-dock.desktop"

@@ -5,13 +5,13 @@
 H="$HOME/.cache"; C="$HOME/.config/nwg-dock-hyprland/style.css"
 style=classic
 if [ -e "$H/dock-mac" ]; then [ "$(cat "$H/dock-style" 2>/dev/null)" = rubik ] && style=rubik || style=mac; fi
-case $style in classic) N=13;; mac) N=19;; rubik) N=9;; esac
+case $style in classic) N=14;; mac) N=20;; rubik) N=10;; esac
 F="$H/dock-skin-$style"
 get() { local v; v=$(cat "$1" 2>/dev/null); [[ $v =~ ^[0-9]+$ ]] && [ "$v" -lt "$2" ] && echo "$v" || echo 0; }
 
 # apply_classic : write the nwg-dock stylesheet for the chosen classic skin (keeps solid/transparent as it is).
 apply_classic() {
-  local i; i=$(get "$H/dock-skin-classic" 13)
+  local i; i=$(get "$H/dock-skin-classic" 14)
   mkdir -p "$(dirname "$C")"
   [ -e "$C" ] && [ ! -e "$C.orig" ] && cp "$C" "$C.orig"
   [ -e "$H/dock-transparent" ] || { [ -e "$C" ] && grep -q "background: transparent" "$C" && touch "$H/dock-transparent"; }
@@ -30,6 +30,7 @@ apply_classic() {
     10) t=("rgba(32,32,32,0.92)" 10 "rgba(255,255,255,0.16)" "#ffffff" "rgba(255,255,255,0.12)" "#60cdff" 1 "" "border-radius: 6px;");;
     11) t=("#1d2021" 0 "#fabd2f" "#ebdbb2" "rgba(250,189,47,0.2)" "#fabd2f" 1 "" "border-radius: 0px;");;
     12) t=("linear-gradient(to bottom, rgba(80,80,80,0.88), rgba(14,14,14,0.88))" 6 "rgba(255,255,255,0.4)" "#ffffff" "rgba(255,255,255,0.22)" "#ffffff" 1 "" "border-radius: 4px;");;
+    13) t=("linear-gradient(to bottom, rgba(42,20,102,0.92), rgba(7,5,15,0.92))" 14 "#8B5CF6" "#E6E1FA" "rgba(139,92,246,0.3)" "#B061FF" 1 "" "border-radius: 6px;");;
   esac
   local bg="${t[0]}"; [ -e "$H/dock-transparent" ] && bg="transparent"
   cat > "$C" <<CSS

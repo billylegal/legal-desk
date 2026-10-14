@@ -63,7 +63,8 @@ ShellRoot {
     { n: "Windows 98", c1: "#d8d8d8", c2: "#bcbcbc", b: "transparent", r: 0, ic: "", plate: true, nz: true, bevel: true, tile: "hbtn", ik: 0.86, t: [] },
     { n: "Windows 11", c1: "#ee202020", c2: "#ee181818", b: "#33ffffff", r: 12, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.86, t: [] },
     { n: "Polybar",    c1: "#1d2021", c2: "#1d2021", b: "#fabd2f", r: 0, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.9, t: [] },
-    { n: "Tint2",      c1: "#e0505050", c2: "#e0101010", b: "#66ffffff", r: 6, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.88, t: [] }
+    { n: "Tint2",      c1: "#e0505050", c2: "#e0101010", b: "#66ffffff", r: 6, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.88, t: [] },
+    { n: "Purple Space", c1: "#2a1466", c2: "#07050f", b: "#8B5CF6", r: 18, ic: "", t: [] }
   ]
   readonly property var rubikSkins: [
     { n: "Cube",   c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 12, ic: "", t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
@@ -74,7 +75,8 @@ ShellRoot {
     { n: "Ocean",  c1: "#04202e", c2: "#021520", b: "#0096c7", r: 12, ic: "", t: ["#00b4d8", "#0077b6", "#90e0ef", "#023e8a", "#48cae4", "#caf0f8"] },
     { n: "Candy",  c1: "#2b0a3d", c2: "#1a0626", b: "#ff4d9d", r: 12, ic: "", t: ["#ff4d9d", "#ffd166", "#06d6a0", "#8338ec", "#ff6b6b", "#4cc9f0"] },
     { n: "Jungle", c1: "#0a1f0a", c2: "#061106", b: "#52b788", r: 12, ic: "", t: ["#2d6a4f", "#52b788", "#95d5b2", "#d8f3dc", "#1b4332", "#b7e4c7"] },
-    { n: "Circles", c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 26, ic: "", rr: 0.5, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] }
+    { n: "Circles", c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 26, ic: "", rr: 0.5, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
+    { n: "Purple Space", c1: "#1a0f3d", c2: "#07050f", b: "#8B5CF6", r: 12, ic: "", t: ["#8B5CF6", "#B061FF", "#6C8CFF", "#5CC8F5", "#CC8CFF", "#E6E1FA"] }
   ]
   readonly property var skins: rubik ? rubikSkins : macSkins
   readonly property var skin: skins[skinIdx]
