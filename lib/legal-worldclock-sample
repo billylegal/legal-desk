@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+# legal-worldclock-sample TZ... : current UTC offset (seconds) of each time zone, as JSON - the World Clock adds it to the UTC time itself.
+import sys, json, datetime
+from zoneinfo import ZoneInfo
+now = datetime.datetime.now(datetime.timezone.utc)
+out = {}
+for tz in sys.argv[1:]:
+    try: out[tz] = int(now.astimezone(ZoneInfo(tz)).utcoffset().total_seconds())
+    except Exception: pass
+print(json.dumps(out))

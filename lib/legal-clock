@@ -1,0 +1,4 @@
+#!/bin/bash
+# legal-clock : open (or close) the Legal Dock Clock (World Clock + Timer).
+if pgrep -f '^quickshell.*legalclock' >/dev/null; then pkill -f '^quickshell.*legalclock'; exit 0; fi
+exec setsid quickshell -n -p "/usr/share/legal-dock/legalclock" >/dev/null 2>&1

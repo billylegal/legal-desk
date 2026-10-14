@@ -1,0 +1,12 @@
+#!/bin/bash
+# legal-timer start SECONDS | pause | resume | reset : the Legal Dock timer. State in ~/.cache/legal-timer ("run END_EPOCH SECONDS", "pause REMAINING SECONDS", "done").
+F="$HOME/.cache/legal-timer"; D="$(dirname "$(readlink -f "$0")")"
+now=$(date +%s)
+case "$1" in
+  start) s=${2:-0}; [ "$s" -gt 0 ] || exit 1; echo "run $((now+s)) $s" > "$F"; setsid "$D/legal-timer-alarm" $((now+s)) >/dev/null 2>&1 </dev/null & ;;
+  pause) read -r k e t < "$F" 2>/dev/null; [ "$k" = run ] && { pkill -f "legal-timer-alarm $e"; r=$((e-now)); [ $r -lt 1 ] && r=1; echo "pause $r $t" > "$F"; } ;;
+  resume) read -r k r t < "$F" 2>/dev/null; [ "$k" = pause ] && { echo "run $((now+r)) $t" > "$F"; setsid "$D/legal-timer-alarm" $((now+r)) >/dev/null 2>&1 </dev/null & } ;;
+  reset) read -r k e t < "$F" 2>/dev/null; [ "$k" = run ] && pkill -f "legal-timer-alarm $e"; rm -f "$F" ;;
+  *) echo "usage: legal-timer start SECONDS|pause|resume|reset"; exit 1 ;;
+esac
+exit 0

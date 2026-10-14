@@ -8,7 +8,7 @@ url='https://github.com/5ive7/legal-dock'
 license=('MIT')
 install=legal-dock.install
 depends=('hyprland' 'nwg-dock-hyprland' 'quickshell' 'inotify-tools' 'python' 'util-linux' 'procps-ng' 'bash'
-         'glib2' 'gtk3' 'imagemagick' 'librsvg' 'xdg-utils' 'wtype')
+         'glib2' 'gtk3' 'imagemagick' 'librsvg' 'xdg-utils' 'wtype' 'libnotify' 'pipewire')
 optdepends=('hyprland-plugins: title bars with Apple / Windows style window buttons (hyprbars)'
             'omarchy: desktop theme, web-app windows for Mail, screenshots')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
@@ -19,7 +19,7 @@ package() {
   install -Dm755 legal-dock "$pkgdir/usr/bin/legal-dock"
   install -d "$pkgdir/usr/lib/legal-dock" "$pkgdir/usr/share/legal-dock"
   find lib -maxdepth 1 -type f -exec install -m755 -t "$pkgdir/usr/lib/legal-dock/" {} +
-  for d in docklock macdock rebootconfirm appsmenu legalnotes legalcalendar legaltasks deskpick; do
+  for d in docklock macdock rebootconfirm appsmenu legalnotes legalcalendar legaltasks legalclock deskpick; do
     install -Dm644 "share/$d/shell.qml" "$pkgdir/usr/share/legal-dock/$d/shell.qml"
   done
   cp -r share/themes "$pkgdir/usr/share/legal-dock/themes"

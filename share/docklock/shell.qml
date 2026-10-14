@@ -251,7 +251,30 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       ckPosFile.reload(); ckFmtFile.reload()
     }
   }
+  // Timer state (set from the Clock app: ~/.cache/legal-timer): the clock panel shows what is left.
+  property string tState: ""
+  property real tEnd: 0
+  property real tRemain: 0
+  FileView {
+    id: tmFile
+    path: Quickshell.env("HOME") + "/.cache/legal-timer"; printErrors: false
+    onLoaded: { var p = text().trim().split(/\s+/); ldr.tState = p[0] || ""; if (p[0] === "run") ldr.tEnd = parseInt(p[1]) * 1000; if (p[0] === "pause") ldr.tRemain = parseInt(p[1]) }
+    onLoadFailed: ldr.tState = ""
+  }
+  Process { id: openCal; command: ["/usr/lib/legal-dock/legal-calendar"] }
+  Process { id: openClk; property var env: []; command: ["bash", "-c", "CLOCK_TAB=$0 /usr/lib/legal-dock/legal-clock", String(ldr.tState === "run" || ldr.tState === "pause" || ldr.tState === "done" ? 1 : 0)] }
+  property real nowMs: Date.now()
+  Timer { interval: 1000; running: ldr.tState !== ""; repeat: true; onTriggered: { ldr.nowMs = Date.now(); tmFile.reload() } }
+  Timer { interval: 4000; running: true; repeat: true; onTriggered: tmFile.reload() }
+  readonly property string tLeft: {
+    if (tState === "done") return "Time's up"
+    var sec = tState === "run" ? Math.max(0, Math.ceil((tEnd - nowMs) / 1000)) : (tState === "pause" ? tRemain : -1)
+    if (sec < 0) return ""
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), r = sec % 60
+    return (h > 0 ? h + ":" + ("0" + m).slice(-2) : ("0" + m).slice(-2)) + ":" + ("0" + r).slice(-2)
+  }
   // The clock is its own panel pinned to the hard left or right edge of the screen, level with the dock: it never moves with the dock, its size or its zoom.
+  // Click = Calendar, right-click = Clock (World Clock / Timer). On the Classic dock the screenshot camera stays here.
   Variants {
     model: clockPos !== "off" ? [lastDock ? lastDock.mon : (Quickshell.screens.length ? Quickshell.screens[0].name : "")] : []
     PanelWindow {
@@ -259,16 +282,22 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
       anchors { bottom: true; left: clockPos === "left"; right: clockPos === "right" }
       margins { bottom: 6; left: 6; right: 6 }
-      implicitWidth: ctxt.implicitWidth + 16 + (mac ? 0 : 26 + 8); implicitHeight: 40
+      implicitWidth: Math.max(112, ctxt.implicitWidth + 28) + (tLeft !== "" ? tpill.width + 8 : 0) + (mac ? 0 : 34); implicitHeight: 46
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.layer: WlrLayer.Top
       WlrLayershell.namespace: "dockclock"
       Rectangle {
-        anchors.fill: parent; radius: 8; color: bgC; border.color: accC; border.width: 1
-        Column { x: 8; anchors.verticalCenter: parent.verticalCenter; spacing: 0
-          Text { id: ctxt; text: clockTxt; color: txtC; font.pixelSize: 13; font.bold: true }
-          Text { text: clockDate; color: accC; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 } }
+        anchors.fill: parent; radius: 12; color: ckMa.containsMouse ? selC : bgC; border.color: accC; border.width: 1
+        Behavior on color { ColorAnimation { duration: 120 } }
+        MouseArea { id: ckMa; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton; cursorShape: Qt.PointingHandCursor
+          onClicked: (m) => { if (m.button === Qt.RightButton) { openClk.running = false; openClk.running = true } else { openCal.running = false; openCal.running = true } } }
+        Column { x: 14; anchors.verticalCenter: parent.verticalCenter; spacing: 1
+          Text { id: ctxt; text: clockTxt; color: txtC; font.pixelSize: 17; font.bold: true }
+          Text { text: clockDate.toUpperCase(); color: accC; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 } }
+        Rectangle { id: tpill; visible: tLeft !== ""; height: 24; width: tl.implicitWidth + 16; radius: 12; color: accC
+          x: Math.max(112, ctxt.implicitWidth + 28) + 0; anchors.verticalCenter: parent.verticalCenter
+          Text { id: tl; anchors.centerIn: parent; text: "\u23F1 " + tLeft; color: bgC; font.pixelSize: 11; font.bold: true } }
         Rectangle { visible: !mac; width: 24; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
           color: snapMa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
           Text { anchors.centerIn: parent; text: "\uf030"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }

@@ -1,0 +1,10 @@
+#!/bin/bash
+# legal-timer-alarm END_EPOCH : sleeps until the timer ends, then shows a notification and plays a sound (unless the timer was paused / reset meanwhile).
+END="$1"; F="$HOME/.cache/legal-timer"
+sleep $((END - $(date +%s))) 2>/dev/null
+read -r k e t < "$F" 2>/dev/null
+[ "$k" = run ] && [ "$e" = "$END" ] || exit 0
+echo "done $END ${t:-0}" > "$F"
+notify-send -u critical -i alarm-clock "Timer finished" "Your timer is up." 2>/dev/null
+S=/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga
+for i in 1 2 3; do { command -v pw-play >/dev/null && pw-play "$S"; } 2>/dev/null || paplay "$S" 2>/dev/null; sleep 0.4; done
