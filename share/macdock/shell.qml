@@ -726,7 +726,7 @@ print(json.dumps(out))
             visible: root.blocks && !root.rubik && !root.iconTiles && (root.skin.tile || "") === "" && cell.modelData.cls !== "__launcher__" && !cell.ownIcon
             anchors.centerIn: parent; width: parent.width * 0.98; height: width; radius: width * 0.22
             gradient: Gradient { GradientStop { position: 0; color: Qt.lighter(root.skin.c1, 1.4) } GradientStop { position: 1; color: Qt.lighter(root.skin.c2, 1.4) } }
-            border.color: root.skin.b; border.width: 1
+            border.color: root.omaSkin ? "transparent" : root.skin.b; border.width: root.omaSkin ? 0 : 1
           }
           Rectangle {
             visible: root.iconFor(cell.modelData.cls) === "" && !cell.ownIcon
@@ -807,7 +807,7 @@ print(json.dumps(out))
             visible: cell.ownIcon && !root.rubik
             anchors.centerIn: parent; width: parent.width * 0.98; height: width; radius: width * 0.22
             gradient: Gradient { GradientStop { position: 0; color: Qt.lighter(root.skin.c1, 1.4) } GradientStop { position: 1; color: Qt.lighter(root.skin.c2, 1.4) } }
-            border.color: root.skin.b; border.width: 1
+            border.color: root.omaSkin ? "transparent" : root.skin.b; border.width: root.omaSkin ? 0 : 1
           }
           // Calendar: an Apple-style date icon (weekday on red, big day number) that follows the real date.
           Item {
