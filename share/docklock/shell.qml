@@ -85,7 +85,7 @@ ShellRoot {
   Process { id: zoomW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-zoom\"", String(zoomRaw)] }
   Process { id: runner2; property var cmd: []; command: cmd }
   property int iconIdx: 0
-  readonly property var iconNames: ["With skin", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
+  readonly property var iconNames: ["Original", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
   FileView {
     id: icoFile
     path: Quickshell.env("HOME") + "/.cache/dock-icon-style"
@@ -510,10 +510,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               MouseArea { id: ipa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); iconProc.a = "prev"; iconProc.running = false; iconProc.running = true } } }
             Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: accC; border.width: 1
               Row { anchors.centerIn: parent; spacing: 8
-                Grid { anchors.verticalCenter: parent.verticalCenter; columns: 2; spacing: 2
-                  Repeater { model: ["#ef5350", "#66bb6a", "#42a5f5", "#ffa726"]
-                    Rectangle { required property string modelData; width: 7; height: 7; radius: 2; color: modelData } } }
-                Text { text: "Icons: " + iconNames[iconIdx]; color: txtC; font.pixelSize: 11 } } }
+                Text { text: iconIdx === 0 ? "Icons" : "Icons: " + iconNames[iconIdx]; color: txtC; font.pixelSize: 12 } } }
             Rectangle { width: 34; height: 34; radius: 6; color: ina.containsMouse ? selC : "transparent"
               Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
               MouseArea { id: ina; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); iconProc.a = "next"; iconProc.running = false; iconProc.running = true } } }

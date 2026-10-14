@@ -152,7 +152,7 @@ ShellRoot {
   // Skins with their own icon tint (Mono, Terminal, Amber, Blueprint, Paper) tint the icons; skins with a tile palette (Rubik palettes, Bubbles) put
   // the icons on coloured tiles; every other skin puts each icon on a small plate in that skin's colours. File: ~/.cache/dock-icon-style
   property int iconStyle: 0
-  readonly property var iconNames: ["With skin", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Nebula 2", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
+  readonly property var iconNames: ["Original", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Nebula 2", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
   function styleSkin(n) {
     if (n === "Nebula 2") return { n: "Nebula 2", c1: "#3a1c8e", c2: "#0a0715", b: "#8B5CF6", ic: "", t: [] }
     for (var i = 0; i < rubikSkins.length; i++) if (rubikSkins[i].n === n && rubikSkins[i].t && rubikSkins[i].t.length >= 3) return rubikSkins[i]
@@ -160,8 +160,8 @@ ShellRoot {
     for (var k = 0; k < rubikSkins.length; k++) if (rubikSkins[k].n === n) return rubikSkins[k]
     return null
   }
-  // With skin (0): plain skins put each icon on a plate in the skin's colours; skins with their own tiles/tint (Rubik, Bubbles, Mono, ...) already style the icons.
-  readonly property var istyle: iconStyle > 0 ? styleSkin(iconNames[iconStyle]) : ((rubik || (skin.tile || "") !== "" || !!skin.ic) ? null : skin)
+  // Original (0): the skin looks exactly as designed; any other entry gives the icons that original skin's look.
+  readonly property var istyle: iconStyle > 0 ? styleSkin(iconNames[iconStyle]) : null
   readonly property bool iconTinted: !!istyle && !!istyle.ic
   readonly property bool iconTiles: !!istyle && !istyle.ic
   readonly property bool iconCircle: iconTiles && !!istyle && (istyle.tile === "circle" || (istyle.rr !== undefined && istyle.rr >= 0.5))
