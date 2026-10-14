@@ -7,7 +7,18 @@ style=classic
 if [ -e "$H/dock-mac" ]; then [ "$(cat "$H/dock-style" 2>/dev/null)" = rubik ] && style=rubik || style=mac; fi
 case $style in classic) N=14;; mac) N=20;; rubik) N=10;; esac
 F="$H/dock-skin-$style"
-get() { local v; v=$(cat "$1" 2>/dev/null); [[ $v =~ ^[0-9]+$ ]] && [ "$v" -lt "$2" ] && echo "$v" || echo 0; }
+get() { local v; v=$(cat "$1" 2>/dev/null); [[ $v =~ ^[0-9]+$ ]] && [ "$v" -lt "$2" ] && echo "$v" || echo $(( $2 - 1 )); }   # no choice yet = Nebula (the last skin)
+
+# Menu colours follow the skin: bg|border/accent|text|selected. Written to ~/.cache/dock-menu-colors for the dock menus.
+MAC=("#111c18|#C1C497|#C1C497|#2a3a30" "#1b1f2a|#cfd8ff|#ffffff|#333a52" "#0b1230|#7a8cff|#cfd6ff|#1c2a66" "#06080c|#39ff14|#b8ffa8|#123a0c" "#e4e5ea|#6b7080|#20232a|#c4c8d2" "#0f3d7a|#8fd0ff|#eaf6ff|#1f5fb0" "#4a0c2c|#ff9a3d|#ffe3c8|#7a1a48" "#0a0a0a|#ffffff|#eeeeee|#2a2a2a" "#f4f1e8|#8a8570|#2b2b2b|#dcd8c8" "#020a02|#33ff33|#33ff33|#0c3a0c" "#0e0700|#ffb000|#ffb000|#3a2600" "#0a3a80|#ffffff|#d6ecff|#1558b0" "#0b1020|#4cc9f0|#eaf0ff|#1c2a50" "#15181f|#d8d8d8|#f2f2f2|#2c313c" "#c0c0c0|#000080|#000000|#a0a0a0" "#d8d8d8|#000080|#000000|#b8b8b8" "#202020|#60cdff|#ffffff|#333333" "#1d2021|#fabd2f|#ebdbb2|#3c3836" "#202020|#aaaaaa|#ffffff|#444444" "#0B0818|#8B5CF6|#E6E1FA|#2A1B52")
+RUBIK=("#0d0d0d|#ffd500|#f4f4f4|#2a2a2a" "#f4eef7|#b58acb|#3a2a45|#e0d0ea" "#000000|#ffffff|#eeeeee|#2a2a2a" "#06080c|#39ff14|#b8ffa8|#123a0c" "#3a0a2a|#ffd9b0|#ffe9d0|#6a1a4a" "#04202e|#0096c7|#caf0f8|#0a4a66" "#2b0a3d|#ff4d9d|#ffe0f0|#5a1a6a" "#0a1f0a|#52b788|#d8f3dc|#1b4332" "#0d0d0d|#ffd500|#f4f4f4|#2a2a2a" "#0B0818|#8B5CF6|#E6E1FA|#2A1B52")
+CLASSIC=(0 2 1 7 3 4 5 6 8 9 10 11 12 19)   # classic skin -> the Mac palette of the same name
+write_palette() {
+  local i row; i=$(get "$F" $N)
+  case $style in mac) row=${MAC[$i]};; rubik) row=${RUBIK[$i]};; *) row=${MAC[${CLASSIC[$i]}]};; esac
+  IFS='|' read -r b a t sel <<< "$row"
+  printf 'bg=%s\nacc=%s\ntxt=%s\nsel=%s\n' "$b" "$a" "$t" "$sel" > "$H/dock-menu-colors.tmp" && mv "$H/dock-menu-colors.tmp" "$H/dock-menu-colors"
+}
 
 # apply_classic : write the nwg-dock stylesheet for the chosen classic skin (keeps solid/transparent as it is).
 apply_classic() {
@@ -85,9 +96,11 @@ case "$1" in
   next) cur=$(( (cur + 1) % N )) ;;
   prev) cur=$(( (cur + N - 1) % N )) ;;
   [0-9]|[0-9][0-9]) [ "$1" -lt $N ] && cur=$1 ;;
-  apply) apply_classic; exit 0 ;;
-  *) echo "$cur"; exit 0 ;;
+  apply) apply_classic; write_palette; exit 0 ;;
+  palette) write_palette; exit 0 ;;
+  *) write_palette; echo "$cur"; exit 0 ;;
 esac
 echo "$cur" > "$F"
+write_palette
 [ "$style" = classic ] && apply_classic
 exit 0

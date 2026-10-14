@@ -6,24 +6,25 @@ import Quickshell.Io
 // Small lock/unlock button just right of the dock. Locked = icons can't be rearranged.
 ShellRoot {
   id: ldr
-  // Menu colours follow the active Omarchy theme (colors.toml); the defaults are the original greens.
-  property color bgC: "#111c18"
-  property color accC: "#C1C497"
-  property color txtC: "#C1C497"
-  property color selC: "#2a3a30"
+  // Menu colours follow the chosen dock skin (~/.cache/dock-menu-colors, written by macdock-skin); default = Nebula.
+  property color bgC: "#0B0818"
+  property color accC: "#8B5CF6"
+  property color txtC: "#E6E1FA"
+  property color selC: "#2A1B52"
   readonly property color hiC: Qt.lighter(selC, 1.6)
   FileView {
     id: themeColors
-    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
+    path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
+    watchChanges: true
+    onFileChanged: reload()
     onLoaded: {
-      var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*"(#[0-9a-fA-F]{6})"/); if (m) c[m[1]] = m[2] })
-      if (c.dark_background || c.background) ldr.bgC = c.dark_background || c.background
-      if (c.accent) ldr.accC = c.accent
-      if (c.foreground) ldr.txtC = c.foreground
-      if (c.selection) ldr.selC = c.selection
+      var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
+      if (c.bg) ldr.bgC = c.bg
+      if (c.acc) ldr.accC = c.acc
+      if (c.txt) ldr.txtC = c.txt
+      if (c.sel) ldr.selC = c.sel
     }
   }
-  Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: false; onTriggered: themeColors.reload() }
   property var dock: null
   property bool locked: false
   property bool hidden: false
@@ -41,7 +42,7 @@ ShellRoot {
   readonly property var skinNames: rubik ? ["Cube", "Pastel", "Mono", "Neon", "Sunset", "Ocean", "Candy", "Jungle", "Circles", "Nebula"]
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula"])
-  readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? 0 : n }
+  readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.length - 1 : n }
   readonly property int menuH: 14 * 36 + 12
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
@@ -233,7 +234,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
         Keys.onEscapePressed: mouseOpen = false
         Column {
           anchors.fill: parent; anchors.margins: 6; spacing: 2
-          Text { height: 24; width: parent.width; text: "\uf245   Mouse Pointer"; color: "#8fd18f"; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
+          Text { height: 24; width: parent.width; text: "\uf245   Mouse Pointer"; color: accC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
           SliderRow {
             txtC: ldr.txtC; accC: ldr.accC; selC: ldr.selC; bgC: ldr.bgC
             width: parent.width; label: "Speed"; from: -1; to: 1; value: mSpeed; shown: (mSpeed > 0 ? "+" : "") + mSpeed.toFixed(2)
@@ -252,7 +253,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               width: parent.width; height: 34; radius: 6
               color: mta.containsMouse ? selC : "transparent"
               Text { x: 10; anchors.verticalCenter: parent.verticalCenter; color: txtC; font.pixelSize: 13; text: parent.on ? cap2(modelData.l) : cap2(modelData.l2) }
-              Text { anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; color: "#8fd18f"; font.pixelSize: 11; text: "\u21c4" }
+              Text { anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; color: accC; font.pixelSize: 11; text: "\u21c4" }
               MouseArea {
                 id: mta; anchors.fill: parent; hoverEnabled: true
                 onClicked: {

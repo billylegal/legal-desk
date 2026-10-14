@@ -5,6 +5,22 @@ import Quickshell.Io
 
 // "Do you really want to ...?" popup for Restart / Shut down. Centered on screen (from the dock menu) or just above a dock icon (RC_X set).
 ShellRoot {
+  id: rc
+  // Colours follow the chosen dock skin (~/.cache/dock-menu-colors); default = Nebula.
+  property color bgC: "#0B0818"
+  property color accC: "#8B5CF6"
+  property color txtC: "#E6E1FA"
+  property color selC: "#2A1B52"
+  FileView {
+    path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
+    onLoaded: {
+      var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
+      if (c.bg) rc.bgC = c.bg
+      if (c.acc) rc.accC = c.acc
+      if (c.txt) rc.txtC = c.txt
+      if (c.sel) rc.selC = c.sel
+    }
+  }
   readonly property string action: Quickshell.env("RC_ACTION") === "shutdown" ? "shutdown" : "reboot"
   readonly property bool nearIcon: (Quickshell.env("RC_X") || "") !== ""
   property int cx: parseInt(Quickshell.env("RC_X") || "960")
@@ -25,21 +41,21 @@ ShellRoot {
 
     Rectangle {
       anchors.fill: parent; radius: 14
-      color: "#111c18"; border.color: "#C1C497"; border.width: 1
+      color: rc.bgC; border.color: rc.accC; border.width: 1
       focus: true
       Keys.onEscapePressed: Qt.quit()
 
       Text {
         y: 16; anchors.horizontalCenter: parent.horizontalCenter
         text: question
-        color: "#C1C497"; font.pixelSize: 15; font.bold: true
+        color: rc.txtC; font.pixelSize: 15; font.bold: true
       }
       Row {
         y: 56; anchors.horizontalCenter: parent.horizontalCenter; spacing: 14
         Rectangle {
           width: 110; height: 34; radius: 8
-          color: cma.containsMouse ? "#2a3a30" : "#16241f"; border.color: "#C1C497"; border.width: 1
-          Text { anchors.centerIn: parent; text: "Cancel"; color: "#C1C497"; font.pixelSize: 14 }
+          color: cma.containsMouse ? rc.selC : Qt.darker(rc.selC, 1.4); border.color: rc.accC; border.width: 1
+          Text { anchors.centerIn: parent; text: "Cancel"; color: rc.txtC; font.pixelSize: 14 }
           MouseArea { id: cma; anchors.fill: parent; hoverEnabled: true; onClicked: Qt.quit() }
         }
         Rectangle {

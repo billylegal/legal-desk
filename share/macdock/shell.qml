@@ -40,7 +40,7 @@ ShellRoot {
   readonly property real radius: base * 3.6
   readonly property int gap: rubik ? 5 : 6
   property string skinTxt: "auto"
-  readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skins.length) ? 0 : n }
+  readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skins.length) ? skins.length - 1 : n }
   // ic = how the icons look on that plate: "" as they are, "gray" black & white, "#rrggbb" tinted in one colour.
   readonly property var macSkins: [
     { n: "Emerald",   c1: "#111c18", c2: "#111c18", b: "#55C1C497", r: 16, ic: "", t: [] },
@@ -105,6 +105,24 @@ ShellRoot {
     watchChanges: true
     onFileChanged: reload()
     onLoaded: root.pinned = text().split("\n").map(s => s.trim()).filter(s => s.length > 0)
+  }
+  // Menu colours follow the chosen dock skin (~/.cache/dock-menu-colors, written by macdock-skin); default = Nebula.
+  property color bgC: "#0B0818"
+  property color accC: "#8B5CF6"
+  property color txtC: "#E6E1FA"
+  property color selC: "#2A1B52"
+  FileView {
+    id: themeColors
+    path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: {
+      var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
+      if (c.bg) root.bgC = c.bg
+      if (c.acc) root.accC = c.acc
+      if (c.txt) root.txtC = c.txt
+      if (c.sel) root.selC = c.sel
+    }
   }
   property bool solid: true
   FileView {
@@ -599,8 +617,8 @@ print(json.dumps(out))
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.top; anchors.bottomMargin: 6
             width: lbl.width + 16; height: lbl.height + 8; radius: 7
-            color: "#e61a1a1a"; border.color: "#44ffffff"; border.width: 1
-            Text { id: lbl; anchors.centerIn: parent; color: "#f2f2f2"; font.pixelSize: 12
+            color: Qt.rgba(root.bgC.r, root.bgC.g, root.bgC.b, 0.92); border.color: root.accC; border.width: 1
+            Text { id: lbl; anchors.centerIn: parent; color: root.txtC; font.pixelSize: 12
               text: cell.modelData.cls === "__launcher__" ? "Apps" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
           }
           // running dot
@@ -696,7 +714,7 @@ print(json.dumps(out))
       WlrLayershell.layer: WlrLayer.Overlay
       WlrLayershell.namespace: "macdockmenu"
       Rectangle {
-        anchors.fill: parent; radius: 10; color: "#111c18"; border.color: "#C1C497"; border.width: 1
+        anchors.fill: parent; radius: 10; color: root.bgC; border.color: root.accC; border.width: 1
         Column {
           anchors.fill: parent; anchors.margins: 6; spacing: 0
           Repeater {
@@ -704,11 +722,11 @@ print(json.dumps(out))
             Rectangle {
               required property var modelData
               width: parent.width; height: 34; radius: 6
-              color: (modelData.a !== "hdr" && ma.containsMouse) ? "#2a3a30" : "transparent"
+              color: (modelData.a !== "hdr" && ma.containsMouse) ? root.selC : "transparent"
               Text {
                 x: 10; anchors.verticalCenter: parent.verticalCenter
                 text: modelData.a === "hdr" ? "●  " + root.cap2(modelData.l) : (modelData.a === "focus" ? modelData.l : root.cap2(modelData.l))
-                color: modelData.a === "hdr" ? "#8fd18f" : "#C1C497"; font.pixelSize: 13
+                color: modelData.a === "hdr" ? root.accC : root.txtC; font.pixelSize: 13
                 font.bold: modelData.a === "hdr"
               }
               MouseArea {

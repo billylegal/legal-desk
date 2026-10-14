@@ -60,6 +60,8 @@ Your pinned apps live in `~/.cache/nwg-dock-pinned` (one app class per line). Yo
 
 A purple-nebula desktop theme with a matching dock skin, in every dock style (Classic, Mac and Rubik). Run `legal-dock theme` to install and apply the Omarchy theme (wallpaper, window borders, panel colours) and switch the dock to its Nebula skin. Switch back any time with the Omarchy theme menu or the skin buttons in the dock menu. The dock menu also has a **Wallpaper** row (‹ ›) that cycles through every wallpaper on your system (all Omarchy themes plus your own).
 
+The dock menus (the grid-button menu, the right-click app menu and the Reboot/Shut down popup) follow the chosen dock skin: change the skin and every menu changes colour with it. **Nebula is the standard** skin for a fresh install.
+
 ## Minimize windows
 
 Hyprland has no minimize, so Legal Dock adds one: `/usr/lib/legal-dock/win-minimize` parks a window on a hidden workspace and brings it back later. Clicking a minimized app in the **Mac dock** restores it. To use it elsewhere:
