@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: mac ? 406 : 372
+  readonly property int menuH: mac ? 290 : 256
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -392,39 +392,34 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
         Keys.onEscapePressed: menuOpen = false
         Column {
           anchors.fill: parent; anchors.margins: 6; spacing: 2
-          Repeater {
-            model: [
-              { label: moving ? "Done Moving" : "Move Icons", icon: "\uf0b2", act: "move" },
-              { label: hidden ? "Keep dock up" : "Hide dock", icon: hidden ? "\uf077" : "\uf078", act: "hide" },
-              { label: full ? "Floating dock" : "Full-width dock", icon: "\uf337", act: "full" },
-              { label: "Mouse", icon: "\uf245", act: "mouse" },
-              { label: "Shut down", icon: "\uf011", act: "shutdown" },
-              { label: "Hidden", icon: "", act: "hidden" }
-            ].filter(i => i.act !== "hidden").filter(i => !mac || i.act === "close" || i.act === "move" || i.act === "mouse" || i.act === "full" || i.act === "trans" || i.act === "lock" || i.act === "apps" || i.act === "reboot" || i.act === "shutdown")
-            Rectangle {
-              required property var modelData
-              width: parent.width; height: 34; radius: 6
-              opacity: (locked && modelData.act === "move") ? 0.35 : 1
-              color: ima.containsMouse ? selC : "transparent"
-              Row {
-                anchors.verticalCenter: parent.verticalCenter; x: 10; spacing: 10
-                Text { text: modelData.icon; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; width: 18 }
-                Text { text: cap2(modelData.label); color: txtC; font.pixelSize: 13 }
-              }
-              MouseArea {
-                id: ima; anchors.fill: parent; hoverEnabled: true
-                onClicked: {
-                  if (locked && modelData.act === "move") return
-                  menuOpen = false
-                  if (modelData.act === "apps") appsProc.running = true
-                  else if (modelData.act === "lock") toggle.running = true
-                  else if (modelData.act === "hide") hideToggle.running = true
-                  else if (modelData.act === "full") fullToggle.running = true
-                  else if (modelData.act === "trans") transToggle.running = true
-                  else if (modelData.act === "mouse") openMouse()
-                  else if (modelData.act === "move") { if (moving) endMove(); else startMove() }
-                  else if (modelData.act === "reboot") rebootProc.running = true
-                  else if (modelData.act === "shutdown") shutdownProc.running = true
+          // Action buttons: Move icons, (Hide on the classic dock), Mouse and Shut down as solid buttons on one line.
+          Row {
+            width: parent.width; height: 40; spacing: 4
+            Repeater {
+              model: [
+                { label: moving ? "Done" : "Move", icon: "\uf0b2", act: "move", on: true },
+                { label: hidden ? "Show" : "Hide", icon: hidden ? "\uf077" : "\uf078", act: "hide", on: !mac },
+                { label: "Mouse", icon: "\uf245", act: "mouse", on: true },
+                { label: "Shut Down", icon: "\uf011", act: "shutdown", on: true }
+              ].filter(i => i.on)
+              Rectangle {
+                required property var modelData
+                width: (parent.width - (mac ? 8 : 12)) / (mac ? 3 : 4); height: 40; radius: 6
+                opacity: (locked && modelData.act === "move") ? 0.35 : 1
+                color: bta.containsMouse ? selC : hiC; border.color: accC; border.width: 1
+                Column { anchors.centerIn: parent; spacing: 1
+                  Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.icon; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
+                  Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label; color: txtC; font.pixelSize: 9 } }
+                MouseArea {
+                  id: bta; anchors.fill: parent; hoverEnabled: true
+                  onClicked: {
+                    if (locked && modelData.act === "move") return
+                    menuOpen = false
+                    if (modelData.act === "hide") hideToggle.running = true
+                    else if (modelData.act === "mouse") openMouse()
+                    else if (modelData.act === "move") { if (moving) endMove(); else startMove() }
+                    else if (modelData.act === "shutdown") shutdownProc.running = true
+                  }
                 }
               }
             }

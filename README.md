@@ -62,13 +62,15 @@ A purple-nebula desktop theme with a matching dock skin, in every dock style (Cl
 
 The dock menus (the grid-button menu, the right-click app menu and the Reboot/Shut down popup) follow the chosen dock skin: change the skin and every menu changes colour with it. **Nebula is the standard** skin for a fresh install. The last skin, **Omarchy**, is the original look: its menus wear Omarchy's original colours (the Tokyo Night theme Omarchy installs with), so everyone knows it is the original look; the dock plate and icon tiles take their colours from the active Omarchy theme.
 
-One line of the dock menu has three cycle buttons: the **look** (Transparent = icons float, Solid = one plate behind the icons, Block = every icon on its own block), the **dock style** (Classic, Mac, Rubik) and the **icon size** (Small, Medium, Large). Each shows the current choice, and every press moves to the next one. **Full-width dock** is a separate menu item that stretches the solid bar across the screen. The **Icons** row ‹ › changes only the icons' look (any original skin's), the Skin buttons change skin and icons together, and the small ↺ button resets everything to Nebula (`legal-dock reset`). Nebula's icons are tinted purple like the Amber skin; **Nebula 2** is the plate look.
+One line of the dock menu has three cycle buttons: the **look** (Transparent = icons float, Solid = one plate behind the icons, Block = every icon on its own block), the **dock style** (Classic, Mac, Rubik) and the **icon size** (Small, Medium, Large). Each shows the current choice, and every press moves to the next one. The **Icons** row ‹ › changes only the icons' look (any original skin's), the Skin buttons change skin and icons together, and the small ↺ button resets everything to Nebula (`legal-dock reset`). Nebula's icons are tinted purple like the Amber skin; **Nebula 2** is the plate look.
 
 The bottom row of the dock menu has **Close**, **Apps**, the padlock, **Reboot** and the moon (reset to Nebula) buttons. The app drawer (Apps) wears the skin's colours too and is rewritten whenever the skin changes; press Apps again, the X, or Esc to close it.
 
 The **lock** button (a padlock, bottom row of the dock menu) locks the dock's layout: while it is locked you can't move the icons, change the skin or change the icons, and those controls are dimmed in the menu. Everything else (wallpaper, size, look, ...) keeps working. Press the padlock again to unlock.
 
 **Icon colours** (Mac and Rubik): the **Icons** row ‹ › changes only the icons and leaves the skin and menus alone. Mostly colour swaps: Match skin (tinted in the skin's colour), Nebula, Omarchy, Emerald, Sunset, Ocean, Neon, Amber, Rose, Gold and Mono; plus a few shapes: Pearls and Bubbles (circles), Blocks (each icon on a block in the skin's colours) and Cube (Rubik blocks). Picking a skin puts the icons back to Original.
+
+The menu's action buttons, **Move** (rearrange icons), **Mouse** (pointer settings) and **Shut Down** (plus **Hide** on the classic dock), are solid buttons on one line. The full-width bar is gone: Solid is the plate with a border around the icons.
 
 ## Minimize windows
 
