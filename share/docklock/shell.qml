@@ -405,6 +405,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             Rectangle {
               required property var modelData
               width: parent.width; height: 34; radius: 6
+              opacity: (locked && modelData.act === "move") ? 0.35 : 1
               color: ima.containsMouse ? selC : "transparent"
               Row {
                 anchors.verticalCenter: parent.verticalCenter; x: 10; spacing: 10
@@ -414,6 +415,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               MouseArea {
                 id: ima; anchors.fill: parent; hoverEnabled: true
                 onClicked: {
+                  if (locked && modelData.act === "move") return
                   menuOpen = false
                   if (modelData.act === "apps") appsProc.running = true
                   else if (modelData.act === "lock") toggle.running = true
@@ -491,6 +493,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); zoomRaw = Math.round(v * 20) / 20; if (zoomRaw < 1.03) zoomRaw = 1.0; writeT.restart() }
           }
           Row {
+            enabled: !locked; opacity: locked ? 0.35 : 1
             width: parent.width; height: 34; spacing: 4
             Rectangle { width: 34; height: 34; radius: 6; color: spa.containsMouse ? selC : "transparent"
               Text { anchors.centerIn: parent; text: "\u2039"; color: txtC; font.pixelSize: 20 }
@@ -502,6 +505,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               MouseArea { id: sna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "next"; skinProc.running = false; skinProc.running = true } } }
           }
           Row {
+            enabled: !locked; opacity: locked ? 0.35 : 1
             visible: mac
             width: parent.width; height: mac ? 34 : 0; spacing: 4
             Rectangle { width: 34; height: 34; radius: 6; color: ipa.containsMouse ? selC : "transparent"
@@ -529,11 +533,11 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           Row {
             id: bottomRow
             width: parent.width; height: 28; spacing: 6
-            Rectangle { width: 54; height: 24; radius: 6; opacity: locked ? 0.4 : 1; anchors.verticalCenter: parent.verticalCenter; color: apa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+            Rectangle { width: 54; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: apa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
               Row { anchors.centerIn: parent; spacing: 4
                 Text { text: "\uf00a"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
                 Text { text: "Apps"; color: txtC; font.pixelSize: 10 } }
-              MouseArea { id: apa; anchors.fill: parent; hoverEnabled: true; enabled: !locked; onClicked: { menuOpen = false; appsProc.running = true } } }
+              MouseArea { id: apa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuOpen = false; appsProc.running = true } } }
             Rectangle { width: 54; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: cla.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
               Row { anchors.centerIn: parent; spacing: 4
                 Text { text: "\uf00d"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
@@ -543,18 +547,11 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               Text { anchors.centerIn: parent; text: locked ? "\uf023" : "\uf09c"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
               MouseArea { id: lka2; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); toggle.running = true } } }
             Item { width: Math.max(0, parent.width - 54 - 54 - 30 - 30 - 18); height: 1 }
-            Rectangle { id: rsBtn; width: 30; height: 24; radius: 6; opacity: locked ? 0.4 : 1; anchors.verticalCenter: parent.verticalCenter
+            Rectangle { id: rsBtn; width: 30; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter
               color: rsa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
               Text { anchors.centerIn: parent; text: "\uf0e2"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-              MouseArea { id: rsa; anchors.fill: parent; hoverEnabled: true; enabled: !locked; onClicked: { menuT.restart(); resetProc.running = false; resetProc.running = true } } }
+              MouseArea { id: rsa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); resetProc.running = false; resetProc.running = true } } }
           }
-        }
-        // Locked: everything above the bottom row is frozen (dimmed and not clickable) until the lock is opened again.
-        Rectangle {
-          visible: locked
-          anchors { left: parent.left; right: parent.right; top: parent.top; bottom: parent.bottom; margins: 4; bottomMargin: 6 + 28 + 6 }
-          radius: 6; color: Qt.rgba(0, 0, 0, 0.5)
-          MouseArea { anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.AllButtons; onClicked: menuT.restart() }
         }
       }
     }
