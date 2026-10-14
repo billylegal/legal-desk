@@ -76,7 +76,7 @@ The **Mouse** popup has a **Scroll** speed slider (0.2x to 3x, remembered) a poi
 
 The menu is identical for Classic, Mac and Rubik: same buttons, same size, nothing moves when you change style. The few things the classic dock can't do (**Zoom** magnification and the **Icons** looks) are shown dimmed there.
 
-**Clock:** the **CLOCK** button in the menu puts a small clock beside the dock, on the left or right side (or off), in the skin's colours; **TIME** switches 12 / 24 hour. The date sits under the time, and a small camera button next to it takes a screenshot (Omarchy's screenshot tool). Works on Classic, Mac and Rubik.
+**Clock:** the **CLOCK** button in the menu puts a small clock on the hard left or hard right edge of the screen (or off), level with the dock and never affected by the dock, in the skin's colours; **TIME** switches 12 / 24 hour. The date sits under the time, and a small camera button next to it takes a screenshot (Omarchy's screenshot tool). Works on Classic, Mac and Rubik.
 
 ## Minimize windows
 

@@ -251,18 +251,15 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       ckPosFile.reload(); ckFmtFile.reload()
     }
   }
+  // The clock is its own panel pinned to the hard left or right edge of the screen, level with the dock: it never moves with the dock, its size or its zoom.
   Variants {
-    model: clockPos !== "off" && lastDock && !mac ? [lastDock] : []
+    model: clockPos !== "off" ? [lastDock ? lastDock.mon : (Quickshell.screens.length ? Quickshell.screens[0].name : "")] : []
     PanelWindow {
       required property var modelData
-      screen: Quickshell.screens.find(s => s.name === modelData.mon) ?? Quickshell.screens[0]
-      anchors { top: true; left: true }
-      readonly property real cw: ctxt.implicitWidth + 16 + 26 + 8
-      margins {
-        left: Math.max(2, clockPos === "left" ? modelData.x - cw - 8 : modelData.x + modelData.w + 8)
-        top: modelData.y + Math.max(0, (modelData.h - 40) / 2)
-      }
-      implicitWidth: cw; implicitHeight: 40
+      screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
+      anchors { bottom: true; left: clockPos === "left"; right: clockPos === "right" }
+      margins { bottom: 6; left: 6; right: 6 }
+      implicitWidth: ctxt.implicitWidth + 16 + 26 + 8; implicitHeight: 40
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.layer: WlrLayer.Top

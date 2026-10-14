@@ -505,22 +505,6 @@ print(json.dumps(out))
       border.color: root.skin.b; border.width: 1
       Bevel { visible: !!root.skin.bevel }
     }
-    // Clock beside the plate (left or right), in the skin's colours: time, the date underneath, and a snapshot (screenshot) button.
-    Rectangle {
-      visible: root.clockPos !== "off" && !root.hidden
-      readonly property real plateW: root.lay.tot + 18
-      height: 40; width: ckcol.implicitWidth + 16 + 26 + 8; radius: 8
-      color: root.bgC; border.color: root.accC; border.width: 1
-      anchors.bottom: parent.bottom; anchors.bottomMargin: 3 + Math.max(0, (root.base + 10 - 40) / 2)
-      x: root.clockPos === "left" ? Math.max(2, (parent.width - plateW) / 2 - width - 8) : Math.min(parent.width - width - 2, (parent.width + plateW) / 2 + 8)
-      Column { id: ckcol; x: 8; anchors.verticalCenter: parent.verticalCenter; spacing: 0
-        Text { text: root.clockTxt; color: root.txtC; font.pixelSize: 13; font.bold: true }
-        Text { text: root.clockDate; color: root.accC; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 } }
-      Rectangle { id: snapBtn; width: 24; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
-        color: snapMa.containsMouse ? root.selC : "transparent"; border.color: root.accC; border.width: 1
-        Text { anchors.centerIn: parent; text: "\uf030"; color: root.txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
-        MouseArea { id: snapMa; anchors.fill: parent; hoverEnabled: true; onClicked: { snapProc.running = false; snapProc.running = true } } }
-    }
     // Move Icons mode: a Done button above the dock
     Rectangle {
       visible: root.moveMode
