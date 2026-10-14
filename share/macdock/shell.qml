@@ -199,6 +199,32 @@ ShellRoot {
     onLoadFailed: root.blocks = false
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: blocksFile.reload() }
+  // ---- Clock beside the dock (menu: CLOCK / TIME): drawn here for the Mac and Rubik docks; files ~/.cache/dock-clock, dock-clock-fmt ----
+  property string clockPos: "off"
+  property bool clock24: false
+  property string clockTxt: ""
+  FileView {
+    id: ckPosFile
+    path: Quickshell.env("HOME") + "/.cache/dock-clock"
+    printErrors: false
+    onLoaded: { var t = text().trim(); root.clockPos = (t === "left" || t === "right") ? t : "off" }
+    onLoadFailed: root.clockPos = "off"
+  }
+  FileView {
+    id: ckFmtFile
+    path: Quickshell.env("HOME") + "/.cache/dock-clock-fmt"
+    printErrors: false
+    onLoaded: root.clock24 = text().trim() === "24"
+    onLoadFailed: root.clock24 = false
+  }
+  Timer {
+    interval: 1000; running: true; repeat: true; triggeredOnStart: true
+    onTriggered: {
+      var d = new Date(), m = d.getMinutes(), h = d.getHours()
+      root.clockTxt = root.clock24 ? (("0" + h).slice(-2) + ":" + ("0" + m).slice(-2)) : (((h % 12) || 12) + ":" + ("0" + m).slice(-2) + (h < 12 ? " AM" : " PM"))
+      ckPosFile.reload(); ckFmtFile.reload()
+    }
+  }
   property bool solid: true
   FileView {
     path: Quickshell.env("HOME") + "/.config/nwg-dock-hyprland/style.css"
@@ -475,6 +501,16 @@ print(json.dumps(out))
       gradient: Gradient { GradientStop { position: 0; color: root.skin.c1 } GradientStop { position: 1; color: root.skin.c2 } }
       border.color: root.skin.b; border.width: 1
       Bevel { visible: !!root.skin.bevel }
+    }
+    // Clock beside the plate (left or right), in the skin's colours.
+    Rectangle {
+      visible: root.clockPos !== "off" && !root.hidden
+      readonly property real plateW: root.lay.tot + 18
+      height: 24; width: ckt.implicitWidth + 18; radius: 7
+      color: root.bgC; border.color: root.accC; border.width: 1
+      anchors.bottom: parent.bottom; anchors.bottomMargin: 3 + Math.max(0, (root.base + 10 - 24) / 2)
+      x: root.clockPos === "left" ? Math.max(2, (parent.width - plateW) / 2 - width - 8) : Math.min(parent.width - width - 2, (parent.width + plateW) / 2 + 8)
+      Text { id: ckt; anchors.centerIn: parent; text: root.clockTxt; color: root.txtC; font.pixelSize: 12; font.bold: true }
     }
     // Move Icons mode: a Done button above the dock
     Rectangle {

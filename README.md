@@ -76,6 +76,8 @@ The **Mouse** popup has a **Scroll** speed slider (0.2x to 3x, remembered) and a
 
 The menu is identical for Classic, Mac and Rubik: same buttons, same size, nothing moves when you change style. The few things the classic dock can't do (**Zoom** magnification and the **Icons** looks) are shown dimmed there.
 
+**Clock:** the **CLOCK** button in the menu puts a small clock beside the dock, on the left or right side (or off), in the skin's colours; **TIME** switches 12 / 24 hour. Hover over it for the date. Works on Classic, Mac and Rubik.
+
 ## Minimize windows
 
 Hyprland has no minimize, so Legal Dock adds one: `/usr/lib/legal-dock/win-minimize` parks a window on a hidden workspace and brings it back later. Clicking a minimized app in the **Mac dock** restores it. To use it elsewhere:

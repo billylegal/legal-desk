@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: 246
+  readonly property int menuH: 282
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -211,6 +211,62 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   Process { id: mover; property int a: 0; property int b: 0
     command: ["/usr/lib/legal-dock/dock-move-pin", String(a), String(b)] }
   Process { id: toggle; command: ["/usr/lib/legal-dock/dock-lock-toggle"]; onExited: poll.running = true }
+
+  // ---- Clock beside the dock (menu: CLOCK / FORMAT): off, left or right of the dock, any style ----
+  property string clockPos: "off"
+  property bool clock24: false
+  property string clockTxt: ""
+  property string clockDate: ""
+  FileView {
+    id: ckPosFile
+    path: Quickshell.env("HOME") + "/.cache/dock-clock"
+    printErrors: false
+    onLoaded: { var t = text().trim(); ldr.clockPos = (t === "left" || t === "right") ? t : "off" }
+    onLoadFailed: ldr.clockPos = "off"
+  }
+  FileView {
+    id: ckFmtFile
+    path: Quickshell.env("HOME") + "/.cache/dock-clock-fmt"
+    printErrors: false
+    onLoaded: ldr.clock24 = text().trim() === "24"
+    onLoadFailed: ldr.clock24 = false
+  }
+  Process { id: ckProc; property var a: ["pos", "next"]; command: ["/usr/lib/legal-dock/dock-clock"].concat(a); onExited: { ckPosFile.reload(); ckFmtFile.reload() } }
+  Timer {
+    interval: 1000; running: true; repeat: true; triggeredOnStart: true
+    onTriggered: {
+      var d = new Date(), m = d.getMinutes(), h = d.getHours()
+      ldr.clockTxt = ldr.clock24 ? (("0" + h).slice(-2) + ":" + ("0" + m).slice(-2)) : (((h % 12) || 12) + ":" + ("0" + m).slice(-2) + (h < 12 ? " AM" : " PM"))
+      ldr.clockDate = Qt.formatDate(d, "ddd d MMM")
+      ckPosFile.reload(); ckFmtFile.reload()
+    }
+  }
+  Variants {
+    model: clockPos !== "off" && lastDock && !mac ? [lastDock] : []
+    PanelWindow {
+      required property var modelData
+      screen: Quickshell.screens.find(s => s.name === modelData.mon) ?? Quickshell.screens[0]
+      anchors { top: true; left: true }
+      readonly property real cw: ctxt.implicitWidth + 22
+      margins {
+        left: Math.max(2, clockPos === "left" ? modelData.x - cw - 8 : modelData.x + modelData.w + 8)
+        top: modelData.y + Math.max(0, (modelData.h - 28) / 2)
+      }
+      implicitWidth: cw; implicitHeight: 28
+      color: "transparent"
+      exclusionMode: ExclusionMode.Ignore
+      WlrLayershell.layer: WlrLayer.Top
+      WlrLayershell.namespace: "dockclock"
+      Rectangle {
+        anchors.fill: parent; radius: 8; color: bgC; border.color: accC; border.width: 1
+        Text { id: ctxt; anchors.centerIn: parent; text: clockTxt; color: txtC; font.pixelSize: 13; font.bold: true }
+        MouseArea { id: cka; anchors.fill: parent; hoverEnabled: true }
+        Rectangle { visible: cka.containsMouse; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.top; anchors.bottomMargin: 4
+          width: dtxt.width + 12; height: 18; radius: 5; color: bgC; border.color: accC; border.width: 1
+          Text { id: dtxt; anchors.centerIn: parent; text: clockDate; color: txtC; font.pixelSize: 10 } }
+      }
+    }
+  }
 
   // Edit mode (unlocked): drag an icon sideways and let go to move it.
   Variants {
@@ -508,6 +564,22 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             txtC: ldr.txtC; accC: ldr.accC; selC: ldr.selC; bgC: ldr.bgC
             enabled: mac; opacity: mac ? 1 : 0.4; width: parent.width; label: "Zoom"; from: 1.0; to: 3.2; value: zoomEff; shown: zoomEff < 1.03 ? "off" : zoomEff.toFixed(2) + "x"
             onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); zoomRaw = Math.round(v * 20) / 20; if (zoomRaw < 1.03) zoomRaw = 1.0; writeT.restart() }
+          }
+          Row {
+            width: parent.width; height: 34; spacing: 4
+            CycleButton {
+              width: (parent.width - 4) / 2
+              caption: "CLOCK"
+              label: clockPos === "off" ? "Off" : (clockPos === "left" ? "Left side" : "Right side")
+              onStep: (d) => { menuT.restart(); ckProc.a = ["pos", d > 0 ? "next" : "prev"]; ckProc.running = false; ckProc.running = true }
+            }
+            CycleButton {
+              width: (parent.width - 4) / 2
+              enabled: clockPos !== "off"; opacity: clockPos !== "off" ? 1 : 0.4
+              caption: "TIME"
+              label: clock24 ? "24 hour" : "12 hour"
+              onStep: (d) => { menuT.restart(); ckProc.a = ["fmt", "toggle"]; ckProc.running = false; ckProc.running = true }
+            }
           }
           // Skin, wallpaper and icon look as compact cycle buttons: ‹ › inside each one steps back / forward.
           Row {

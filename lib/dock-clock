@@ -1,0 +1,12 @@
+#!/bin/bash
+# dock-clock pos next|prev|off|left|right | fmt toggle|12|24 | show : a small clock beside the dock (left or right of it), any dock style.
+H="$HOME/.cache"; P="$H/dock-clock"; Fm="$H/dock-clock-fmt"; POS=(off left right)
+cur=$(cat "$P" 2>/dev/null); i=0; for k in 0 1 2; do [ "${POS[$k]}" = "$cur" ] && i=$k; done
+case "$1" in
+  pos) case "$2" in
+         next) i=$(( (i + 1) % 3 )) ;; prev) i=$(( (i + 2) % 3 )) ;;
+         off|left|right) for k in 0 1 2; do [ "${POS[$k]}" = "$2" ] && i=$k; done ;;
+       esac; echo "${POS[$i]}" > "$P" ;;
+  fmt) case "$2" in 12|24) echo "$2" > "$Fm" ;; *) [ "$(cat "$Fm" 2>/dev/null)" = 24 ] && echo 12 > "$Fm" || echo 24 > "$Fm" ;; esac ;;
+esac
+echo "${POS[$i]} $(cat "$Fm" 2>/dev/null || echo 12)h"
