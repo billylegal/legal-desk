@@ -9,7 +9,7 @@ license=('MIT')
 install=legal-dock.install
 depends=('hyprland' 'nwg-dock-hyprland' 'nwg-drawer' 'quickshell' 'inotify-tools' 'python' 'util-linux' 'procps-ng' 'bash')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('63f931ccbcbe2f88a700a615054be8353c0f46147b272774554f8eda1980b9bf')
+sha256sums=('d73ff04e249e14accb7f9bd87d2b740ac0baa4d16e067ec4761216711a4f208a')
 
 package() {
   cd "$pkgname-$pkgver"
