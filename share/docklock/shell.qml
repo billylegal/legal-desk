@@ -16,6 +16,8 @@ ShellRoot {
   property string dockJson: ""
   property var lastDock: null
   property int pinCount: 0
+  // Every second word of a menu label gets a capital: "Lock dock" -> "Lock Dock".
+  function cap2(s) { var w = String(s).split(" "); for (var i = 1; i < w.length; i += 2) if (w[i].length) w[i] = w[i].charAt(0).toUpperCase() + w[i].slice(1); return w.join(" ") }
   Timer { interval: 8000; running: menuOpen; repeat: false; onTriggered: menuOpen = false }
   IpcHandler { target: "dockmenu"; function toggle(): void { menuOpen = !menuOpen } }
   readonly property int cpitch: iconSize === "small" ? 40 : (iconSize === "large" ? 69 : 53)
@@ -184,7 +186,7 @@ print(json.dumps({"transparent": "background: transparent" in open(os.path.expan
               Row {
                 anchors.verticalCenter: parent.verticalCenter; x: 10; spacing: 10
                 Text { text: modelData.icon; color: "#C1C497"; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; width: 18 }
-                Text { text: modelData.label; color: "#C1C497"; font.pixelSize: 13 }
+                Text { text: cap2(modelData.label); color: "#C1C497"; font.pixelSize: 13 }
               }
               MouseArea {
                 id: ima; anchors.fill: parent; hoverEnabled: true

@@ -341,6 +341,8 @@ print(json.dumps(out))
     command: ["python3", "-c", "import json,subprocess,sys\nc=sys.argv[1].lower()\nprint(json.dumps([{'a':w['address'],'t':w['title']} for w in json.loads(subprocess.run(['hyprctl','clients','-j'],capture_output=True,text=True).stdout or '[]') if w['class'].lower()==c]))", cls]
     stdout: StdioCollector { onStreamFinished: { try { root.ctxWins = JSON.parse(text) } catch (e) { } } }
   }
+  // Every second word of a menu label gets a capital: "Lock dock" -> "Lock Dock".
+  function cap2(s) { var w = String(s).split(" "); for (var i = 1; i < w.length; i += 2) if (w[i].length) w[i] = w[i].charAt(0).toUpperCase() + w[i].slice(1); return w.join(" ") }
   function isBrowser(c) { return /^(google-chrome|chromium|brave|microsoft-edge|vivaldi|helium|firefox|zen|librewolf)/i.test(c) }
   function ctxRows() {
     var rows = []
@@ -380,7 +382,7 @@ print(json.dumps(out))
               color: (modelData.a !== "hdr" && ma.containsMouse) ? "#2a3a30" : "transparent"
               Text {
                 x: 10; anchors.verticalCenter: parent.verticalCenter
-                text: modelData.a === "hdr" ? "●  " + modelData.l : modelData.l
+                text: modelData.a === "hdr" ? "●  " + root.cap2(modelData.l) : (modelData.a === "focus" ? modelData.l : root.cap2(modelData.l))
                 color: modelData.a === "hdr" ? "#8fd18f" : "#C1C497"; font.pixelSize: 13
                 font.bold: modelData.a === "hdr"
               }
