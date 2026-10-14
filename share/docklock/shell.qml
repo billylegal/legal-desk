@@ -5,6 +5,25 @@ import Quickshell.Io
 
 // Small lock/unlock button just right of the dock. Locked = icons can't be rearranged.
 ShellRoot {
+  id: ldr
+  // Menu colours follow the active Omarchy theme (colors.toml); the defaults are the original greens.
+  property color bgC: "#111c18"
+  property color accC: "#C1C497"
+  property color txtC: "#C1C497"
+  property color selC: "#2a3a30"
+  readonly property color hiC: Qt.lighter(selC, 1.6)
+  FileView {
+    id: themeColors
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
+    onLoaded: {
+      var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*"(#[0-9a-fA-F]{6})"/); if (m) c[m[1]] = m[2] })
+      if (c.dark_background || c.background) ldr.bgC = c.dark_background || c.background
+      if (c.accent) ldr.accC = c.accent
+      if (c.foreground) ldr.txtC = c.foreground
+      if (c.selection) ldr.selC = c.selection
+    }
+  }
+  Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: false; onTriggered: themeColors.reload() }
   property var dock: null
   property bool locked: false
   property bool hidden: false
@@ -53,16 +72,20 @@ ShellRoot {
     property real to: 1
     property real value: 0
     property string shown: ""
+    property color txtC: "#C1C497"
+    property color accC: "#C1C497"
+    property color selC: "#2a3a30"
+    property color bgC: "#111c18"
     signal moved(real v)
     readonly property real frac: Math.max(0, Math.min(1, (value - from) / (to - from)))
     height: 34; radius: 6; color: "transparent"
-    Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: sr.label; color: "#C1C497"; font.pixelSize: 12; width: 36 }
+    Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: sr.label; color: sr.txtC; font.pixelSize: 12; width: 36 }
     Rectangle {
-      id: trk; x: 50; width: sr.width - 50 - 54; height: 4; radius: 2; anchors.verticalCenter: parent.verticalCenter; color: "#2a3a30"
-      Rectangle { width: parent.width * sr.frac; height: parent.height; radius: 2; color: "#C1C497" }
-      Rectangle { x: parent.width * sr.frac - 7; y: -5; width: 14; height: 14; radius: 7; color: "#C1C497"; border.color: "#111c18"; border.width: 2 }
+      id: trk; x: 50; width: sr.width - 50 - 54; height: 4; radius: 2; anchors.verticalCenter: parent.verticalCenter; color: sr.selC
+      Rectangle { width: parent.width * sr.frac; height: parent.height; radius: 2; color: sr.accC }
+      Rectangle { x: parent.width * sr.frac - 7; y: -5; width: 14; height: 14; radius: 7; color: sr.accC; border.color: sr.bgC; border.width: 2 }
     }
-    Text { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; width: 44; horizontalAlignment: Text.AlignRight; text: sr.shown; color: "#C1C497"; font.pixelSize: 11 }
+    Text { anchors.right: parent.right; anchors.rightMargin: 8; anchors.verticalCenter: parent.verticalCenter; width: 44; horizontalAlignment: Text.AlignRight; text: sr.shown; color: sr.txtC; font.pixelSize: 11 }
     MouseArea {
       x: trk.x - 8; width: trk.width + 16; height: parent.height
       function set(mx) { sr.moved(sr.from + Math.max(0, Math.min(1, (mx - 8) / trk.width)) * (sr.to - sr.from)) }
@@ -205,13 +228,14 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       WlrLayershell.namespace: "dockmouse"
       WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
       Rectangle {
-        anchors.fill: parent; radius: 10; color: "#111c18"; border.color: "#C1C497"; border.width: 1
+        anchors.fill: parent; radius: 10; color: bgC; border.color: accC; border.width: 1
         focus: true
         Keys.onEscapePressed: mouseOpen = false
         Column {
           anchors.fill: parent; anchors.margins: 6; spacing: 2
           Text { height: 24; width: parent.width; text: "\uf245   Mouse Pointer"; color: "#8fd18f"; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13; font.bold: true; verticalAlignment: Text.AlignVCenter; leftPadding: 6 }
           SliderRow {
+            txtC: ldr.txtC; accC: ldr.accC; selC: ldr.selC; bgC: ldr.bgC
             width: parent.width; label: "Speed"; from: -1; to: 1; value: mSpeed; shown: (mSpeed > 0 ? "+" : "") + mSpeed.toFixed(2)
             onMoved: (v) => { mSpeed = Math.round(v * 20) / 20; mouseT.restart(); speedT.restart() }
           }
@@ -226,8 +250,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               required property var modelData
               readonly property bool on: modelData.k === "natural" ? mNatural : (modelData.k === "left" ? mLeft : mFlat)
               width: parent.width; height: 34; radius: 6
-              color: mta.containsMouse ? "#2a3a30" : "transparent"
-              Text { x: 10; anchors.verticalCenter: parent.verticalCenter; color: "#C1C497"; font.pixelSize: 13; text: parent.on ? cap2(modelData.l) : cap2(modelData.l2) }
+              color: mta.containsMouse ? selC : "transparent"
+              Text { x: 10; anchors.verticalCenter: parent.verticalCenter; color: txtC; font.pixelSize: 13; text: parent.on ? cap2(modelData.l) : cap2(modelData.l2) }
               Text { anchors.right: parent.right; anchors.rightMargin: 10; anchors.verticalCenter: parent.verticalCenter; color: "#8fd18f"; font.pixelSize: 11; text: "\u21c4" }
               MouseArea {
                 id: mta; anchors.fill: parent; hoverEnabled: true
@@ -240,13 +264,13 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             }
           }
           Rectangle {
-            width: parent.width; height: 34; radius: 6; color: mra.containsMouse ? "#2a3a30" : "transparent"
-            Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: "Reset To Default"; color: "#C1C497"; font.pixelSize: 13 }
+            width: parent.width; height: 34; radius: 6; color: mra.containsMouse ? selC : "transparent"
+            Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: "Reset To Default"; color: txtC; font.pixelSize: 13 }
             MouseArea { id: mra; anchors.fill: parent; hoverEnabled: true; onClicked: { mSpeed = 0; mNatural = false; mLeft = false; mFlat = false; mset(["reset"]) } }
           }
           Rectangle {
-            width: parent.width; height: 34; radius: 6; color: mca.containsMouse ? "#2a3a30" : "transparent"
-            Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: "Close"; color: "#C1C497"; font.pixelSize: 13 }
+            width: parent.width; height: 34; radius: 6; color: mca.containsMouse ? selC : "transparent"
+            Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: "Close"; color: txtC; font.pixelSize: 13 }
             MouseArea { id: mca; anchors.fill: parent; hoverEnabled: true; onClicked: mouseOpen = false }
           }
         }
@@ -287,12 +311,12 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
 
       Rectangle {
         anchors.fill: parent; radius: 11
-        color: gma.containsMouse || menuOpen ? "#2a3a30" : "#111c18"
-        border.color: "#C1C497"; border.width: 1
+        color: gma.containsMouse || menuOpen ? selC : bgC
+        border.color: accC; border.width: 1
         Text {
           anchors.centerIn: parent
           text: "\uf013"
-          color: "#C1C497"
+          color: txtC
           font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11
         }
         MouseArea { id: gma; anchors.fill: parent; hoverEnabled: true; onClicked: menuOpen = !menuOpen }
@@ -316,7 +340,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
 
       Rectangle {
         anchors.fill: parent; radius: 10
-        color: "#111c18"; border.color: "#C1C497"; border.width: 1
+        color: bgC; border.color: accC; border.width: 1
         focus: true
         Keys.onEscapePressed: menuOpen = false
         Column {
@@ -337,11 +361,11 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             Rectangle {
               required property var modelData
               width: parent.width; height: 34; radius: 6
-              color: ima.containsMouse ? "#2a3a30" : "transparent"
+              color: ima.containsMouse ? selC : "transparent"
               Row {
                 anchors.verticalCenter: parent.verticalCenter; x: 10; spacing: 10
-                Text { text: modelData.icon; color: "#C1C497"; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; width: 18 }
-                Text { text: cap2(modelData.label); color: "#C1C497"; font.pixelSize: 13 }
+                Text { text: modelData.icon; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 14; width: 18 }
+                Text { text: cap2(modelData.label); color: txtC; font.pixelSize: 13 }
               }
               MouseArea {
                 id: ima; anchors.fill: parent; hoverEnabled: true
@@ -367,9 +391,9 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               Rectangle {
                 required property var modelData
                 width: (parent.width - 8) / 3; height: 34; radius: 6
-                color: (modelData.k === "off" ? !mac : (modelData.k === "on" ? (mac && !rubik) : (mac && rubik))) ? "#3a5a44" : (sta.containsMouse ? "#2a3a30" : "transparent")
-                border.color: "#C1C497"; border.width: (modelData.k === "off" ? !mac : (modelData.k === "on" ? (mac && !rubik) : (mac && rubik))) ? 1 : 0
-                Text { anchors.centerIn: parent; text: modelData.l; color: "#C1C497"; font.pixelSize: 12 }
+                color: (modelData.k === "off" ? !mac : (modelData.k === "on" ? (mac && !rubik) : (mac && rubik))) ? hiC : (sta.containsMouse ? selC : "transparent")
+                border.color: accC; border.width: (modelData.k === "off" ? !mac : (modelData.k === "on" ? (mac && !rubik) : (mac && rubik))) ? 1 : 0
+                Text { anchors.centerIn: parent; text: modelData.l; color: txtC; font.pixelSize: 12 }
                 MouseArea {
                   id: sta; anchors.fill: parent; hoverEnabled: true
                   onClicked: { menuOpen = false; styler.which = modelData.k; styler.running = true }
@@ -384,9 +408,9 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               Rectangle {
                 required property var modelData
                 width: (parent.width - 8) / 3; height: 34; radius: 6
-                color: presetOn(modelData.k) ? "#3a5a44" : (sma.containsMouse ? "#2a3a30" : "transparent")
-                border.color: "#C1C497"; border.width: presetOn(modelData.k) ? 1 : 0
-                Text { anchors.centerIn: parent; text: modelData.l; color: "#C1C497"; font.pixelSize: 12 }
+                color: presetOn(modelData.k) ? hiC : (sma.containsMouse ? selC : "transparent")
+                border.color: accC; border.width: presetOn(modelData.k) ? 1 : 0
+                Text { anchors.centerIn: parent; text: modelData.l; color: txtC; font.pixelSize: 12 }
                 MouseArea {
                   id: sma; anchors.fill: parent; hoverEnabled: true
                   onClicked: { if (mac) menuT.restart(); else menuOpen = false; sizer.which = modelData.k; sizer.running = true }
@@ -395,34 +419,36 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             }
           }
           SliderRow {
+            txtC: ldr.txtC; accC: ldr.accC; selC: ldr.selC; bgC: ldr.bgC
             visible: mac; width: parent.width; label: "Size"; from: 28; to: 96; value: sizePx; shown: Math.round(sizePx) + "px"
             onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); sizePx = Math.round(v); writeT.restart() }
           }
           SliderRow {
+            txtC: ldr.txtC; accC: ldr.accC; selC: ldr.selC; bgC: ldr.bgC
             visible: mac; width: parent.width; label: "Zoom"; from: 1.0; to: 3.2; value: zoomEff; shown: zoomEff < 1.03 ? "off" : zoomEff.toFixed(2) + "x"
             onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); zoomRaw = Math.round(v * 20) / 20; if (zoomRaw < 1.03) zoomRaw = 1.0; writeT.restart() }
           }
           Row {
             width: parent.width; height: 34; spacing: 4
-            Rectangle { width: 34; height: 34; radius: 6; color: spa.containsMouse ? "#2a3a30" : "transparent"
-              Text { anchors.centerIn: parent; text: "\u2039"; color: "#C1C497"; font.pixelSize: 20 }
+            Rectangle { width: 34; height: 34; radius: 6; color: spa.containsMouse ? selC : "transparent"
+              Text { anchors.centerIn: parent; text: "\u2039"; color: txtC; font.pixelSize: 20 }
               MouseArea { id: spa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "prev"; skinProc.running = false; skinProc.running = true } } }
-            Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: "#C1C497"; border.width: 1
-              Text { anchors.centerIn: parent; text: "Skin: " + skinNames[skinIdx]; color: "#C1C497"; font.pixelSize: 12 } }
-            Rectangle { width: 34; height: 34; radius: 6; color: sna.containsMouse ? "#2a3a30" : "transparent"
-              Text { anchors.centerIn: parent; text: "\u203a"; color: "#C1C497"; font.pixelSize: 20 }
+            Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: accC; border.width: 1
+              Text { anchors.centerIn: parent; text: "Skin: " + skinNames[skinIdx]; color: txtC; font.pixelSize: 12 } }
+            Rectangle { width: 34; height: 34; radius: 6; color: sna.containsMouse ? selC : "transparent"
+              Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
               MouseArea { id: sna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "next"; skinProc.running = false; skinProc.running = true } } }
           }
           Row {
             visible: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0
             width: parent.width; height: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0 ? 34 : 0; spacing: 4
-            Rectangle { width: 34; height: 34; radius: 6; color: wpa.containsMouse ? "#2a3a30" : "transparent"
-              Text { anchors.centerIn: parent; text: "\u2039"; color: "#C1C497"; font.pixelSize: 20 }
+            Rectangle { width: 34; height: 34; radius: 6; color: wpa.containsMouse ? selC : "transparent"
+              Text { anchors.centerIn: parent; text: "\u2039"; color: txtC; font.pixelSize: 20 }
               MouseArea { id: wpa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); wallProc.a = "prev"; wallProc.running = false; wallProc.running = true } } }
-            Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: "#C1C497"; border.width: 1
-              Text { anchors.centerIn: parent; width: parent.width - 8; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter; text: "Wallpaper " + (wallTxt.split(" ")[0] || "..."); color: "#C1C497"; font.pixelSize: 12 } }
-            Rectangle { width: 34; height: 34; radius: 6; color: wna.containsMouse ? "#2a3a30" : "transparent"
-              Text { anchors.centerIn: parent; text: "\u203a"; color: "#C1C497"; font.pixelSize: 20 }
+            Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: accC; border.width: 1
+              Text { anchors.centerIn: parent; width: parent.width - 8; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter; text: "Wallpaper " + (wallTxt.split(" ")[0] || "..."); color: txtC; font.pixelSize: 12 } }
+            Rectangle { width: 34; height: 34; radius: 6; color: wna.containsMouse ? selC : "transparent"
+              Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
               MouseArea { id: wna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); wallProc.a = "next"; wallProc.running = false; wallProc.running = true } } }
           }
         }
