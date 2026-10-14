@@ -1,11 +1,12 @@
 # Legal Dock
 
-A dock for [Hyprland](https://hypr.land) / [Omarchy](https://omarchy.org) with two styles you can switch between with one click:
+A dock for [Hyprland](https://hypr.land) / [Omarchy](https://omarchy.org) with three styles you can switch between with one click:
 
 - **Classic** – the [nwg-dock-hyprland](https://github.com/nwg-piotr/nwg-dock-hyprland) dock.
-- **Mac** – a magnifying, macOS-style dock built with [Quickshell](https://quickshell.org): running apps, right-click menu (windows / new window / pin / close), middle-click to pin.
+- **Mac** – a magnifying, macOS-style dock built with [Quickshell](https://quickshell.org): running apps, right-click menu (windows / new window / pin / close), middle-click to pin, and hover name labels.
+- **Rubik** – the Mac dock dressed as a Rubik's Cube: black cube-plastic frame, every app on a coloured sticker tile, and a quarter-turn twist when you click it.
 
-Plus a menu (the grid button) with **Small / Medium / Large** icons, **lock** icon order, **hide** (auto-hide), **full width** and **transparent** modes, an app drawer button, and a confirm-before-reboot button.
+Plus a menu (the grid button) with **Small / Medium / Large** icons (tight sizes; Large no longer balloons), **lock** icon order, **hide** (auto-hide), **full width** and **transparent** modes, an app drawer button, and a confirm-before-reboot button.
 
 ## Install
 
@@ -28,6 +29,7 @@ legal-dock start      start the dock services (use this at login)
 legal-dock menu       open the dock menu
 legal-dock classic    switch to the classic dock
 legal-dock mac        switch to the Mac-style dock
+legal-dock rubik      switch to the Rubik's Cube style
 legal-dock small|medium|large
 legal-dock restart
 legal-dock status

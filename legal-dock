@@ -26,6 +26,7 @@ case "${1:-menu}" in
   menu) start_all; sleep 0.3; quickshell -p "$SH/docklock" ipc call dockmenu toggle ;;
   classic) "$B/macdock-toggle" off ;;
   mac) "$B/macdock-toggle" on ;;
+  rubik) "$B/macdock-toggle" rubik ;;
   small|medium|large) "$B/dock-size-set" "$1" ;;
   restart)
     pkill -x nwg-dock-hyprla

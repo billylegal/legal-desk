@@ -11,6 +11,7 @@ ShellRoot {
   property bool transparent: false
   property bool menuOpen: false
   property bool mac: false
+  property bool rubik: false
   property bool full: false
   property string iconSize: "medium"
   property string dockJson: ""
@@ -35,7 +36,7 @@ for mon, v in d.items():
 mac = os.path.exists(os.path.expanduser("~/.cache/dock-mac"))
 if out is None and mac:
     sz = open(os.path.expanduser("~/.cache/dock-size")).read().strip() if os.path.exists(os.path.expanduser("~/.cache/dock-size")) else "medium"
-    base = {"small": 32, "large": 80}.get(sz, 56)
+    base = {"small": 34, "large": 58}.get(sz, 46)
     for mon, v in d.items():
         for arr in v.get("levels", {}).values():
             for e in arr:
@@ -49,10 +50,10 @@ if out is None and mac:
 ss = "org.omarchy.screensaver" in subprocess.run(["hyprctl","clients","-j"],capture_output=True,text=True).stdout
 if ss: out = None
 n=len([x for x in open(os.path.expanduser("~/.cache/nwg-dock-pinned")).read().split(chr(10)) if x.strip()])
-print(json.dumps({"transparent": "background: transparent" in open(os.path.expanduser("~/.config/nwg-dock-hyprland/style.css")).read(), "hidden": (not ss) and os.path.exists(os.path.expanduser("~/.cache/dock-hidden")), "dock": out, "n": n, "mac": mac, "locked": os.path.exists(os.path.expanduser("~/.cache/dock-locked")), "full": os.path.exists(os.path.expanduser("~/.cache/dock-full")), "size": (open(os.path.expanduser("~/.cache/dock-size")).read().strip() if os.path.exists(os.path.expanduser("~/.cache/dock-size")) else "medium")}))
+print(json.dumps({"transparent": "background: transparent" in open(os.path.expanduser("~/.config/nwg-dock-hyprland/style.css")).read(), "hidden": (not ss) and os.path.exists(os.path.expanduser("~/.cache/dock-hidden")), "dock": out, "n": n, "mac": mac, "rubik": os.path.exists(os.path.expanduser("~/.cache/dock-mac")) and open(os.path.expanduser("~/.cache/dock-style")).read().strip() == "rubik" if os.path.exists(os.path.expanduser("~/.cache/dock-style")) else False, "locked": os.path.exists(os.path.expanduser("~/.cache/dock-locked")), "full": os.path.exists(os.path.expanduser("~/.cache/dock-full")), "size": (open(os.path.expanduser("~/.cache/dock-size")).read().strip() if os.path.exists(os.path.expanduser("~/.cache/dock-size")) else "medium")}))
 `]
     stdout: StdioCollector {
-      onStreamFinished: { try { var r = JSON.parse(text); var nd = JSON.stringify(r.dock); if (nd !== dockJson) { dockJson = nd; dock = r.dock; if (r.dock) lastDock = r.dock }; locked = r.locked; mac = r.mac; full = r.full; iconSize = r.size; hidden = r.hidden; transparent = r.transparent; pinCount = r.n } catch (e) { } }
+      onStreamFinished: { try { var r = JSON.parse(text); var nd = JSON.stringify(r.dock); if (nd !== dockJson) { dockJson = nd; dock = r.dock; if (r.dock) lastDock = r.dock }; locked = r.locked; mac = r.mac; rubik = r.rubik; full = r.full; iconSize = r.size; hidden = r.hidden; transparent = r.transparent; pinCount = r.n } catch (e) { } }
     }
   }
   Timer { interval: 500; running: true; repeat: true; onTriggered: if (!poll.running) poll.running = true }
@@ -153,7 +154,7 @@ print(json.dumps({"transparent": "background: transparent" in open(os.path.expan
       required property var modelData
       screen: Quickshell.screens.find(s => s.name === modelData.mon) ?? Quickshell.screens[0]
       anchors { top: true; left: true }
-      margins { left: modelData.x + (mac ? modelData.w - 100 - (iconSize === "small" ? 40 : (iconSize === "large" ? 88 : 64)) / 2 : Math.max(0, (modelData.w - (pinCount + 1) * cpitch) / 2) + pinCount * cpitch - 100 + cpitch / 2); top: modelData.y - (mac ? 5 : 8) * 36 - 2 * 36 - 22 }
+      margins { left: modelData.x + (mac ? modelData.w - 100 - (iconSize === "small" ? 42 : (iconSize === "large" ? 66 : 54)) / 2 : Math.max(0, (modelData.w - (pinCount + 1) * cpitch) / 2) + pinCount * cpitch - 100 + cpitch / 2); top: modelData.y - (mac ? 5 : 8) * 36 - 2 * 36 - 22 }
       implicitWidth: 200; implicitHeight: (mac ? 5 : 8) * 36 + 2 * 36 + 12
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
@@ -206,12 +207,12 @@ print(json.dumps({"transparent": "background: transparent" in open(os.path.expan
           Row {
             width: parent.width; height: 34; spacing: 4
             Repeater {
-              model: [ { l: "Classic style", k: "off" }, { l: "Mac style", k: "on" } ]
+              model: [ { l: "Classic", k: "off" }, { l: "Mac", k: "on" }, { l: "Rubik", k: "rubik" } ]
               Rectangle {
                 required property var modelData
-                width: (parent.width - 4) / 2; height: 34; radius: 6
-                color: (mac === (modelData.k === "on")) ? "#3a5a44" : (sta.containsMouse ? "#2a3a30" : "transparent")
-                border.color: "#C1C497"; border.width: (mac === (modelData.k === "on")) ? 1 : 0
+                width: (parent.width - 8) / 3; height: 34; radius: 6
+                color: (modelData.k === "off" ? !mac : (modelData.k === "on" ? (mac && !rubik) : (mac && rubik))) ? "#3a5a44" : (sta.containsMouse ? "#2a3a30" : "transparent")
+                border.color: "#C1C497"; border.width: (modelData.k === "off" ? !mac : (modelData.k === "on" ? (mac && !rubik) : (mac && rubik))) ? 1 : 0
                 Text { anchors.centerIn: parent; text: modelData.l; color: "#C1C497"; font.pixelSize: 12 }
                 MouseArea {
                   id: sta; anchors.fill: parent; hoverEnabled: true

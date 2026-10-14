@@ -20,10 +20,13 @@ ShellRoot {
     stdout: StdioCollector { onStreamFinished: { var n = parseInt(text); if (!isNaN(n)) root.winCount = n } }
   }
   property string sizeName: "medium"
-  readonly property int base: sizeName === "small" ? 32 : (sizeName === "large" ? 80 : 56)
-  readonly property real maxScale: 1.9
-  readonly property real radius: base * 2.6
-  readonly property int gap: 8
+  property string styleName: "mac"
+  readonly property bool rubik: styleName === "rubik"
+  readonly property int base: sizeName === "small" ? 34 : (sizeName === "large" ? 58 : 46)
+  readonly property real maxScale: rubik ? 1.12 : (sizeName === "large" ? 1.4 : (sizeName === "small" ? 1.75 : 1.6))
+  readonly property real radius: base * 2.4
+  readonly property int gap: rubik ? 5 : 6
+  readonly property var rpal: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"]
   readonly property bool testMode: Quickshell.env("MACDOCK_TEST") === "1" || Quickshell.env("MACDOCK_TEST") === "2"
   property string bg: "#000000"
   property bool hidden: false
@@ -41,13 +44,19 @@ ShellRoot {
   property var items: pinned.map(c => ({ cls: c })).concat(runCls.filter(c => !isPinned(c)).map(c => ({ cls: c }))).concat([{ cls: "__launcher__" }])
   readonly property real baseTotal: items.length * (base + gap)
   readonly property real panelW: baseTotal + base * (maxScale - 1) * 2.4 + 40
-  readonly property real panelH: base * maxScale + 28
+  readonly property real panelH: base * maxScale + 54
 
   FileView {
     path: Quickshell.env("HOME") + "/.cache/nwg-dock-pinned"
     watchChanges: true
     onFileChanged: reload()
     onLoaded: root.pinned = text().split("\n").map(s => s.trim()).filter(s => s.length > 0)
+  }
+  FileView {
+    path: Quickshell.env("HOME") + "/.cache/dock-style"
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: root.styleName = text().trim() === "rubik" ? "rubik" : "mac"
   }
   FileView {
     path: Quickshell.env("HOME") + "/.cache/dock-size"
@@ -90,7 +99,7 @@ for d in dirs:
         e = cp['Desktop Entry']
         base = os.path.basename(f)[:-8]
         ex = e.get('Exec', '')
-        rec = {'icon': e.get('Icon', ''), 'id': base}
+        rec = {'icon': e.get('Icon', ''), 'id': base, 'name': e.get('Name', '')}
         for k in {base, e.get('StartupWMClass', ''), e.get('Name', '')}:
             if k and k.lower() not in idx: idx[k.lower()] = rec
             if k and norm(k) and norm(k) not in nidx: nidx[norm(k)] = rec
@@ -204,6 +213,15 @@ print(json.dumps(out))
       }
     }
 
+    // Rubik style: black cube-plastic frame behind the row
+    Rectangle {
+      visible: root.rubik
+      opacity: row.opacity
+      anchors.horizontalCenter: parent.horizontalCenter
+      anchors.bottom: parent.bottom; anchors.bottomMargin: 3
+      width: row.width + 18; height: root.base + 22; radius: 12
+      color: "#0d0d0d"; border.color: "#2a2a2a"; border.width: 1
+    }
     // Row of icons, centred. Positions come from the cumulative scaled widths, so neighbours push apart.
     Row {
       id: row
@@ -242,6 +260,17 @@ print(json.dumps(out))
             onRunningChanged: if (!running) cell.bounce = 0
           }
 
+          property real twist: 0
+          SequentialAnimation { id: twistAnim
+            NumberAnimation { target: cell; property: "twist"; from: 0; to: 90; duration: 260; easing.type: Easing.OutBack }
+            PropertyAction { target: cell; property: "twist"; value: 0 } }
+          Rectangle {
+            visible: root.rubik && cell.modelData.cls !== "__launcher__"
+            anchors.fill: parent; radius: width * 0.2
+            color: root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
+            rotation: cell.twist
+            Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: "#33ffffff"; border.width: 1 }
+          }
           Rectangle {
             visible: root.iconFor(cell.modelData.cls) === ""
             anchors.centerIn: parent; width: parent.width * 0.88; height: parent.height * 0.88; radius: width * 0.22
@@ -251,7 +280,8 @@ print(json.dumps(out))
           Image {
             visible: cell.modelData.cls !== "__launcher__"
             anchors.fill: parent
-            scale: root.scaleOf(cell.modelData.cls)
+            scale: root.scaleOf(cell.modelData.cls) * (root.rubik ? 0.74 : 1)
+            rotation: cell.twist
             source: root.iconFor(cell.modelData.cls)
             sourceSize: Qt.size(256, 256)
             fillMode: Image.PreserveAspectFit
@@ -304,6 +334,19 @@ print(json.dumps(out))
                 poly(Rx - j3 * ax, Ry + j3 * ay + k3 * u, -ax, ay, 0, u, colorOf(2, j3, k3))
             }
           }
+          // name label above the hovered icon
+          Rectangle {
+            readonly property bool on: hover.containsMouse && cell.dist < (root.base + root.gap) / 2
+            visible: on || opacity > 0
+            opacity: on ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: 120 } }
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.top; anchors.bottomMargin: 6
+            width: lbl.width + 16; height: lbl.height + 8; radius: 7
+            color: "#e61a1a1a"; border.color: "#44ffffff"; border.width: 1
+            Text { id: lbl; anchors.centerIn: parent; color: "#f2f2f2"; font.pixelSize: 12
+              text: cell.modelData.cls === "__launcher__" ? "Apps" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
+          }
           // running dot
           Rectangle {
             visible: cell.modelData.cls !== "__launcher__" && !!root.running[cell.modelData.cls.toLowerCase()]
@@ -318,8 +361,8 @@ print(json.dumps(out))
             cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             onClicked: (m) => {
-              if (cell.modelData.cls === "__launcher__") { root.ctx = ""; root.activate("__launcher__"); return }
-              if (m.button === Qt.LeftButton) { root.ctx = ""; root.activate(cell.modelData.cls) }
+              if (cell.modelData.cls === "__launcher__") { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate("__launcher__"); return }
+              if (m.button === Qt.LeftButton) { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate(cell.modelData.cls) }
               else if (m.button === Qt.MiddleButton) { root.sh(["/usr/lib/legal-dock/dock-pin-toggle", cell.modelData.cls]) }
               else { root.ctxX = cell.mapToItem(null, cell.width / 2, 0).x; root.ctx = cell.modelData.cls }
             }
