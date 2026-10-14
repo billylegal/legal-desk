@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: 232
+  readonly property int menuH: 246
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -545,6 +545,15 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               color: rsa.containsMouse ? selC : hiC; border.color: accC; border.width: 1
               Text { anchors.centerIn: parent; text: "\uf186"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
               MouseArea { id: rsa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); resetProc.running = false; resetProc.running = true } } }
+          }
+          // Labels under the bottom buttons (block capitals).
+          Row {
+            width: parent.width; height: 12; spacing: 4
+            readonly property real bw: (width - 16) / 5
+            Text { width: parent.bw * 2 + 4; height: 12; text: "LEGAL DOCK"; color: accC; font.pixelSize: 8; font.bold: true; font.letterSpacing: 0.8; horizontalAlignment: Text.AlignLeft; leftPadding: 2; verticalAlignment: Text.AlignVCenter }
+            Text { width: parent.bw; height: 12; text: "LOCK BAR"; color: txtC; opacity: 0.85; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.4; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            Text { width: parent.bw; height: 12; text: "REBOOT"; color: txtC; opacity: 0.85; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.4; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            Text { width: parent.bw; height: 12; text: "NEBULA"; color: txtC; opacity: 0.85; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.4; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
           }
         }
       }
