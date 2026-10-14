@@ -152,21 +152,22 @@ ShellRoot {
   // Skins with their own icon tint (Mono, Terminal, Amber, Blueprint, Paper) tint the icons; skins with a tile palette (Rubik palettes, Bubbles) put
   // the icons on coloured tiles; every other skin puts each icon on a small plate in that skin's colours. File: ~/.cache/dock-icon-style
   property int iconStyle: 0
-  readonly property var iconNames: ["Original", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
+  readonly property var iconNames: ["With skin", "Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy", "Cube", "Pastel", "Ocean", "Candy", "Jungle", "Circles"]
   function styleSkin(n) {
     for (var i = 0; i < rubikSkins.length; i++) if (rubikSkins[i].n === n && rubikSkins[i].t && rubikSkins[i].t.length >= 3) return rubikSkins[i]
     for (var j = 0; j < macSkins.length; j++) if (macSkins[j].n === n) return macSkins[j]
     for (var k = 0; k < rubikSkins.length; k++) if (rubikSkins[k].n === n) return rubikSkins[k]
     return null
   }
-  readonly property var istyle: iconStyle > 0 ? styleSkin(iconNames[iconStyle]) : null
+  // With skin (0): plain skins put each icon on a plate in the skin's colours; skins with their own tiles/tint (Rubik, Bubbles, Mono, ...) already style the icons.
+  readonly property var istyle: iconStyle > 0 ? styleSkin(iconNames[iconStyle]) : ((rubik || (skin.tile || "") !== "" || !!skin.ic) ? null : skin)
   readonly property bool iconTinted: !!istyle && !!istyle.ic
   readonly property bool iconTiles: !!istyle && !istyle.ic
   readonly property bool iconPal: iconTiles && !!istyle.t && istyle.t.length >= 3
   readonly property string icEff: iconStyle > 0 ? ((istyle && istyle.ic) || "") : skin.ic
   function icol(cls) { var h = 7; for (var i = 0; i < cls.length; i++) h = (h * 31 + cls.charCodeAt(i)) % 1000003; return istyle.t[h % istyle.t.length] }
-  function tc1(cls) { return iconPal ? icol(cls) : istyle.c1 }
-  function tc2(cls) { return iconPal ? icol(cls) : istyle.c2 }
+  function tc1(cls) { return iconPal ? icol(cls) : (iconStyle === 0 ? Qt.lighter(istyle.c1, 1.4) : istyle.c1) }
+  function tc2(cls) { return iconPal ? icol(cls) : (iconStyle === 0 ? Qt.lighter(istyle.c2, 1.4) : istyle.c2) }
   readonly property color tcb: iconPal ? "#33ffffff" : (istyle ? istyle.b : "transparent")
   FileView {
     id: icoFile

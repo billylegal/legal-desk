@@ -1,9 +1,9 @@
 #!/bin/bash
 # dock-icon-style next|prev|N|show : give the dock's icons the look of one of the original skins (Mac/Rubik dock), independent of the skin in use.
-# 0 = Original (the skin's own look), then every skin: Emerald, Glass, ... Nebula, Omarchy, and the Rubik palettes (Cube, Pastel, Ocean, Candy, Jungle, Circles).
+# 0 = With skin (the icons follow whatever skin is chosen; choosing a skin always returns here), then every skin: Emerald, Glass, ... Nebula, Omarchy, and the Rubik palettes (Cube, Pastel, Ocean, Candy, Jungle, Circles).
 # Remembered in ~/.cache/dock-icon-style. It never changes the skin or the menu colours.
 F="$HOME/.cache/dock-icon-style"
-NAMES=("Original" "Emerald" "Glass" "Midnight" "Neon" "Aluminum" "Aqua" "Sunset" "Mono" "Paper" "Terminal" "Amber" "Blueprint" "Bubbles" "Pearls" "Windows 95" "Windows 98" "Windows 11" "Polybar" "Tint2" "Nebula" "Omarchy" "Cube" "Pastel" "Ocean" "Candy" "Jungle" "Circles")
+NAMES=("With skin" "Emerald" "Glass" "Midnight" "Neon" "Aluminum" "Aqua" "Sunset" "Mono" "Paper" "Terminal" "Amber" "Blueprint" "Bubbles" "Pearls" "Windows 95" "Windows 98" "Windows 11" "Polybar" "Tint2" "Nebula" "Omarchy" "Cube" "Pastel" "Ocean" "Candy" "Jungle" "Circles")
 N=${#NAMES[@]}
 cur=$(cat "$F" 2>/dev/null); [[ $cur =~ ^[0-9]+$ ]] && [ "$cur" -lt $N ] || cur=0
 case "$1" in
