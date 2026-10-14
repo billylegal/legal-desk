@@ -68,6 +68,8 @@ The **Apps** and **Close** buttons sit at the bottom of the dock menu next to th
 
 The **lock** button (a padlock, bottom row of the dock menu) locks the dock's layout: while it is locked you can't move the icons, change the skin or change the icons, and those controls are dimmed in the menu. Everything else (wallpaper, size, look, ...) keeps working. Press the padlock again to unlock.
 
+**Icon colours** (Mac and Rubik): the **Icons** row ‹ › changes only the icons and leaves the skin and menus alone. Mostly colour swaps: Match skin (tinted in the skin's colour), Nebula, Omarchy, Emerald, Sunset, Ocean, Neon, Amber, Rose, Gold and Mono; plus a few shapes: Pearls and Bubbles (circles), Blocks (each icon on a block in the skin's colours) and Cube (Rubik blocks). Picking a skin puts the icons back to Original.
+
 ## Minimize windows
 
 Hyprland has no minimize, so Legal Dock adds one: `/usr/lib/legal-dock/win-minimize` parks a window on a hidden workspace and brings it back later. Clicking a minimized app in the **Mac dock** restores it. To use it elsewhere:
