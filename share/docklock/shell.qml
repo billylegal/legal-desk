@@ -6,11 +6,31 @@ import Quickshell.Io
 // Small lock/unlock button just right of the dock. Locked = icons can't be rearranged.
 ShellRoot {
   id: ldr
+  // Omarchy theme colours (the "Omarchy" skin follows whichever Omarchy theme is active).
+  property var oc: ({})
+  readonly property color omaBg: oc.dark_background || oc.background || "#1a1b26"
+  readonly property color omaBg2: oc.background || "#16161e"
+  readonly property color omaAcc: oc.accent || "#7aa2f7"
+  readonly property color omaTxt: oc.foreground || "#c0caf5"
+  readonly property color omaSel: oc.selection || "#33467c"
+  FileView {
+    id: omaFile
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: { var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*"(#[0-9a-fA-F]{6})"/); if (m) c[m[1]] = m[2] }); ldr.oc = c }
+  }
+  Timer { interval: 3000; running: true; repeat: true; onTriggered: omaFile.reload() }
   // Menu colours follow the chosen dock skin (~/.cache/dock-menu-colors, written by macdock-skin); default = Nebula.
-  property color bgC: "#0B0818"
-  property color accC: "#8B5CF6"
-  property color txtC: "#E6E1FA"
-  property color selC: "#2A1B52"
+  property color pBg: "#0B0818"
+  property color pAcc: "#8B5CF6"
+  property color pTxt: "#E6E1FA"
+  property color pSel: "#2A1B52"
+  readonly property bool omaSkin: skinNames[skinIdx] === "Omarchy"
+  readonly property color bgC: omaSkin ? omaBg : pBg
+  readonly property color accC: omaSkin ? omaAcc : pAcc
+  readonly property color txtC: omaSkin ? omaTxt : pTxt
+  readonly property color selC: omaSkin ? omaSel : pSel
   readonly property color hiC: Qt.lighter(selC, 1.6)
   FileView {
     id: themeColors
@@ -19,10 +39,10 @@ ShellRoot {
     onFileChanged: reload()
     onLoaded: {
       var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
-      if (c.bg) ldr.bgC = c.bg
-      if (c.acc) ldr.accC = c.acc
-      if (c.txt) ldr.txtC = c.txt
-      if (c.sel) ldr.selC = c.sel
+      if (c.bg) ldr.pBg = c.bg
+      if (c.acc) ldr.pAcc = c.acc
+      if (c.txt) ldr.pTxt = c.txt
+      if (c.sel) ldr.pSel = c.sel
     }
   }
   property var dock: null
@@ -39,10 +59,10 @@ ShellRoot {
   property string skinTxt: "auto"
   property bool dragging: false
   readonly property real zoomEff: zoomRaw >= 1 ? zoomRaw : (sizePx >= 56 ? 2.3 : (sizePx <= 36 ? 2.8 : 2.5))
-  readonly property var skinNames: rubik ? ["Cube", "Pastel", "Mono", "Neon", "Sunset", "Ocean", "Candy", "Jungle", "Circles", "Nebula"]
-    : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula"]
-           : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula"])
-  readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.length - 1 : n }
+  readonly property var skinNames: rubik ? ["Cube", "Pastel", "Mono", "Neon", "Sunset", "Ocean", "Candy", "Jungle", "Circles", "Nebula", "Omarchy"]
+    : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
+           : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
+  readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
   readonly property int menuH: 14 * 36 + 12
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.

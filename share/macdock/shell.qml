@@ -40,7 +40,7 @@ ShellRoot {
   readonly property real radius: base * 3.6
   readonly property int gap: rubik ? 5 : 6
   property string skinTxt: "auto"
-  readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skins.length) ? skins.length - 1 : n }
+  readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skins.length) ? skinDefault : n }
   // ic = how the icons look on that plate: "" as they are, "gray" black & white, "#rrggbb" tinted in one colour.
   readonly property var macSkins: [
     { n: "Emerald",   c1: "#111c18", c2: "#111c18", b: "#55C1C497", r: 16, ic: "", t: [] },
@@ -64,7 +64,8 @@ ShellRoot {
     { n: "Windows 11", c1: "#ee202020", c2: "#ee181818", b: "#33ffffff", r: 12, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.86, t: [] },
     { n: "Polybar",    c1: "#1d2021", c2: "#1d2021", b: "#fabd2f", r: 0, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.9, t: [] },
     { n: "Tint2",      c1: "#e0505050", c2: "#e0101010", b: "#66ffffff", r: 6, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.88, t: [] },
-    { n: "Nebula", c1: "#2a1466", c2: "#07050f", b: "#8B5CF6", r: 18, ic: "", t: [] }
+    { n: "Nebula", c1: "#2a1466", c2: "#07050f", b: "#8B5CF6", r: 18, ic: "", t: [] },
+    { n: "Omarchy", c1: root.omaBg, c2: root.omaBg2, b: root.omaAcc, r: 16, ic: "", t: [] }
   ]
   readonly property var rubikSkins: [
     { n: "Cube",   c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 12, ic: "", t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
@@ -76,9 +77,11 @@ ShellRoot {
     { n: "Candy",  c1: "#2b0a3d", c2: "#1a0626", b: "#ff4d9d", r: 12, ic: "", t: ["#ff4d9d", "#ffd166", "#06d6a0", "#8338ec", "#ff6b6b", "#4cc9f0"] },
     { n: "Jungle", c1: "#0a1f0a", c2: "#061106", b: "#52b788", r: 12, ic: "", t: ["#2d6a4f", "#52b788", "#95d5b2", "#d8f3dc", "#1b4332", "#b7e4c7"] },
     { n: "Circles", c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 26, ic: "", rr: 0.5, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
-    { n: "Nebula", c1: "#1a0f3d", c2: "#07050f", b: "#8B5CF6", r: 12, ic: "", t: ["#8B5CF6", "#B061FF", "#6C8CFF", "#5CC8F5", "#CC8CFF", "#E6E1FA"] }
+    { n: "Nebula", c1: "#1a0f3d", c2: "#07050f", b: "#8B5CF6", r: 12, ic: "", t: ["#8B5CF6", "#B061FF", "#6C8CFF", "#5CC8F5", "#CC8CFF", "#E6E1FA"] },
+    { n: "Omarchy", c1: root.omaBg, c2: root.omaBg2, b: root.omaAcc, r: 12, ic: "", t: [root.oc.red || "#f7768e", root.oc.yellow || "#e0af68", root.oc.green || "#9ece6a", root.oc.blue || "#7aa2f7", root.oc.magenta || "#bb9af7", root.oc.cyan || "#7dcfff"] }
   ]
   readonly property var skins: rubik ? rubikSkins : macSkins
+  readonly property int skinDefault: { for (var i = 0; i < skins.length; i++) if (skins[i].n === "Nebula") return i; return 0 }
   readonly property var skin: skins[skinIdx]
   readonly property var rpal: skin.t
   readonly property bool testMode: Quickshell.env("MACDOCK_TEST") === "1" || Quickshell.env("MACDOCK_TEST") === "2"
@@ -106,11 +109,31 @@ ShellRoot {
     onFileChanged: reload()
     onLoaded: root.pinned = text().split("\n").map(s => s.trim()).filter(s => s.length > 0)
   }
+  // Omarchy theme colours (the "Omarchy" skin follows whichever Omarchy theme is active).
+  property var oc: ({})
+  readonly property color omaBg: oc.dark_background || oc.background || "#1a1b26"
+  readonly property color omaBg2: oc.background || "#16161e"
+  readonly property color omaAcc: oc.accent || "#7aa2f7"
+  readonly property color omaTxt: oc.foreground || "#c0caf5"
+  readonly property color omaSel: oc.selection || "#33467c"
+  FileView {
+    id: omaFile
+    path: Quickshell.env("HOME") + "/.local/state/omarchy/current/theme/colors.toml"
+    watchChanges: true
+    onFileChanged: reload()
+    onLoaded: { var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*"(#[0-9a-fA-F]{6})"/); if (m) c[m[1]] = m[2] }); root.oc = c }
+  }
+  Timer { interval: 3000; running: true; repeat: true; onTriggered: omaFile.reload() }
   // Menu colours follow the chosen dock skin (~/.cache/dock-menu-colors, written by macdock-skin); default = Nebula.
-  property color bgC: "#0B0818"
-  property color accC: "#8B5CF6"
-  property color txtC: "#E6E1FA"
-  property color selC: "#2A1B52"
+  property color pBg: "#0B0818"
+  property color pAcc: "#8B5CF6"
+  property color pTxt: "#E6E1FA"
+  property color pSel: "#2A1B52"
+  readonly property bool omaSkin: skin.n === "Omarchy"
+  readonly property color bgC: omaSkin ? omaBg : pBg
+  readonly property color accC: omaSkin ? omaAcc : pAcc
+  readonly property color txtC: omaSkin ? omaTxt : pTxt
+  readonly property color selC: omaSkin ? omaSel : pSel
   FileView {
     id: themeColors
     path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
@@ -118,10 +141,10 @@ ShellRoot {
     onFileChanged: reload()
     onLoaded: {
       var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
-      if (c.bg) root.bgC = c.bg
-      if (c.acc) root.accC = c.acc
-      if (c.txt) root.txtC = c.txt
-      if (c.sel) root.selC = c.sel
+      if (c.bg) root.pBg = c.bg
+      if (c.acc) root.pAcc = c.acc
+      if (c.txt) root.pTxt = c.txt
+      if (c.sel) root.pSel = c.sel
     }
   }
   property bool solid: true
