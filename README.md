@@ -62,7 +62,7 @@ A purple-nebula desktop theme with a matching dock skin, in every dock style (Cl
 
 The dock menus (the grid-button menu, the right-click app menu and the Reboot/Shut down popup) follow the chosen dock skin: change the skin and every menu changes colour with it. **Nebula is the standard** skin for a fresh install. The last skin, **Omarchy**, is the original look: its menus wear Omarchy's original colours (the Tokyo Night theme Omarchy installs with), so everyone knows it is the original look; the dock plate and icon tiles take their colours from the active Omarchy theme.
 
-**Random icon colours** (Mac and Rubik): the dock menu has a **Shuffle Colors** button that puts every app icon on a coloured tile picked at random from the active skin's palette (a new roll each press), and an **Original Colors** button to go back. The choice is remembered.
+**Icon colours** (Mac and Rubik): the dock menu has an **Icons** row with ‹ › buttons, like the Skin row, that changes only the colour of the icons: Original, then coloured tiles behind every icon in the Rainbow, Nebula, Omarchy, Sunset, Ocean, Candy, Jungle, Neon or Gold palette, or Mono (grey icons). It never changes the skin or the menu colours, so you can mix and match. The choice is remembered.
 
 ## Minimize windows
 

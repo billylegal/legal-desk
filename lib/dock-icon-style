@@ -1,0 +1,13 @@
+#!/bin/bash
+# dock-icon-style next|prev|N|show : choose how the dock's icons are coloured (Mac/Rubik dock), independent of the skin.
+# 0 Original, then coloured tiles in palettes (Rainbow, Nebula, Omarchy, Sunset, Ocean, Candy, Jungle, Neon, Gold), 10 Mono (grey icons).
+# Remembered in ~/.cache/dock-icon-style. It never changes the skin or the menu colours.
+F="$HOME/.cache/dock-icon-style"; N=11
+NAMES=(Original Rainbow Nebula Omarchy Sunset Ocean Candy Jungle Neon Gold Mono)
+cur=$(cat "$F" 2>/dev/null); [[ $cur =~ ^[0-9]+$ ]] && [ "$cur" -lt $N ] || cur=0
+case "$1" in
+  next) cur=$(( (cur + 1) % N )) ;;
+  prev) cur=$(( (cur + N - 1) % N )) ;;
+  [0-9]|[0-9][0-9]) [ "$1" -lt $N ] && cur=$1 ;;
+esac
+mkdir -p "$HOME/.cache"; echo "$cur" > "$F"; echo "$cur ${NAMES[$cur]}"

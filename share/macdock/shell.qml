@@ -148,20 +148,33 @@ ShellRoot {
       if (c.sel) root.pSel = c.sel
     }
   }
-  // Random icon colours (menu: Shuffle colors / Original colors): a coloured tile behind every icon, picked at random from the skin's palette.
-  property int rndSeed: 0
-  readonly property bool randOn: rndSeed > 0
-  readonly property var rndPal: (skin.t && skin.t.length >= 3) ? skin.t
-    : [0, 1, 2, 3, 4, 5].map(function (i) { return Qt.hsla((accC.hslHue + i / 6) % 1, Math.max(0.55, accC.hslSaturation), 0.5, 1) })
-  function rcol(cls) { var h = rndSeed; for (var i = 0; i < cls.length; i++) h = (h * 31 + cls.charCodeAt(i)) % 1000003; return rndPal[h % rndPal.length] }
+  // Icon colours (menu: Icons < >), independent of the skin: coloured tiles behind the icons, or grey icons. File: ~/.cache/dock-icon-style
+  property int iconStyle: 0
+  readonly property var iconStyles: [
+    { n: "Original" },
+    { n: "Rainbow", t: ["#ef5350", "#ffa726", "#ffee58", "#66bb6a", "#42a5f5", "#ab47bc"] },
+    { n: "Nebula",  t: ["#8B5CF6", "#B061FF", "#6C8CFF", "#5CC8F5", "#CC8CFF", "#E6E1FA"] },
+    { n: "Omarchy", t: ["#f7768e", "#e0af68", "#9ece6a", "#7aa2f7", "#bb9af7", "#7dcfff"] },
+    { n: "Sunset",  t: ["#ff5a5f", "#ff8a3d", "#ffc857", "#e8590c", "#a8124a", "#ffd9b0"] },
+    { n: "Ocean",   t: ["#00b4d8", "#0077b6", "#90e0ef", "#023e8a", "#48cae4", "#caf0f8"] },
+    { n: "Candy",   t: ["#ff4d9d", "#ffd166", "#06d6a0", "#8338ec", "#ff6b6b", "#4cc9f0"] },
+    { n: "Jungle",  t: ["#2d6a4f", "#52b788", "#95d5b2", "#40916c", "#1b4332", "#b7e4c7"] },
+    { n: "Neon",    t: ["#39ff14", "#00e5ff", "#ff2a2a", "#ffe066", "#d946ff", "#ff6a00"] },
+    { n: "Gold",    t: ["#d4af37", "#f2d675", "#a9831e", "#c9a227", "#e8c547", "#b8860b"] },
+    { n: "Mono",    gray: true }
+  ]
+  readonly property var istyle: iconStyles[iconStyle] || iconStyles[0]
+  readonly property bool iconTiles: !!istyle.t
+  readonly property string icEff: istyle.gray ? "gray" : skin.ic
+  function icol(cls) { var h = 7; for (var i = 0; i < cls.length; i++) h = (h * 31 + cls.charCodeAt(i)) % 1000003; return istyle.t[h % istyle.t.length] }
   FileView {
-    id: rndFile
-    path: Quickshell.env("HOME") + "/.cache/dock-icon-colors"
+    id: icoFile
+    path: Quickshell.env("HOME") + "/.cache/dock-icon-style"
     printErrors: false
-    onLoaded: { var n = parseInt(text()); root.rndSeed = isNaN(n) ? 0 : Math.max(1, n) }
-    onLoadFailed: root.rndSeed = 0
+    onLoaded: { var n = parseInt(text()); root.iconStyle = (isNaN(n) || n < 0 || n >= root.iconStyles.length) ? 0 : n }
+    onLoadFailed: root.iconStyle = 0
   }
-  Timer { interval: 1200; running: true; repeat: true; onTriggered: rndFile.reload() }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: icoFile.reload() }
   property bool solid: true
   FileView {
     path: Quickshell.env("HOME") + "/.config/nwg-dock-hyprland/style.css"
@@ -501,7 +514,7 @@ print(json.dumps(out))
           Rectangle {
             visible: root.rubik && cell.modelData.cls !== "__launcher__"
             anchors.fill: parent; radius: width * (root.skin.rr !== undefined ? root.skin.rr : 0.2)
-            color: root.randOn ? root.rcol(cell.modelData.cls) : root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
+            color: root.iconTiles ? root.icol(cell.modelData.cls) : root.rpal[cell.index % 6]; border.color: "#0d0d0d"; border.width: 2
             rotation: cell.twist
             Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: "#33ffffff"; border.width: 1 }
           }
@@ -513,16 +526,16 @@ print(json.dumps(out))
             anchors.centerIn: parent
             width: parent.width * (kind === "circle" ? 0.96 : 0.98); height: width
             radius: kind === "circle" ? width / 2 : (kind === "hpill" ? 8 : 0)
-            color: kind === "circle" ? (root.randOn ? root.rcol(cell.modelData.cls) : (root.skin.t.length ? root.skin.t[cell.index % root.skin.t.length] : (root.skin.tc || "#33ffffff")))
+            color: kind === "circle" ? (root.iconTiles ? root.icol(cell.modelData.cls) : (root.skin.t.length ? root.skin.t[cell.index % root.skin.t.length] : (root.skin.tc || "#33ffffff")))
                    : (kind === "hpill" ? "#2cffffff" : "#c0c0c0")
             border.color: kind === "circle" ? "#40000000" : "transparent"; border.width: kind === "circle" ? 1 : 0
             Bevel { visible: stile.kind === "btn" || stile.kind === "hbtn" }
           }
-          // Random colours on skins without their own tiles: a rounded coloured tile behind the icon.
+          // Icon colours (non-Rubik skins): a rounded coloured tile behind the icon.
           Rectangle {
-            visible: root.randOn && !root.rubik && (root.skin.tile || "") !== "circle" && cell.modelData.cls !== "__launcher__"
+            visible: root.iconTiles && !root.rubik && (root.skin.tile || "") !== "circle" && cell.modelData.cls !== "__launcher__"
             anchors.centerIn: parent; width: parent.width * 0.98; height: width; radius: width * 0.22
-            color: root.rcol(cell.modelData.cls); border.color: "#33ffffff"; border.width: 1
+            color: root.icol(cell.modelData.cls); border.color: "#33ffffff"; border.width: 1
           }
           Rectangle {
             visible: root.iconFor(cell.modelData.cls) === ""
@@ -533,19 +546,19 @@ print(json.dumps(out))
           Image {
             visible: cell.modelData.cls !== "__launcher__" && cell.modelData.cls !== "chrome-127.0.0.1__globe_-Default"
             anchors.fill: parent
-            scale: root.scaleOf(cell.modelData.cls) * ((root.rubik || (root.randOn && (root.skin.tile || "") !== "circle")) ? 0.74 : (root.skin.ik || 1))
+            scale: root.scaleOf(cell.modelData.cls) * ((root.rubik || (root.iconTiles && (root.skin.tile || "") !== "circle")) ? 0.74 : (root.skin.ik || 1))
             rotation: cell.twist
             source: root.iconFor(cell.modelData.cls)
             sourceSize: Qt.size(256, 256)
             fillMode: Image.PreserveAspectFit
             smooth: true
             mipmap: true
-            layer.enabled: root.skin.ic !== ""
+            layer.enabled: root.icEff !== ""
             layer.smooth: true
             layer.effect: MultiEffect {
-              saturation: root.skin.ic === "gray" ? -1 : 0
-              colorization: root.skin.ic === "gray" ? 0 : 1
-              colorizationColor: root.skin.ic === "gray" ? "#ffffff" : root.skin.ic
+              saturation: root.icEff === "gray" ? -1 : 0
+              colorization: root.icEff === "gray" ? 0 : 1
+              colorizationColor: root.icEff === "gray" ? "#ffffff" : root.icEff
             }
           }
           // Rubik's Cube launcher: solved with no windows open, scrambles a little more with every window you open.
