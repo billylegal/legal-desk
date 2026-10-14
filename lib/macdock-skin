@@ -9,10 +9,10 @@ case $style in classic) N=15; D=13;; mac) N=21; D=19;; rubik) N=11; D=9;; esac  
 F="$H/dock-skin-$style"
 get() { local v; v=$(cat "$1" 2>/dev/null); [[ $v =~ ^[0-9]+$ ]] && [ "$v" -lt "$2" ] && echo "$v" || echo "${3:-$D}"; }   # no choice yet = Nebula
 
-# The "Omarchy" skin (last in every style) follows the active Omarchy theme: read its colours from colors.toml.
+# The "Omarchy" skin (last in every style) uses Omarchy's original colours for the menus.
 OMA="$HOME/.local/state/omarchy/current/theme/colors.toml"
 omac() { local v; v=$(sed -n "s/^$1[[:space:]]*=[[:space:]]*\"\(#[0-9a-fA-F]\{6\}\)\".*/\1/p" "$OMA" 2>/dev/null | head -1); echo "${v:-$2}"; }
-oma_row() { echo "$(omac dark_background "$(omac background '#1a1b26')")|$(omac accent '#7aa2f7')|$(omac foreground '#c0caf5')|$(omac selection '#33467c')"; }
+oma_row() { echo "#1a1b26|#7aa2f7|#c0caf5|#292e42"; }   # Omarchy's original colours (Tokyo Night, the theme it installs with)
 
 # Menu colours follow the skin: bg|border/accent|text|selected. Written to ~/.cache/dock-menu-colors for the dock menus.
 MAC=("#111c18|#C1C497|#C1C497|#2a3a30" "#1b1f2a|#cfd8ff|#ffffff|#333a52" "#0b1230|#7a8cff|#cfd6ff|#1c2a66" "#06080c|#39ff14|#b8ffa8|#123a0c" "#e4e5ea|#6b7080|#20232a|#c4c8d2" "#0f3d7a|#8fd0ff|#eaf6ff|#1f5fb0" "#4a0c2c|#ff9a3d|#ffe3c8|#7a1a48" "#0a0a0a|#ffffff|#eeeeee|#2a2a2a" "#f4f1e8|#8a8570|#2b2b2b|#dcd8c8" "#020a02|#33ff33|#33ff33|#0c3a0c" "#0e0700|#ffb000|#ffb000|#3a2600" "#0a3a80|#ffffff|#d6ecff|#1558b0" "#0b1020|#4cc9f0|#eaf0ff|#1c2a50" "#15181f|#d8d8d8|#f2f2f2|#2c313c" "#c0c0c0|#000080|#000000|#a0a0a0" "#d8d8d8|#000080|#000000|#b8b8b8" "#202020|#60cdff|#ffffff|#333333" "#1d2021|#fabd2f|#ebdbb2|#3c3836" "#202020|#aaaaaa|#ffffff|#444444" "#0B0818|#8B5CF6|#E6E1FA|#2A1B52" "OMA")

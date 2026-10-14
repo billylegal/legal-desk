@@ -129,11 +129,12 @@ ShellRoot {
   property color pAcc: "#8B5CF6"
   property color pTxt: "#E6E1FA"
   property color pSel: "#2A1B52"
+  // The Omarchy skin's menus use Omarchy's original colours (the Tokyo Night theme it installs with), so everyone can tell it is the original look.
   readonly property bool omaSkin: skin.n === "Omarchy"
-  readonly property color bgC: omaSkin ? omaBg : pBg
-  readonly property color accC: omaSkin ? omaAcc : pAcc
-  readonly property color txtC: omaSkin ? omaTxt : pTxt
-  readonly property color selC: omaSkin ? omaSel : pSel
+  readonly property color bgC: omaSkin ? "#1a1b26" : pBg
+  readonly property color accC: omaSkin ? "#7aa2f7" : pAcc
+  readonly property color txtC: omaSkin ? "#c0caf5" : pTxt
+  readonly property color selC: omaSkin ? "#292e42" : pSel
   FileView {
     id: themeColors
     path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
