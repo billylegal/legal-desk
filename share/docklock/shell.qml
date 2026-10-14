@@ -64,7 +64,7 @@ ShellRoot {
     : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
            : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
-  readonly property int menuH: mac ? 254 : 256
+  readonly property int menuH: mac ? 232 : 188
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
@@ -76,7 +76,7 @@ ShellRoot {
     var d = lastDock
     // centred over the last icon (the launcher): measured by the Mac dock itself, or the right end of the classic dock
     var cx = (mac && launcherX > 0) ? launcherX : d.x + d.w - cpitch / 2
-    frozenLeft = Math.max(4, Math.min((d.mon && Quickshell.screens.find(s => s.name === d.mon) ? Quickshell.screens.find(s => s.name === d.mon).width : 1920) - 266, cx - 100))
+    frozenLeft = Math.max(4, Math.min((d.mon && Quickshell.screens.find(s => s.name === d.mon) ? Quickshell.screens.find(s => s.name === d.mon).width : 1920) - 286, cx - 100))
     frozenTop = (mac && menuLine > 0) ? screenH(d.mon) - menuLine - menuH : d.y - menuH - 10
   }
   Timer { id: dragT; interval: 1500; onTriggered: dragging = false }
@@ -116,7 +116,7 @@ ShellRoot {
     signal step(int d)
     height: 34; radius: 6
     color: cbm.containsMouse ? selC : hiC; border.color: accC; border.width: 1
-    Text { anchors.centerIn: parent; text: cb.label; color: txtC; font.pixelSize: 10 }
+    Text { anchors.centerIn: parent; width: parent.width - 26; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: cb.label; color: txtC; font.pixelSize: 9 }
     MouseArea { id: cbm; anchors.fill: parent; hoverEnabled: true; onClicked: cb.step(1) }
     Text { anchors.left: parent.left; anchors.leftMargin: 5; anchors.verticalCenter: parent.verticalCenter; text: "\u2039"; color: accC; font.pixelSize: 16; font.bold: true }
     MouseArea { anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 14; onClicked: cb.step(-1) }
@@ -414,7 +414,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
       anchors { top: true; left: true }
       margins { left: frozenLeft; top: frozenTop }
-      implicitWidth: 256; implicitHeight: menuH
+      implicitWidth: 276; implicitHeight: menuH
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.layer: WlrLayer.Overlay
@@ -496,63 +496,51 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             visible: mac; width: parent.width; label: "Zoom"; from: 1.0; to: 3.2; value: zoomEff; shown: zoomEff < 1.03 ? "off" : zoomEff.toFixed(2) + "x"
             onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); zoomRaw = Math.round(v * 20) / 20; if (zoomRaw < 1.03) zoomRaw = 1.0; writeT.restart() }
           }
+          // Skin, wallpaper and icon look as compact cycle buttons: ‹ › inside each one steps back / forward.
           Row {
-            enabled: !locked; opacity: locked ? 0.35 : 1
             width: parent.width; height: 34; spacing: 4
-            Rectangle { width: 34; height: 34; radius: 6; color: spa.containsMouse ? selC : "transparent"
-              Text { anchors.centerIn: parent; text: "\u2039"; color: txtC; font.pixelSize: 20 }
-              MouseArea { id: spa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "prev"; skinProc.running = false; skinProc.running = true } } }
-            Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: accC; border.width: 1
-              Text { anchors.centerIn: parent; text: "Skin: " + skinNames[skinIdx]; color: txtC; font.pixelSize: 12 } }
-            Rectangle { width: 34; height: 34; radius: 6; color: sna.containsMouse ? selC : "transparent"
-              Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
-              MouseArea { id: sna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); skinProc.a = "next"; skinProc.running = false; skinProc.running = true } } }
-          }
-          Row {
-            visible: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0
-            width: parent.width; height: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0 ? 34 : 0; spacing: 4
-            Rectangle { width: 34; height: 34; radius: 6; color: wpa.containsMouse ? selC : "transparent"
-              Text { anchors.centerIn: parent; text: "\u2039"; color: txtC; font.pixelSize: 20 }
-              MouseArea { id: wpa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); wallProc.a = "prev"; wallProc.running = false; wallProc.running = true } } }
-            Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: accC; border.width: 1
-              Text { anchors.centerIn: parent; width: parent.width - 8; elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter; text: "Wallpaper " + (wallTxt.split(" ")[0] || "..."); color: txtC; font.pixelSize: 12 } }
-            Rectangle { width: 34; height: 34; radius: 6; color: wna.containsMouse ? selC : "transparent"
-              Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
-              MouseArea { id: wna; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); wallProc.a = "next"; wallProc.running = false; wallProc.running = true } } }
+            CycleButton {
+              width: (parent.width - (mac ? 8 : 4)) / (mac ? 3 : 2)
+              enabled: !locked; opacity: locked ? 0.35 : 1
+              label: skinNames[skinIdx]
+              onStep: (d) => { menuT.restart(); skinProc.a = d > 0 ? "next" : "prev"; skinProc.running = false; skinProc.running = true }
+            }
+            CycleButton {
+              visible: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0
+              width: visible ? (parent.width - (mac ? 8 : 4)) / (mac ? 3 : 2) : 0
+              label: "Wall " + (wallTxt.split(" ")[0] || "...")
+              onStep: (d) => { menuT.restart(); wallProc.a = d > 0 ? "next" : "prev"; wallProc.running = false; wallProc.running = true }
+            }
+            CycleButton {
+              visible: mac
+              width: mac ? (parent.width - 8) / 3 : 0
+              enabled: !locked; opacity: locked ? 0.35 : 1
+              label: iconIdx === 0 ? "Icons" : iconNames[iconIdx]
+              onStep: (d) => { menuT.restart(); iconProc.a = d > 0 ? "next" : "prev"; iconProc.running = false; iconProc.running = true }
+            }
           }
           Row {
             id: bottomRow
             width: parent.width; height: 28; spacing: 4
-            Rectangle { width: 52; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: cla.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+            readonly property real bw: (width - 16) / 5
+            Rectangle { width: parent.bw; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: cla.containsMouse ? selC : hiC; border.color: accC; border.width: 1
               Row { anchors.centerIn: parent; spacing: 4
                 Text { text: "\uf00d"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
                 Text { text: "Close"; color: txtC; font.pixelSize: 10 } }
               MouseArea { id: cla; anchors.fill: parent; hoverEnabled: true; onClicked: menuOpen = false } }
-            Rectangle { width: 52; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: apa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+            Rectangle { width: parent.bw; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: apa.containsMouse ? selC : hiC; border.color: accC; border.width: 1
               Row { anchors.centerIn: parent; spacing: 4
                 Text { text: "\uf00a"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 11 }
                 Text { text: "Apps"; color: txtC; font.pixelSize: 10 } }
               MouseArea { id: apa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuOpen = false; appsProc.running = true } } }
-            Rectangle { width: 30; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: lka2.containsMouse ? selC : (locked ? hiC : "transparent"); border.color: accC; border.width: locked ? 2 : 1
-              Text { anchors.centerIn: parent; text: locked ? "\uf023" : "\uf09c"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+            Rectangle { width: parent.bw; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: lka2.containsMouse ? selC : (locked ? accC : hiC); border.color: accC; border.width: 1
+              Text { anchors.centerIn: parent; text: locked ? "\uf023" : "\uf09c"; color: locked ? bgC : txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
               MouseArea { id: lka2; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); toggle.running = true } } }
-            Rectangle { width: 30; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: rba.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+            Rectangle { width: parent.bw; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; color: rba.containsMouse ? selC : hiC; border.color: accC; border.width: 1
               Text { anchors.centerIn: parent; text: "\uf01e"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
               MouseArea { id: rba; anchors.fill: parent; hoverEnabled: true; onClicked: { menuOpen = false; rebootProc.running = true } } }
-            Rectangle { width: 30; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter; opacity: locked ? 0.35 : 1
-              color: icb.containsMouse ? selC : (iconIdx !== 0 ? hiC : "transparent"); border.color: accC; border.width: iconIdx !== 0 ? 2 : 1
-              Grid { anchors.centerIn: parent; columns: 2; spacing: 2
-                Repeater { model: ["#ef5350", "#66bb6a", "#42a5f5", "#ffa726"]
-                  Rectangle { required property string modelData; width: 6; height: 6; radius: 2; color: modelData } } }
-              MouseArea { id: icb; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton; enabled: !locked
-                onClicked: (m) => { menuT.restart(); iconProc.a = (m.button === Qt.RightButton) ? "prev" : "next"; iconProc.running = false; iconProc.running = true } }
-              Rectangle { visible: icb.containsMouse; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.top; anchors.bottomMargin: 4
-                width: itxt.width + 14; height: 20; radius: 5; color: bgC; border.color: accC; border.width: 1
-                Text { id: itxt; anchors.centerIn: parent; text: "Icons: " + iconNames[iconIdx]; color: txtC; font.pixelSize: 11 } }
-            }
-            Item { width: Math.max(0, parent.width - 52 - 52 - 30 - 30 - 30 - 30 - 24); height: 1 }
-            Rectangle { id: rsBtn; width: 30; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter
-              color: rsa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+            Rectangle { id: rsBtn; width: parent.bw; height: 24; radius: 6; anchors.verticalCenter: parent.verticalCenter
+              color: rsa.containsMouse ? selC : hiC; border.color: accC; border.width: 1
               Text { anchors.centerIn: parent; text: "\uf186"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
               MouseArea { id: rsa; anchors.fill: parent; hoverEnabled: true; onClicked: { menuT.restart(); resetProc.running = false; resetProc.running = true } } }
           }
