@@ -16,7 +16,7 @@ ShellRoot {
   property real zoomRaw: 0
   property string skinTxt: "auto"
   property bool dragging: false
-  readonly property real zoomEff: zoomRaw >= 1 ? zoomRaw : (sizePx >= 56 ? 1.7 : (sizePx <= 36 ? 1.9 : 1.85))
+  readonly property real zoomEff: zoomRaw >= 1 ? zoomRaw : (sizePx >= 56 ? 2.3 : (sizePx <= 36 ? 2.8 : 2.5))
   readonly property var skinNames: ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Cube"]
   readonly property int skinIdx: /^[0-7]$/.test(skinTxt) ? parseInt(skinTxt) : (rubik ? 7 : 0)
   readonly property int menuH: mac ? 10 * 36 + 12 : 10 * 36 + 12
@@ -277,7 +277,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-ski
             onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); sizePx = Math.round(v); writeT.restart() }
           }
           SliderRow {
-            visible: mac; width: parent.width; label: "Zoom"; from: 1.0; to: 2.4; value: zoomEff; shown: zoomEff < 1.03 ? "off" : zoomEff.toFixed(2) + "x"
+            visible: mac; width: parent.width; label: "Zoom"; from: 1.0; to: 3.2; value: zoomEff; shown: zoomEff < 1.03 ? "off" : zoomEff.toFixed(2) + "x"
             onMoved: (v) => { dragging = true; dragT.restart(); menuT.restart(); zoomRaw = Math.round(v * 20) / 20; if (zoomRaw < 1.03) zoomRaw = 1.0; writeT.restart() }
           }
           Row {

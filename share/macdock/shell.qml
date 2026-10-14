@@ -24,8 +24,8 @@ ShellRoot {
   readonly property bool rubik: styleName === "rubik"
   property real zoomVal: 0      // 0 = automatic (depends on size); else the magnification chosen with the Zoom slider
   readonly property int base: { var n = parseInt(sizeName); return isNaN(n) ? (sizeName === "small" ? 34 : (sizeName === "large" ? 58 : 46)) : Math.max(24, Math.min(110, n)) }
-  readonly property real maxScale: rubik ? 1.12 : (zoomVal >= 1 ? Math.min(2.6, zoomVal) : (base >= 56 ? 1.8 : (base <= 36 ? 2.2 : 2.0)))
-  readonly property real radius: base * 3.2
+  readonly property real maxScale: rubik ? 1.12 : (zoomVal >= 1 ? Math.min(3.2, zoomVal) : (base >= 56 ? 2.3 : (base <= 36 ? 2.8 : 2.5)))
+  readonly property real radius: base * 3.6
   readonly property int gap: rubik ? 5 : 6
   property string skinTxt: "auto"
   readonly property int skinIdx: /^[0-7]$/.test(skinTxt) ? parseInt(skinTxt) : (rubik ? 7 : 0)
@@ -57,7 +57,7 @@ ShellRoot {
   function isPinned(c) { return pinned.some(p => p.toLowerCase() === c.toLowerCase()) }
   property var items: pinned.map(c => ({ cls: c })).concat(runCls.filter(c => !isPinned(c)).map(c => ({ cls: c }))).concat([{ cls: "__launcher__" }])
   readonly property real baseTotal: items.length * (base + gap)
-  readonly property real panelW: baseTotal + base * (maxScale - 1) * 3.2 + 40
+  readonly property real panelW: baseTotal + base * (maxScale - 1) * 3.6 + 40
   readonly property real panelH: base * maxScale + 54
 
   FileView {
