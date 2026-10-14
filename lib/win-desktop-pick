@@ -1,0 +1,17 @@
+#!/bin/bash
+# win-desktop-pick : popup with desktops 1..5 for the window whose title-bar button was clicked (skin-coloured, Esc closes).
+if pgrep -f '^quickshell.*deskpick' >/dev/null; then pkill -f '^quickshell.*deskpick'; exit 0; fi
+w=$(hyprctl activewindow -j); cur=$(hyprctl cursorpos -j)
+DP_ADDR=$(python3 -c "import json,sys;print(json.loads(sys.argv[1]).get('address',''))" "$w")
+DP_WS=$(python3 -c "import json,sys;print(json.loads(sys.argv[1]).get('workspace',{}).get('id',0))" "$w")
+DP_X=$(python3 -c "import json,sys;print(int(json.loads(sys.argv[1])['x']))" "$cur")
+DP_Y=$(python3 -c "import json,sys;print(int(json.loads(sys.argv[1])['y']))" "$cur")
+# Monitor under the cursor (logical size) so the popup is kept fully on screen.
+read -r DP_W DP_H < <(python3 -c "
+import json,subprocess
+m=json.loads(subprocess.check_output(['hyprctl','monitors','-j']))
+a=[x for x in m if x.get('focused')] or m
+x=a[0]; print(int(x['width']/x['scale']+x['x']), int(x['height']/x['scale']+x['y']))")
+[ -n "$DP_ADDR" ] || exit 0
+export DP_ADDR DP_WS DP_X DP_Y DP_W DP_H
+exec setsid quickshell -n -p "/usr/share/legal-dock/deskpick" >/dev/null 2>&1

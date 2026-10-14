@@ -1,0 +1,4 @@
+#!/bin/bash
+# legal-tasks : open (or close) the Legal Dock Task Manager.
+if pgrep -f '^quickshell.*legaltasks' >/dev/null; then pkill -f '^quickshell.*legaltasks'; exit 0; fi
+exec setsid quickshell -n -p "/usr/share/legal-dock/legaltasks" >/dev/null 2>&1

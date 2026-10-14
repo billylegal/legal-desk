@@ -1,16 +1,6 @@
 #!/bin/bash
-# Dock "Apps" buttons: first press opens the app drawer, the next closes it. Esc, the X button or a click on the empty space also close it.
-# One resident nwg-drawer stays in memory so it opens instantly; if the skin changed (drawer restarted) it is started and opened here.
-OPTS=(-r -closebtn right -c 7 -is 56 -ovl)
-open_it() { nwg-drawer -open >/dev/null 2>&1; }
-if ! pgrep -x nwg-drawer >/dev/null; then
-  setsid nwg-drawer "${OPTS[@]}" >/dev/null 2>&1 </dev/null &
-  for i in $(seq 1 30); do sleep 0.1; pgrep -x nwg-drawer >/dev/null && break; done
-  sleep 0.4; open_it
-  exit 0
-fi
-if hyprctl layers 2>/dev/null | grep -q 'namespace: nwg-drawer'; then
-  nwg-drawer -close >/dev/null 2>&1
-else
-  open_it
-fi
+# Dock "Apps" buttons: first press opens the Apps window, the next closes it. Esc, the ✕ or a click outside also close it.
+# The window is ~/.config/appsmenu (skin-coloured frame; third-party app icons stay original).
+if pgrep -f '^quickshell.*appsmenu' >/dev/null; then pkill -f '^quickshell.*appsmenu'; exit 0; fi
+# Apps keep their normal icons; only Legal Dock's own apps (Mail, Calendar, Notes) wear the skin.
+exec setsid quickshell -n -p "/usr/share/legal-dock/appsmenu" >/dev/null 2>&1

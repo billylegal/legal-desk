@@ -17,6 +17,8 @@ oma_row() { echo "#1a1b26|#7aa2f7|#c0caf5|#292e42"; }   # Omarchy's original col
 # Menu colours follow the skin: bg|border/accent|text|selected. Written to ~/.cache/dock-menu-colors for the dock menus.
 MAC=("#111c18|#C1C497|#C1C497|#2a3a30" "#1b1f2a|#cfd8ff|#ffffff|#333a52" "#0b1230|#7a8cff|#cfd6ff|#1c2a66" "#06080c|#39ff14|#b8ffa8|#123a0c" "#e4e5ea|#6b7080|#20232a|#c4c8d2" "#0f3d7a|#8fd0ff|#eaf6ff|#1f5fb0" "#4a0c2c|#ff9a3d|#ffe3c8|#7a1a48" "#0a0a0a|#ffffff|#eeeeee|#2a2a2a" "#f4f1e8|#8a8570|#2b2b2b|#dcd8c8" "#020a02|#33ff33|#33ff33|#0c3a0c" "#0e0700|#ffb000|#ffb000|#3a2600" "#0a3a80|#ffffff|#d6ecff|#1558b0" "#0b1020|#4cc9f0|#eaf0ff|#1c2a50" "#15181f|#d8d8d8|#f2f2f2|#2c313c" "#c0c0c0|#000080|#000000|#a0a0a0" "#d8d8d8|#000080|#000000|#b8b8b8" "#202020|#60cdff|#ffffff|#333333" "#1d2021|#fabd2f|#ebdbb2|#3c3836" "#202020|#aaaaaa|#ffffff|#444444" "#0B0818|#8B5CF6|#E6E1FA|#2A1B52" "OMA")
 RUBIK=("#0d0d0d|#ffd500|#f4f4f4|#2a2a2a" "#f4eef7|#b58acb|#3a2a45|#e0d0ea" "#000000|#ffffff|#eeeeee|#2a2a2a" "#06080c|#39ff14|#b8ffa8|#123a0c" "#3a0a2a|#ffd9b0|#ffe9d0|#6a1a4a" "#04202e|#0096c7|#caf0f8|#0a4a66" "#2b0a3d|#ff4d9d|#ffe0f0|#5a1a6a" "#0a1f0a|#52b788|#d8f3dc|#1b4332" "#0d0d0d|#ffd500|#f4f4f4|#2a2a2a" "#0B0818|#8B5CF6|#E6E1FA|#2A1B52" "OMA")
+MACN=(Emerald Glass Midnight Neon Aluminum Aqua Sunset Mono Paper Terminal Amber Blueprint Bubbles Pearls "Windows 95" "Windows 98" "Windows 11" Polybar Tint2 Nebula Omarchy)
+CLASSICN=(Emerald Midnight Glass Mono Neon Aluminum Sunset Paper "Windows 95" "Windows 98" "Windows 11" Polybar Tint2 Nebula Omarchy)
 CLASSIC=(0 2 1 7 3 4 5 6 8 9 10 11 12 19 20)   # classic skin -> the Mac palette of the same name
 write_palette() {
   local i row; i=$(get "$F" $N)
@@ -24,20 +26,47 @@ write_palette() {
   [ "$row" = OMA ] && row=$(oma_row)
   IFS='|' read -r b a t sel <<< "$row"
   printf 'bg=%s\nacc=%s\ntxt=%s\nsel=%s\n' "$b" "$a" "$t" "$sel" > "$H/dock-menu-colors.tmp" && mv "$H/dock-menu-colors.tmp" "$H/dock-menu-colors"
-  write_drawer "$b" "$a" "$t" "$sel"
+  # Window title-bar button style per skin (read by looknfeel.lua): apple | nebula | win95 | win | terminal | gnome
+  local nm bs=apple; case $style in mac) nm=${MACN[$i]};; rubik) nm="";; *) nm=${CLASSICN[$i]};; esac
+  case $nm in "Windows 95"|"Windows 98") bs=win95;; "Windows 11"|Tint2|Polybar) bs=win;; Terminal|Amber|Neon|Blueprint) bs=terminal;; Midnight|Omarchy|Glass) bs=gnome;; Nebula) bs=nebula;; esac
+  write_drawer "$b" "$a" "$t" "$sel" "$nm"
+  printf '%s\n' "$bs" > "$H/dock-bar-style"
+  [ "$(cat "$H/dock-menu-colors" "$H/dock-bar-style" 2>/dev/null)" != "$(cat "$H/.bar-colors" 2>/dev/null)" ] && { cat "$H/dock-menu-colors" "$H/dock-bar-style" > "$H/.bar-colors"; ( hyprctl reload >/dev/null 2>&1 & ); }   # window title bars follow the skin
   [ "$(cat "$H/dock-pointer" 2>/dev/null)" = 1 ] || [ "$(cat "$H/dock-pointer" 2>/dev/null)" = 2 ] && ( "$(dirname "$(readlink -f "$0")")/dock-pointer" apply >/dev/null 2>&1 & )   # keep the pointer matching the skin
 }
 
 # The app drawer ("All apps") wears the skin's colours too. nwg-drawer reads its stylesheet at start, so restart it when the colours change.
 write_drawer() {
-  local D="$HOME/.config/nwg-drawer" new
+  local D="$HOME/.config/nwg-drawer" new rad=12 th
+  case $5 in "Windows 95"|"Windows 98"|Polybar|Tint2) rad=0;; "Windows 11") rad=6;; Bubbles|Pearls) rad=22;; Terminal|Amber|Blueprint) rad=2;; esac
+  # Icon theme: the Yaru colour closest to the skin's accent colour (dark variant on dark skins).
+  th=$(python3 - "$1" "$2" <<'PY'
+import sys,colorsys
+bg,ac=[tuple(int(h.lstrip('#')[i:i+2],16)/255 for i in (0,2,4)) for h in sys.argv[1:3]]
+h,l,sat=colorsys.rgb_to_hls(*ac); h*=360
+dark=colorsys.rgb_to_hls(*bg)[1]<0.5
+if sat<0.2: n=''
+elif h<20 or h>=340: n='-red'
+elif h<45: n='-wartybrown'
+elif h<70: n='-yellow'
+elif h<100: n='-olive'
+elif h<165: n='-sage'
+elif h<195: n='-prussiangreen'
+elif h<255: n='-blue'
+elif h<300: n='-purple'
+else: n='-magenta'
+print('Yaru'+n+('-dark' if dark else ''))
+PY
+)
+  printf '%s\n' "$th" > "$HOME/.cache/drawer-icon-theme"; printf '%s\n' "$rad" > "$HOME/.cache/drawer-shape"
   mkdir -p "$D"
   new="/* Legal Dock: generated from the dock skin (macdock-skin) - edit freely, it is rewritten when the skin changes. */
 window { background-color: $1; color: $3; border: 2px solid $2; border-radius: 16px }
 entry { background-color: $4; color: $3; border: 1px solid $2; border-radius: 10px; padding: 6px 10px; caret-color: $2 }
-button, image { background: none; border: none; color: $3 }
-button { border-radius: 10px; padding: 4px }
-button:hover, button:focus { background-color: $4; box-shadow: none }
+image { background: none; border: none; color: $3 }
+button { border-radius: ${rad}px; padding: 8px; background-color: $4; border: 1px solid $2; margin: 4px }
+button:hover, button:focus { background-color: $2; box-shadow: none }
+button:hover label, button:focus label { color: $1 }
 button:active { background-color: $2; color: $1 }
 label { color: $3 }
 #category-button { margin: 0 10px 0 10px; border-radius: 10px }

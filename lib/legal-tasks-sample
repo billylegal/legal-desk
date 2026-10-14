@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+# legal-tasks-sample : one live sample of the machine for the Legal Dock Task Manager (JSON on stdout).
+import subprocess, json, re
+out = subprocess.run(['top', '-b', '-n', '2', '-d', '0.6', '-w', '512', '-o', '%CPU'], capture_output=True, text=True).stdout
+blocks = out.split('\ntop - ')
+last = blocks[-1]
+cpu = 0.0; mt = mu = 0.0
+m = re.search(r'%Cpu\(s\):.*?([0-9.,]+)\s*id', last)
+if m: cpu = round(100 - float(m.group(1).replace(',', '.')), 1)
+m = re.search(r'(?:MiB|KiB|GiB) Mem :\s*([0-9.,]+) total.*?([0-9.,]+) used', last)
+unit = 1
+if 'GiB Mem' in last: unit = 1024
+if 'KiB Mem' in last: unit = 1 / 1024
+if m: mt = float(m.group(1).replace(',', '.')) * unit; mu = float(m.group(2).replace(',', '.')) * unit
+procs = []
+hdr = False
+for line in last.splitlines():
+    if re.match(r'\s*PID\s+USER', line): hdr = True; continue
+    if not hdr or not line.strip(): continue
+    p = line.split(None, 11)
+    if len(p) < 12: continue
+    def mb(v):
+        v = v.lower()
+        try:
+            if v.endswith('g'): return float(v[:-1]) * 1024
+            if v.endswith('m'): return float(v[:-1])
+            if v.endswith('t'): return float(v[:-1]) * 1024 * 1024
+            return float(v) / 1024
+        except ValueError: return 0.0
+    try: procs.append({'pid': int(p[0]), 'user': p[1], 'cpu': float(p[8].replace(',', '.')), 'mem': round(mb(p[5]), 1), 'name': p[11].strip()})
+    except ValueError: continue
+print(json.dumps({'cpu': cpu, 'memUsed': round(mu), 'memTotal': round(mt), 'procs': procs}))

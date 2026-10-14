@@ -446,6 +446,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   Process { id: fullToggle; command: ["/usr/lib/legal-dock/dock-full-toggle"]; onExited: poll.running = true }
   // Restart / Shut down always ask first ("Do you really want to ...?"), popup centered on screen.
   Process { id: rebootProc; command: ["/usr/lib/legal-dock/reboot-confirm", "reboot", "center"] }
+  Process { id: tasksProc; command: ["/usr/lib/legal-dock/legal-tasks"] }
   Process { id: shutdownProc; command: ["/usr/lib/legal-dock/reboot-confirm", "shutdown", "center"] }
   property bool blocksOn: false
   FileView {
@@ -517,18 +518,19 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             Repeater {
               model: [
                 { label: "Apps", icon: "\uf00a", act: "apps", on: true },
-                { label: moving ? "Done Moving" : "Move Icons", icon: "\uf0b2", act: "move", on: true },
+                { label: moving ? "Done" : "Move", icon: "\uf0b2", act: "move", on: true },
                 { label: "Mouse", icon: "\uf245", act: "mouse", on: true },
+                { label: "Tasks", icon: "\uf080", act: "tasks", on: true },
                 { label: "Shut Down", icon: "\uf011", act: "shutdown", on: true }
               ].filter(i => i.on)
               Rectangle {
                 required property var modelData
-                width: (parent.width - 12) / 4; height: 40; radius: 6
+                width: (parent.width - 16) / 5; height: 40; radius: 6
                 opacity: (locked && modelData.act === "move") ? 0.35 : 1
                 color: bta.containsMouse ? selC : hiC; border.color: accC; border.width: 1
                 Column { anchors.centerIn: parent; spacing: 1
                   Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.icon; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
-                  Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label; color: txtC; font.pixelSize: 9 } }
+                  Text { anchors.horizontalCenter: parent.horizontalCenter; text: modelData.label; color: txtC; font.pixelSize: 8 } }
                 MouseArea {
                   id: bta; anchors.fill: parent; hoverEnabled: true
                   onClicked: {
@@ -537,6 +539,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
                     if (modelData.act === "apps") appsProc.running = true
                     else if (modelData.act === "mouse") openMouse()
                     else if (modelData.act === "move") { if (moving) endMove(); else startMove() }
+                    else if (modelData.act === "tasks") tasksProc.running = true
                     else if (modelData.act === "shutdown") shutdownProc.running = true
                   }
                 }

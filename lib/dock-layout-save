@@ -1,0 +1,14 @@
+#!/bin/bash
+# dock-layout-save TOKEN... : save the Mac/Rubik dock order (apps, __sep__N dividers, __launcher__/__folder__/__trash__) to ~/.cache/macdock-layout
+# and put the pinned apps in the same order in ~/.cache/nwg-dock-pinned (so the Classic dock agrees).
+python3 - "$HOME/.cache/macdock-layout" "$HOME/.cache/nwg-dock-pinned" "$@" <<'PY'
+import sys,os
+lay,pin,toks=sys.argv[1],sys.argv[2],[t for t in sys.argv[3:] if t]
+open(lay+'.tmp','w').write('\n'.join(toks)+'\n'); os.replace(lay+'.tmp',lay)
+try: cur=[x.strip() for x in open(pin) if x.strip()]
+except Exception: cur=[]
+low={c.lower():c for c in cur}
+new=[low[t.lower()] for t in toks if t.lower() in low]
+new+=[c for c in cur if c not in new]
+if new!=cur: open(pin,'w').write('\n'.join(new)+'\n')
+PY

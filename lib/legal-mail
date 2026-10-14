@@ -1,0 +1,5 @@
+#!/bin/bash
+# legal-mail : open Mail (your Outlook on the web) in its own app window; plain browser on systems without Omarchy's web-app launcher.
+URL="${1:-https://outlook.live.com/mail/}"
+if command -v omarchy-launch-webapp >/dev/null; then exec omarchy-launch-webapp "$URL"; fi
+exec xdg-open "$URL"

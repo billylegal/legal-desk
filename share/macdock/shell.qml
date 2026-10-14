@@ -98,8 +98,56 @@ ShellRoot {
   property var runCls: []
   property string runKey: ""
   function isPinned(c) { return pinned.some(p => p.toLowerCase() === c.toLowerCase()) }
-  property var items: pinned.map(c => ({ cls: c })).concat(runCls.filter(c => !isPinned(c)).map(c => ({ cls: c }))).concat([{ cls: "__launcher__" }])
-  readonly property real baseTotal: items.length * (base + gap)
+  // Dock order: apps, dividers (__sep__N), launcher/Downloads/trash. ~/.cache/macdock-layout remembers a custom order (drag in Move Icons); no file = the default order.
+  property var layoutTokens: []
+  property var ownTokens: []          // Legal Dock's own apps kept in the dock (~/.cache/macdock-own): __calendar__, __notes__
+  FileView {
+    path: Quickshell.env("HOME") + "/.cache/macdock-own"; watchChanges: true; printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.ownTokens = text().split("\n").map(x => x.trim()).filter(x => x)
+  }
+  property date nowD: new Date()
+  Timer { interval: 20000; running: true; repeat: true; onTriggered: root.nowD = new Date() }
+  function isSep(c) { return c.indexOf("__sep") === 0 }
+  function dockItems(pin, run, lay, own) {
+    var def = pin.slice(), low = {}
+    run.forEach(function (c) { if (!pin.some(p => p.toLowerCase() === c.toLowerCase())) def.push(c) })
+    def = def.concat(["__launcher__", "__folder__", "__trash__"])
+    var li = def.indexOf("__launcher__")
+    own.forEach(function (t) { if (def.indexOf(t) < 0) { def.splice(li, 0, t); li++ } })
+    if (!lay.length) return def.map(c => ({ cls: c }))
+    def.forEach(function (c) { low[c.toLowerCase()] = c })
+    var out = [], used = {}
+    lay.forEach(function (t) {
+      if (isSep(t)) { out.push(t); return }
+      var k = t.toLowerCase(); if (low[k] && !used[k]) { out.push(low[k]); used[k] = 1 }
+    })
+    var extra = def.filter(c => !used[c.toLowerCase()])
+    var at = out.indexOf("__launcher__"); if (at < 0) at = out.length
+    extra = extra.filter(c => true)
+    out.splice.apply(out, [at, 0].concat(extra.filter(c => !(c === "__launcher__" || c === "__folder__" || c === "__trash__"))))
+    extra.filter(c => (c === "__launcher__" || c === "__folder__" || c === "__trash__")).forEach(c => out.push(c))
+    return out.map(c => ({ cls: c }))
+  }
+  property var items: dockItems(pinned, runCls, layoutTokens, ownTokens)
+  FileView {
+    path: Quickshell.env("HOME") + "/.cache/macdock-layout"
+    watchChanges: true; printErrors: false
+    onFileChanged: reload()
+    onLoaded: root.layoutTokens = text().split("\n").map(s => s.trim()).filter(s => s.length > 0)
+  }
+  function saveLayout(order) {
+    layoutTokens = order
+    pinned = order.filter(c => pinned.some(p => p.toLowerCase() === c.toLowerCase()))
+    sh(["/usr/lib/legal-dock/dock-layout-save"].concat(order))
+  }
+  function curOrder() { return items.map(i => i.cls).filter(c => isSep(c) || c.indexOf("__") === 0 || isPinned(c)) }
+  function addDivider() { var o = curOrder(), at = o.indexOf("__launcher__"); if (at < 0) at = o.length; o.splice(at, 0, "__sep__" + Date.now()); saveLayout(o) }
+  function removeAt(i) { var o = curOrder(), c = items[i].cls; saveLayout(o.filter(x => x !== c)) }
+  readonly property real sepW: 10                                  // a divider is a narrow cell, so icons sit close to it
+  function restW(i) { return items[i] && isSep(items[i].cls) ? sepW : base }
+  readonly property var restXs: { var a = [], x = 0; for (var i = 0; i < items.length; i++) { a.push(x); x += restW(i) + gap } return a }
+  readonly property real baseTotal: items.length ? restXs[items.length - 1] + restW(items.length - 1) + gap : 0
   readonly property real panelW: baseTotal + base * (maxScale - 1) * 3.6 + 40
   readonly property real panelH: base * maxScale + 54
 
@@ -318,9 +366,46 @@ def find(c):
         for part in h.split('.'):
             if len(part) >= 3 and norm(part) in names: return names[norm(part)]
     return None
+def favicon(c):
+    # Web apps without a launcher file (chrome-<site>__path-Default): use the site's own icon, saved once in ~/.cache/macdock-icons.
+    m = re.match(r'chrome-([a-z0-9.-]+?)(__.*)?-default$', c.lower())
+    if not m or '.' not in m.group(1) or re.match(r'^[0-9.]+$', m.group(1)): return None
+    host = m.group(1)
+    d = os.path.expanduser('~/.cache/macdock-icons'); os.makedirs(d, exist_ok=True)
+    for ext in ('png', 'ico', 'svg'):
+        f = os.path.join(d, host + '.' + ext)
+        if os.path.exists(f): return {'icon': f, 'id': '', 'name': (host.split('.')[1] if host.split('.')[0] in ('www', 'app', 'm') else host.split('.')[0]).capitalize()}
+    if os.path.exists(os.path.join(d, host + '.none')): return None
+    import urllib.request, urllib.parse
+    def get(u):
+        rq = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) LegalDock'})
+        with urllib.request.urlopen(rq, timeout=5) as r: return r.read(), r.geturl()
+    cands = []
+    try:
+        html, base = get('https://' + host + '/')
+        html = html.decode('utf-8', 'ignore')
+        for t in re.findall(r'<link[^>]+>', html, re.I):
+            q = chr(34) + chr(39)
+            rel = re.search('rel=[' + q + ']([^' + q + ']+)', t, re.I); hr = re.search('href=[' + q + ']([^' + q + ']+)', t, re.I)
+            if rel and hr and 'icon' in rel.group(1).lower():
+                sz = re.search('sizes=[' + q + '][0-9]+', t, re.I)
+                cands.append((('apple' in rel.group(1).lower()) * 1000 + (int(sz.group(0)[7:]) if sz else 0), urllib.parse.urljoin(base, hr.group(1))))
+    except Exception: pass
+    cands.sort(reverse=True)
+    urls = [u for _, u in cands] + ['https://' + host + '/favicon.ico']
+    for u in urls:
+        try:
+            data, _ = get(u)
+            ext = 'png' if data[1:4] == b'PNG' else 'ico' if data[:4] == bytes([0, 0, 1, 0]) else 'svg' if b'<svg' in data[:600] else None
+            if ext and len(data) > 100:
+                f = os.path.join(d, host + '.' + ext); open(f, 'wb').write(data)
+                return {'icon': f, 'id': '', 'name': (host.split('.')[1] if host.split('.')[0] in ('www', 'app', 'm') else host.split('.')[0]).capitalize()}
+        except Exception: continue
+    open(os.path.join(d, host + '.none'), 'w').write('')
+    return None
 out = {}
 for c in want:
-    r = find(c)
+    r = find(c) or favicon(c)
     if r: out[c] = r
 print(json.dumps(out))
 `]
@@ -333,8 +418,18 @@ print(json.dumps(out))
   function launch(args) { sh(["setsid", "-f", "bash", "-c", "\"$@\" >/dev/null 2>&1 </dev/null", "x"].concat(args)) }
   function sh(args) { runner.cmd = args; runner.running = false; runner.running = true }
 
+  // Trash can: shows full/empty, opens the trash, right-click Empty Trash; drag a pinned icon onto it to unpin
+  property bool trashFull: false
+  Timer { interval: 4000; running: true; repeat: true; triggeredOnStart: true; onTriggered: { trashChk.running = false; trashChk.running = true } }
+  Process { id: trashChk; command: ["bash", "-c", "ls -A \"$HOME/.local/share/Trash/files\" 2>/dev/null | head -1"]
+    stdout: StdioCollector { onStreamFinished: root.trashFull = text.trim().length > 0 } }
   function activate(cls) {
+    if (cls === "__trash__") { launch(["gio", "open", "trash:///"]); return }
+    if (cls === "__folder__") { launch(["xdg-open", Quickshell.env("HOME") + "/Downloads"]); return }
     if (cls === "__launcher__") { sh(["/usr/lib/legal-dock/drawer-toggle"]); return }
+    if (cls === "__calendar__") { sh(["/usr/lib/legal-dock/legal-calendar"]); return }
+    if (cls === "__notes__") { sh(["/usr/lib/legal-dock/legal-notes"]); return }
+    if (cls === "__tasks__") { sh(["/usr/lib/legal-dock/legal-tasks"]); return }
     if (cls === "reboot") { sh(["/usr/lib/legal-dock/reboot-confirm"]); return }
     if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-dock/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
     markLaunch(cls)
@@ -344,6 +439,8 @@ print(json.dumps(out))
   }
   function iconFor(cls) {
     if (cls === "__launcher__") return "file:///usr/share/nwg-dock-hyprland/images/grid.svg"
+    if (cls === "__trash__") return trashFull ? "file:///usr/share/icons/Adwaita/scalable/status/user-trash-full.svg" : "file:///usr/share/icons/Adwaita/scalable/places/user-trash.svg"
+    if (cls === "__folder__") return "file:///usr/share/icons/Adwaita/scalable/places/folder-download.svg"
     var r = appmap[cls]
     var n = r && r.icon ? r.icon : cls
     if (n.startsWith("/")) return "file://" + n
@@ -410,18 +507,19 @@ print(json.dumps(out))
   Process { id: lockChk; command: ["test", "-e", Quickshell.env("HOME") + "/.cache/dock-locked"]; onExited: (c) => root.locked = (c === 0) }
 
   function layoutFor(p, m, W) {
-    var n = items.length, step = base + gap, L0 = (W - baseTotal) / 2
+    var n = items.length, L0 = (W - baseTotal) / 2
     var xs = [], ws = [], tot = 0, mm = Math.max(0, m)
     if (dragIdx >= 0) {
       var o = []; for (var k = 0; k < n; k++) if (k !== dragIdx) o.push(k)
       o.splice(Math.max(0, Math.min(o.length, dropIdx)), 0, dragIdx)
-      for (var j = 0; j < n; j++) { xs[o[j]] = L0 + j * step; ws[o[j]] = base }
+      var xx = L0
+      for (var j = 0; j < n; j++) { var wj = restW(o[j]); xs[o[j]] = xx; ws[o[j]] = wj; xx += wj + gap }
       return { xs: xs, ws: ws, tot: baseTotal - gap }
     }
     for (var i = 0; i < n; i++) {
-      var d = Math.abs(p - (L0 + i * step + base / 2))
-      var sc = d < radius ? 1 + (maxScale - 1) * mm * (0.5 + 0.5 * Math.cos(Math.PI * d / radius)) : 1
-      ws[i] = base * Math.max(0.9, sc); tot += ws[i]
+      var d = Math.abs(p - (L0 + restXs[i] + restW(i) / 2))
+      var sc = restW(i) < base ? 1 : d < radius ? 1 + (maxScale - 1) * mm * (0.5 + 0.5 * Math.cos(Math.PI * d / radius)) : 1
+      ws[i] = restW(i) < base ? restW(i) : base * Math.max(0.9, sc); tot += ws[i]
     }
     tot += gap * (n - 1)
     var x = (W - tot) / 2
@@ -430,7 +528,7 @@ print(json.dumps(out))
   }
   readonly property var lay: layoutFor(umS, mag, win.width)
   // Where the last icon (the launcher) sits on the screen at rest; the menus above the dock line up with it.
-  readonly property real launcherX: { var l = layoutFor(0, 0, win.width), k = items.length - 1; return k < 0 ? 0 : Math.round(((win.screen ? win.screen.width : 1920) - win.width) / 2 + l.xs[k] + l.ws[k] / 2) }
+  readonly property real launcherX: { var l = layoutFor(0, 0, win.width), k = items.findIndex(i => i.cls === "__launcher__"); return k < 0 ? 0 : Math.round(((win.screen ? win.screen.width : 1920) - win.width) / 2 + l.xs[k] + l.ws[k] / 2) }
   onLauncherXChanged: lxT.restart()
   Timer { id: lxT; interval: 400; onTriggered: lxW.running = true }
   // Menus open on one line just above the dock: its distance from the bottom of the screen goes next to the launcher position.
@@ -442,25 +540,27 @@ print(json.dumps(out))
   property real pmx: 0
   Timer { id: ptT; interval: 8; onTriggered: root.solvePointer(root.pmx) }
   function pointer(mx) { pmx = mx; if (!ptT.running) ptT.start() }
+  function nearestIdx(rx) { var b = 0, bd = 1e9; for (var i = 0; i < items.length; i++) { var d = Math.abs(rx - (restXs[i] + restW(i) / 2)); if (d < bd) { bd = d; b = i } } return b }
   function solvePointer(mx) {
     var n = items.length; if (n < 1) return
-    var step = base + gap, L0 = (win.width - baseTotal) / 2
+    var L0 = (win.width - baseTotal) / 2
     var p = (mag > 0.15) ? umT : mx
     for (var it = 0; it < 10; it++) {
       var l = layoutFor(p, 1, win.width)
-      var i = Math.max(0, Math.min(n - 1, Math.floor((p - L0) / step)))
-      var off = (p - L0) - i * step
-      var sx = off < 0 ? l.xs[i] + off : (off <= base ? l.xs[i] + off / base * l.ws[i] : l.xs[i] + l.ws[i] + (off - base))
+      var i = 0
+      while (i < n - 1 && (p - L0) >= restXs[i + 1]) i++
+      var off = (p - L0) - restXs[i]
+      var sx = off < 0 ? l.xs[i] + off : (off <= restW(i) ? l.xs[i] + off / restW(i) * l.ws[i] : l.xs[i] + l.ws[i] + (off - restW(i)))
       p += (mx - sx) * 0.5
     }
     umT = p
     if (mag <= 0.15) { umS = p; umV = 0 }
-    hoverIdx = Math.max(0, Math.min(n - 1, Math.round((p - L0 - base / 2) / step)))
+    hoverIdx = nearestIdx(p - L0)
   }
   function moveTo(from, to) {
-    if (from === to || from < 0 || to < 0 || from >= pinned.length || to >= pinned.length) return
-    var l = pinned.slice(); l.splice(to, 0, l.splice(from, 1)[0]); pinned = l
-    sh(["/usr/lib/legal-dock/dock-reorder", String(from), String(to)])
+    if (from === to || from < 0 || to < 0 || from >= items.length || to >= items.length) return
+    var o = items.map(i => i.cls); o.splice(to, 0, o.splice(from, 1)[0])
+    saveLayout(o.filter(c => isSep(c) || c.indexOf("__") === 0 || isPinned(c)))
   }
 
   PanelWindow {
@@ -514,8 +614,16 @@ print(json.dumps(out))
       Text { anchors.centerIn: parent; text: "Drag To Move  ·  Done \u2713"; color: "#C1C497"; font.pixelSize: 12 }
       MouseArea {
         id: dma; anchors.fill: parent; hoverEnabled: true
-        onClicked: { root.moveMode = false; root.sh([Quickshell.env("HOME") + "/.local/bin/dock-move-done"]) }
+        onClicked: { root.moveMode = false; root.sh(["/usr/lib/legal-dock/dock-move-done"]) }
       }
+    }
+    Rectangle {
+      visible: root.moveMode
+      anchors.horizontalCenter: parent.horizontalCenter; anchors.horizontalCenterOffset: 190
+      anchors.bottom: parent.bottom; anchors.bottomMargin: root.base + 36
+      width: 130; height: 30; radius: 15; color: dvma.containsMouse ? "#3a5a44" : "#111c18"; border.color: "#C1C497"; border.width: 1
+      Text { anchors.centerIn: parent; text: "+ Add divider"; color: "#C1C497"; font.pixelSize: 12 }
+      MouseArea { id: dvma; anchors.fill: parent; hoverEnabled: true; onClicked: root.addDivider() }
     }
     // Row of icons, centred. Positions come from the cumulative scaled widths, so neighbours push apart.
     Item {
@@ -535,9 +643,11 @@ print(json.dumps(out))
           required property var modelData
           required property int index
           readonly property bool dragged: root.dragIdx === index
+          readonly property bool isSep: root.isSep(modelData.cls)
+          readonly property bool ownIcon: modelData.cls === "__calendar__" || modelData.cls === "__notes__" || modelData.cls === "__tasks__"   // draw their own tile
           readonly property real lift: dragged ? 1.18 : 1
           width: (root.lay.ws[index] || root.base) * lift
-          height: width
+          height: isSep ? root.base : width
           x: dragged ? root.dragX - width / 2 : (root.lay.xs[index] || 0)
           Behavior on x { enabled: root.dragIdx >= 0 && !cell.dragged; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
           z: dragged ? 10 : 0
@@ -564,10 +674,26 @@ print(json.dumps(out))
           SequentialAnimation { id: twistAnim
             NumberAnimation { target: cell; property: "twist"; from: 0; to: 90; duration: 260; easing.type: Easing.OutBack }
             PropertyAction { target: cell; property: "twist"; value: 0 } }
+          // Divider: a thin line between groups of icons (drag it anywhere; in Move Icons click it to remove it).
+          Item {
+            visible: cell.isSep; anchors.fill: parent
+            Rectangle {
+              anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.bottom; anchors.bottomMargin: parent.height * 0.08
+              width: root.moveMode ? 3 : 2; height: parent.height * 0.84; radius: 1
+              color: root.moveMode ? root.accC : Qt.rgba(root.accC.r, root.accC.g, root.accC.b, 0.55)
+            }
+            Rectangle {
+              visible: root.moveMode; width: 16; height: 16; radius: 8; color: root.bgC; border.color: root.accC; border.width: 1
+              anchors.horizontalCenter: parent.horizontalCenter; anchors.top: parent.top
+              Text { anchors.centerIn: parent; text: "\u00d7"; color: root.txtC; font.pixelSize: 12 }
+            }
+          }
+          Item {
+            visible: !cell.isSep; anchors.fill: parent
           Rectangle {
             visible: root.rubik && cell.modelData.cls !== "__launcher__"
             anchors.fill: parent; radius: width * (root.skin.rr !== undefined ? root.skin.rr : 0.2)
-            color: root.iconTiles ? root.tc1(cell.modelData.cls) : ((root.rpal && root.rpal.length) ? root.rpal[cell.index % root.rpal.length] : "#333333"); border.color: "#0d0d0d"; border.width: 2
+            color: cell.ownIcon ? root.selC : root.iconTiles ? root.tc1(cell.modelData.cls) : ((root.rpal && root.rpal.length) ? root.rpal[cell.index % root.rpal.length] : "#333333"); border.color: "#0d0d0d"; border.width: 2
             rotation: cell.twist
             Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: "#33ffffff"; border.width: 1 }
           }
@@ -575,7 +701,7 @@ print(json.dumps(out))
           Rectangle {
             id: stile
             readonly property string kind: root.skin.tile || ""
-            visible: !root.rubik && kind !== "" && (kind === "circle" || kind === "btn" || (hover.hovered && root.hoverIdx === cell.index && root.dragIdx < 0))
+            visible: !root.rubik && !cell.ownIcon && kind !== "" && (kind === "circle" || kind === "btn" || (hover.hovered && root.hoverIdx === cell.index && root.dragIdx < 0))
             anchors.centerIn: parent
             width: parent.width * (kind === "circle" ? 0.96 : 0.98); height: width
             radius: kind === "circle" ? width / 2 : (kind === "hpill" ? 8 : 0)
@@ -586,26 +712,26 @@ print(json.dumps(out))
           }
           // Icon style tiles (non-Rubik skins): a rounded plate behind the icon in the chosen skin's colours.
           Rectangle {
-            visible: root.iconTiles && !root.rubik && (root.skin.tile || "") !== "circle" && cell.modelData.cls !== "__launcher__"
+            visible: root.iconTiles && !root.rubik && (root.skin.tile || "") !== "circle" && cell.modelData.cls !== "__launcher__" && !cell.ownIcon
             anchors.centerIn: parent; width: parent.width * (root.iconCircle ? 0.96 : 0.98); height: width; radius: root.iconCircle ? width / 2 : width * 0.22
             gradient: Gradient { GradientStop { position: 0; color: root.tc1(cell.modelData.cls) } GradientStop { position: 1; color: root.tc2(cell.modelData.cls) } }
             border.color: root.tcb; border.width: 1
           }
           // Block look: each icon on its own block (skins that already have tiles keep theirs).
           Rectangle {
-            visible: root.blocks && !root.rubik && !root.iconTiles && (root.skin.tile || "") === "" && cell.modelData.cls !== "__launcher__"
+            visible: root.blocks && !root.rubik && !root.iconTiles && (root.skin.tile || "") === "" && cell.modelData.cls !== "__launcher__" && !cell.ownIcon
             anchors.centerIn: parent; width: parent.width * 0.98; height: width; radius: width * 0.22
             gradient: Gradient { GradientStop { position: 0; color: Qt.lighter(root.skin.c1, 1.4) } GradientStop { position: 1; color: Qt.lighter(root.skin.c2, 1.4) } }
             border.color: root.skin.b; border.width: 1
           }
           Rectangle {
-            visible: root.iconFor(cell.modelData.cls) === ""
+            visible: root.iconFor(cell.modelData.cls) === "" && !cell.ownIcon
             anchors.centerIn: parent; width: parent.width * 0.88; height: parent.height * 0.88; radius: width * 0.22
             color: root.tint(cell.modelData.cls)
             Text { anchors.centerIn: parent; text: root.letterOf(cell.modelData.cls); color: "white"; font.bold: true; font.pixelSize: parent.height * 0.55 }
           }
           Image {
-            visible: cell.modelData.cls !== "__launcher__" && cell.modelData.cls !== "chrome-127.0.0.1__globe_-Default"
+            visible: cell.modelData.cls !== "__launcher__" && !cell.ownIcon && cell.modelData.cls !== "chrome-127.0.0.1__globe_-Default"
             anchors.fill: parent
             scale: root.scaleOf(cell.modelData.cls) * ((root.rubik || (root.blocks && (root.skin.tile || "") === "") || (root.iconTiles && (root.skin.tile || "") !== "circle")) ? (root.iconCircle ? 0.66 : 0.74) : (root.skin.ik || 1))
             rotation: cell.twist
@@ -673,28 +799,71 @@ print(json.dumps(out))
                 poly(Rx - j3 * ax, Ry + j3 * ay + k3 * u, -ax, ay, 0, u, colorOf(2, j3, k3))
             }
           }
-          // A View From Space (Radio Globe): the app's bullseye + speaker, colour steps through the app's 8 themes every second, sound waves pulse
+          Rectangle {   // plate like the other icons' (skin colours) behind Calendar / Notes
+            visible: cell.ownIcon && !root.rubik
+            anchors.centerIn: parent; width: parent.width * 0.98; height: width; radius: width * 0.22
+            gradient: Gradient { GradientStop { position: 0; color: Qt.lighter(root.skin.c1, 1.4) } GradientStop { position: 1; color: Qt.lighter(root.skin.c2, 1.4) } }
+            border.color: root.skin.b; border.width: 1
+          }
+          // Calendar: an Apple-style date icon (weekday on red, big day number) that follows the real date.
+          Item {
+            visible: cell.modelData.cls === "__calendar__"
+            anchors.centerIn: parent
+            width: parent.width * 0.74; height: width
+            Rectangle {
+              anchors.fill: parent; radius: width * 0.2; color: root.skin.n === "Nebula" ? "#E6E1FA" : "#fbfbfd"; border.color: root.skin.n === "Nebula" ? "#C9BAFF" : "#33000000"; border.width: 1; clip: true
+              Rectangle { width: parent.width; height: parent.height * 0.3; color: root.skin.n === "Nebula" ? "#8B5CF6" : "#ff3b30"
+                Text { anchors.centerIn: parent; text: Qt.formatDate(root.nowD, "ddd").toUpperCase(); color: "#ffffff"; font.pixelSize: parent.height * 0.62; font.bold: true } }
+              Text { anchors.horizontalCenter: parent.horizontalCenter; y: parent.height * 0.3; height: parent.height * 0.7; verticalAlignment: Text.AlignVCenter
+                text: root.nowD.getDate(); color: root.skin.n === "Nebula" ? "#2A1B52" : "#1d1d1f"; font.pixelSize: parent.height * 0.5; font.weight: Font.DemiBold }
+            }
+          }
+          // Task Manager: three activity bars
+          Item {
+            visible: cell.modelData.cls === "__tasks__"
+            anchors.centerIn: parent
+            width: parent.width * 0.74; height: width
+            Rectangle {
+              anchors.fill: parent; radius: width * 0.2; color: root.skin.n === "Nebula" ? "#1d1238" : "#222"; border.color: root.skin.n === "Nebula" ? "#8B5CF6" : "#555"; border.width: 1; clip: true
+              Repeater { model: [0.45, 0.8, 0.6]
+                Rectangle { width: parent.width * 0.16; x: parent.width * (0.2 + index * 0.25); height: parent.height * modelData * 0.7; y: parent.height * 0.82 - height; radius: 2
+                  color: root.skin.n === "Nebula" ? (index === 1 ? "#C9BAFF" : "#8B5CF6") : (index === 1 ? "#ff9f0a" : "#30d158") } }
+            }
+          }
+          // Notes: a yellow note pad
+          Item {
+            visible: cell.modelData.cls === "__notes__"
+            anchors.centerIn: parent
+            width: parent.width * 0.74; height: width
+            Rectangle {
+              anchors.fill: parent; radius: width * 0.2; color: root.skin.n === "Nebula" ? "#D8CCFF" : "#ffd84a"; border.color: root.skin.n === "Nebula" ? "#C9BAFF" : "#33000000"; border.width: 1; clip: true
+              Rectangle { width: parent.width; height: parent.height * 0.22; color: root.skin.n === "Nebula" ? "#8B5CF6" : "#f2c230" }
+              Repeater { model: 3
+                Rectangle { x: parent.width * 0.16; y: parent.height * (0.42 + index * 0.17); width: parent.width * 0.68; height: Math.max(1, parent.height * 0.03); color: root.skin.n === "Nebula" ? "#7C5CD6" : "#b08a1a"; opacity: 0.7 } }
+            }
+          }
+          // A View From Space (Radio Globe): the app's bullseye + speaker, drawn once (no animation, no CPU) in the skin's colours
           Canvas {
             id: gb
             visible: cell.modelData.cls === "chrome-127.0.0.1__globe_-Default"
             width: 192; height: 192
             anchors.centerIn: parent
             scale: cell.width / 192
-            Timer { interval: 100; running: gb.visible && !hover.hovered; repeat: true; onTriggered: gb.requestPaint() }
+            Component.onCompleted: requestPaint()
+            Connections { target: root; function onAccCChanged() { gb.requestPaint() } function onBgCChanged() { gb.requestPaint() } }
             onPaint: {
               var ctx = getContext("2d"); ctx.reset()
-              var S = Math.min(width, height), cx = width / 2, cy = height / 2, now = Date.now()
-              var cols = ["#39ff14", "#ffb000", "#ff2a2a", "#00e5ff", "#b4ff3c", "#ffe066", "#ff6a00", "#d946ff"]
-              var c = cols[Math.floor(now / 1000) % 8]
+              var S = Math.min(width, height), cx = width / 2, cy = height / 2, now = 0
+              var c = "" + Qt.lighter(root.accC, 1.45)   // the skin's accent (Nebula: soft violet)
               function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath() }
               var m = S * 0.03, W = S - 2 * m
-              rr(m, m, W, W, W * 0.22); ctx.fillStyle = "#070a1c"; ctx.fill()
+              rr(m, m, W, W, W * 0.22); ctx.fillStyle = "" + Qt.darker(root.bgC, 1.2); ctx.fill()
               ctx.save(); rr(m, m, W, W, W * 0.22); ctx.clip()
               ctx.fillStyle = "#ffffff"
               var st = [[.14, .16, 1.2], [.82, .13, 1.4], [.9, .5, 1], [.1, .55, 1], [.18, .86, 1.1], [.86, .88, 1.3]]
               for (var i = 0; i < st.length; i++) { ctx.beginPath(); ctx.arc(st[i][0] * S, st[i][1] * S, st[i][2] * S * 0.007, 0, 6.2832); ctx.fill() }
               // ripples (as on the app's globe): three rings expanding from the speaker
-              var R = S * 0.27, tt = now / 1300
+              var R = S * 0.27, tt = 0.12
               ctx.lineWidth = Math.max(1, S * 0.018)
               for (var k = 0; k < 3; k++) {
                 var t = ((tt + k / 3) % 1)
@@ -737,7 +906,7 @@ print(json.dumps(out))
             width: lbl.width + 16; height: lbl.height + 8; radius: 7
             color: Qt.rgba(root.bgC.r, root.bgC.g, root.bgC.b, 0.92); border.color: root.accC; border.width: 1
             Text { id: lbl; anchors.centerIn: parent; color: root.txtC; font.pixelSize: 12
-              text: cell.modelData.cls === "__launcher__" ? "Apps" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
+              text: cell.modelData.cls === "__launcher__" ? "Legal Control" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
           }
           // ring around the icon whose menu is open
           Rectangle { visible: root.ctx !== "" && root.ctx === cell.modelData.cls; anchors.fill: parent; anchors.margins: -2; radius: width * 0.24; color: "transparent"; border.color: root.accC; border.width: 2 }
@@ -750,6 +919,7 @@ print(json.dumps(out))
             anchors.top: parent.bottom
             anchors.topMargin: 2
           }
+          }
           MouseArea {
             id: cma
             anchors.fill: parent
@@ -757,7 +927,7 @@ print(json.dumps(out))
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             property real px0: 0
             property bool moved: false
-            readonly property bool canDrag: (!root.locked || root.moveMode) && cell.index < root.pinned.length
+            readonly property bool canDrag: (!root.locked || root.moveMode) && !(root.rubik && false)
             function rx(m) { return cma.mapToItem(rowArea, m.x, 0).x }
             onPressed: (m) => { px0 = rx(m); moved = false }
             onPositionChanged: (m) => {
@@ -767,13 +937,17 @@ print(json.dumps(out))
               if (moved && root.dragIdx === cell.index) {
                 root.dragX = x
                 var L0 = (win.width - root.baseTotal) / 2
-                root.dropIdx = Math.max(0, Math.min(root.pinned.length - 1, Math.round((x - L0 - root.base / 2) / (root.base + root.gap))))
+                root.dropIdx = root.nearestIdx(x - L0)
               }
             }
             onReleased: {
               if (root.dragIdx === cell.index) {
-                var f = root.dragIdx, t = root.dropIdx
+                var f = root.dragIdx, t = root.dropIdx, fc = root.items[f].cls
+                var ti = root.items.findIndex(i => i.cls === "__trash__"), tw = root.base, tx = (win.width - root.baseTotal) / 2 + (ti >= 0 ? root.restXs[ti] : 0)
+                var over = ti >= 0 && fc !== "__trash__" && root.dragX > tx - tw * 0.2 && root.dragX < tx + tw * 1.2
                 root.dragIdx = -1
+                if (over && root.isSep(fc)) { root.removeAt(f); return }
+                if (over && root.isPinned(fc)) { root.sh(["/usr/lib/legal-dock/dock-pin-toggle", fc]); return }
                 root.moveTo(f, t)
                 root.mag = (hover.hovered && !root.moveMode) ? 1 : 0
                 root.pointer(hover.point.position.x)
@@ -781,6 +955,7 @@ print(json.dumps(out))
             }
             onClicked: (m) => {
               if (moved) { moved = false; return }
+              if (cell.isSep) { if (root.moveMode) root.removeAt(cell.index); return }
               if (cell.modelData.cls === "__launcher__") { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate("__launcher__"); return }
               if (m.button === Qt.LeftButton) { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.closeMain(); root.activate(cell.modelData.cls) }
               else if (m.button === Qt.MiddleButton) { root.sh(["/usr/lib/legal-dock/dock-pin-toggle", cell.modelData.cls]) }
@@ -797,7 +972,7 @@ print(json.dumps(out))
   IpcHandler { target: "macdock"; function closeMenu(): void { root.ctx = "" } function menu(cls: string): void { root.ctxX = 800; root.ctx = cls } function moveMode(on: bool): void { root.moveMode = on; root.ctx = ""; root.mag = 0 } }
   property string ctx: ""
   // Opening a right-click menu, or clicking any icon, closes the grid-button menu if it is open.
-  function closeMain() { sh([Quickshell.env("HOME") + "/.local/bin/dock-menu-close", "main"]) }
+  function closeMain() { sh(["/usr/lib/legal-dock/dock-menu-close", "main"]) }
   property real ctxX: 0
   property var ctxWins: []
   onCtxChanged: { ctxWins = []; if (ctx !== "") { closeMain(); winsProc.cls = ctx; winsProc.running = false; winsProc.running = true } }
@@ -811,6 +986,10 @@ print(json.dumps(out))
   function isBrowser(c) { return /^(google-chrome|chromium|brave|microsoft-edge|vivaldi|helium|firefox|zen|librewolf)/i.test(c) }
   function ctxRows() {
     var rows = []
+    if (ctx === "__trash__") return [{ l: "Trash", a: "hdr" }, { l: "Open trash", a: "open" }, { l: "Empty trash", a: "empty" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === "__folder__") return [{ l: "Downloads", a: "hdr" }, { l: "Open folder", a: "open" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__") return [{ l: ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === "settings") return [{ l: "Settings", a: "hdr" }, { l: "Open settings", a: "open" }, { l: "Task manager", a: "tasks" }, { l: "Cancel", a: "cancel" }]
     var w = ctxWins
     rows.push({ l: ((appmap[ctx] && appmap[ctx].name) || ctx.replace(/^chrome-/, "").replace(/-Default$/, "")) + (w.length > 0 ? "  ·  " + w.length : ""), a: "hdr" })
     for (var i = 0; i < w.length && i < 6; i++) rows.push({ l: " " + (w[i].t.length > 20 ? w[i].t.substring(0, 19) + "…" : (w[i].t || "(untitled)")), a: "focus", addr: w[i].a })
@@ -859,7 +1038,11 @@ print(json.dumps(out))
                 onClicked: {
                   var c = root.ctx, act = modelData.a, addr = modelData.addr
                   if (act === "hdr") return
-                  if (act === "pin") root.sh(["/usr/lib/legal-dock/dock-pin-toggle", c])
+                  if (act === "open") root.activate(c)
+                  else if (act === "tasks") root.sh(["/usr/lib/legal-dock/legal-tasks"])
+                  else if (act === "unown") root.sh(["/usr/lib/legal-dock/dock-own-toggle", c])
+                  else if (act === "empty") root.sh(["gio", "trash", "--empty"])
+                  else if (act === "pin") root.sh(["/usr/lib/legal-dock/dock-pin-toggle", c])
                   else if (act === "close") root.sh(["/usr/lib/legal-dock/dock-close-app", c])
                   else if (act === "focus") root.sh(["hyprctl", "dispatch", "hl.dsp.focus({window='address:" + addr + "'})"])
                   else if (act === "incog") root.launch(["/usr/lib/legal-dock/browser-incognito", c])
