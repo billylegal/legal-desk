@@ -260,17 +260,18 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   // ---- Mouse pointer panel: speed, scroll direction, left-handed buttons, acceleration (dock-mouse) ----
   property bool mouseOpen: false
   property real mSpeed: 0
+  property real mScroll: 1
   property bool mNatural: false
   property bool mLeft: false
   property bool mFlat: false
-  readonly property int mouseH: 7 * 36 + 40
+  readonly property int mouseH: 8 * 36 + 40
   function openMouse() { if (!menuOpen) placeMenu(); mouseTop = (mac && menuLine > 0 && lastDock) ? screenH(lastDock.mon) - menuLine - mouseH : (lastDock ? lastDock.y : 600) - mouseH - 10; mouseProc.running = false; mouseProc.running = true; mouseOpen = true; mouseT.restart() }
   property real mouseTop: 400
   Timer { id: mouseT; interval: 20000; onTriggered: mouseOpen = false }
   Process {
     id: mouseProc
     command: ["/usr/lib/legal-dock/dock-mouse", "show"]
-    stdout: StdioCollector { onStreamFinished: { try { var r = JSON.parse(text); mSpeed = r.speed; mNatural = r.natural; mLeft = r.left; mFlat = r.flat } catch (e) { } } }
+    stdout: StdioCollector { onStreamFinished: { try { var r = JSON.parse(text); mSpeed = r.speed; mScroll = (r.scroll !== undefined ? r.scroll : 1); mNatural = r.natural; mLeft = r.left; mFlat = r.flat } catch (e) { } } }
   }
   Process { id: mouseSet; property var a: []; command: ["/usr/lib/legal-dock/dock-mouse"].concat(a) }
   function mset(args) { mouseT.restart(); mouseSet.running = false; mouseSet.a = args; mouseSet.running = true }
@@ -313,6 +314,12 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
               Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
               MouseArea { id: pna; anchors.fill: parent; hoverEnabled: true; onClicked: { mouseT.restart(); ptrProc.a = "next"; ptrProc.running = false; ptrProc.running = true } } }
           }
+          SliderRow {
+            txtC: ldr.txtC; accC: ldr.accC; selC: ldr.selC; bgC: ldr.bgC
+            width: parent.width; label: "Scroll"; from: 0.2; to: 3; value: mScroll; shown: mScroll.toFixed(1) + "x"
+            onMoved: (v) => { mScroll = Math.round(v * 10) / 10; mouseT.restart(); scrollT.restart() }
+          }
+          Timer { id: scrollT; interval: 120; onTriggered: mset(["scroll", String(mScroll)]) }
           Timer { id: speedT; interval: 120; onTriggered: mset(["speed", String(mSpeed)]) }
           Repeater {
             model: [
@@ -340,7 +347,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           Rectangle {
             width: parent.width; height: 34; radius: 6; color: mra.containsMouse ? selC : "transparent"
             Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: "Reset To Default"; color: txtC; font.pixelSize: 13 }
-            MouseArea { id: mra; anchors.fill: parent; hoverEnabled: true; onClicked: { mSpeed = 0; mNatural = false; mLeft = false; mFlat = false; mset(["reset"]); ptrProc.a = "0"; ptrProc.running = false; ptrProc.running = true } }
+            MouseArea { id: mra; anchors.fill: parent; hoverEnabled: true; onClicked: { mSpeed = 0; mScroll = 1; mNatural = false; mLeft = false; mFlat = false; mset(["reset"]); ptrProc.a = "0"; ptrProc.running = false; ptrProc.running = true } }
           }
           Rectangle {
             width: parent.width; height: 34; radius: 6; color: mca.containsMouse ? selC : "transparent"
