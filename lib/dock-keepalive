@@ -5,6 +5,9 @@
 exec 9>"${XDG_RUNTIME_DIR:-/tmp}/dock-keepalive.lock"
 flock -n 9 || exit 0
 while true; do
+  # Legal Dock is the default dock: only an explicit "classic" choice keeps the stock nwg-dock.
+  [ "$(cat "$HOME/.cache/dock-style" 2>/dev/null)" = classic ] || touch "$HOME/.cache/dock-mac"
+  [ -e "$HOME/.cache/dock-mac" ] && pgrep -x nwg-dock-hyprla >/dev/null && pkill -x nwg-dock-hyprla
   if [ ! -e "$HOME/.cache/dock-mac" ] && ! pgrep -x nwg-dock-hyprla >/dev/null; then
     case "$(cat "$HOME/.cache/dock-size" 2>/dev/null)" in small) I=32;; large) I=80;; *) I=56;; esac
     F=""; [ -e "$HOME/.cache/dock-full" ] && F="-f"

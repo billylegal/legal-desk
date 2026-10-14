@@ -17,8 +17,10 @@ yay -S legal-dock        # or any AUR helper
 Add to `~/.config/hypr/autostart.lua` (or `hyprland.conf`: `exec-once = legal-dock start`):
 
 ```lua
-o.exec_on_start("sleep 3 && legal-dock start")
+o.exec_on_start("sleep 3 && (legal-dock start || nwg-dock-hyprland -r -x -i 56)")
 ```
+
+Legal Dock takes over the dock: while it is active the classic nwg-dock is shut off. Remove it (`sudo pacman -R legal-dock`, or `legal-dock uninstall` first) and the classic dock comes back — the line above falls back to it at login.
 
 Then open **Legal Dock** from your app launcher, or run `legal-dock menu`.
 
@@ -28,6 +30,7 @@ Then open **Legal Dock** from your app launcher, or run `legal-dock menu`.
 legal-dock start      start the dock services (use this at login)
 legal-dock menu       open the dock menu
 legal-dock classic    switch to the classic dock
+legal-dock uninstall  stop Legal Dock and bring the classic dock back
 legal-dock mac        switch to the Mac-style dock
 legal-dock rubik      switch to the Rubik's Cube style
 legal-dock skin next|prev|0-7|auto   browse the 8 Mac/Rubik skins

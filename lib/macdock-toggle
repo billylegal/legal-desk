@@ -6,7 +6,7 @@ stop_mac() { for p in $(pgrep -f "quickshell -n -p /usr/share/legal-dock/macdock
 case "$1" in
   on)  echo mac > "$HOME/.cache/dock-style"; touch "$F"; pkill -x nwg-dock-hyprla; start_mac ;;   # keepalive no longer restarts nwg-dock while the flag exists
   rubik) echo rubik > "$HOME/.cache/dock-style"; touch "$F"; pkill -x nwg-dock-hyprla; start_mac ;;
-  off) rm -f "$F"; stop_mac ;;                              # keepalive brings nwg-dock back within ~2s
+  off) echo classic > "$HOME/.cache/dock-style"; rm -f "$F"; stop_mac ;;                              # keepalive brings nwg-dock back within ~2s
   status) [ -e "$F" ] && echo "macdock ($(cat "$HOME/.cache/dock-style" 2>/dev/null || echo mac))" || echo "classic nwg-dock" ;;
   *) echo "usage: macdock-toggle on|rubik|off|status"; exit 1 ;;
 esac

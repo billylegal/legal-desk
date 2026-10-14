@@ -1,6 +1,6 @@
 #!/bin/bash
 # Legal Dock — one command for the whole dock.
-# legal-dock [start|menu|classic|mac|rubik|small|medium|large|restart|status|version]
+# legal-dock [start|menu|classic|mac|rubik|small|medium|large|restart|status|uninstall|version]
 B="/usr/lib/legal-dock"
 SH="/usr/share/legal-dock"
 VERSION="1.0.0"
@@ -34,6 +34,13 @@ case "${1:-menu}" in
     for d in docklock macdock; do pkill -f "p $SH/$d\$"; done
     sleep 1; start_all ;;
   status) "$B/macdock-toggle" status; echo "size: $(cat "$HOME/.cache/dock-size" 2>/dev/null || echo medium)" ;;
+  uninstall)
+    # Hand the dock back to the classic nwg-dock: stop every Legal Dock process, forget its state, start the stock dock.
+    for p in "docklock" "macdock"; do pkill -f "p $SH/$p\$"; done
+    pkill -f "$B/dock-keepalive"; pkill -f "$B/dock-lock-guard"; pkill -x nwg-dock-hyprla
+    rm -f "$HOME/.cache/dock-mac" "$HOME/.cache/dock-locked" "$HOME/.cache/dock-hidden" "$HOME/.cache/dock-full"
+    sleep 1; { setsid nwg-dock-hyprland -r -x -i 56; } >/dev/null 2>&1 </dev/null &
+    echo "Legal Dock stopped; the classic dock is back. Remove the package with: sudo pacman -R legal-dock" ;;
   version|--version|-v) echo "legal-dock $VERSION" ;;
-  *) echo "usage: legal-dock [start|menu|classic|mac|rubik|small|medium|large|restart|status|version]"; exit 1 ;;
+  *) echo "usage: legal-dock [start|menu|classic|mac|rubik|small|medium|large|restart|status|uninstall|version]"; exit 1 ;;
 esac
