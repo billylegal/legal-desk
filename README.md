@@ -72,6 +72,8 @@ The **lock** button (a padlock, bottom row of the dock menu) locks the dock's la
 
 The menu's action buttons, **Move** (rearrange icons), **Mouse** (pointer settings) and **Shut Down** (plus **Hide** on the classic dock), are solid buttons on one line. The full-width bar is gone: Solid is the plate with a border around the icons.
 
+The **Mouse** popup has a **Pointer** row ‹ ›: **Original**, **Solid** (a filled pointer in the skin's colour) or **Outlined** (a hollow pointer with a skin-coloured outline). The pointer keeps matching the skin when you change it; hands, text cursors and resize cursors stay as your theme has them. `legal-dock pointer` also works from a terminal.
+
 ## Minimize windows
 
 Hyprland has no minimize, so Legal Dock adds one: `/usr/lib/legal-dock/win-minimize` parks a window on a hidden workspace and brings it back later. Clicking a minimized app in the **Mac dock** restores it. To use it elsewhere:

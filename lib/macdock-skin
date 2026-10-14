@@ -25,6 +25,7 @@ write_palette() {
   IFS='|' read -r b a t sel <<< "$row"
   printf 'bg=%s\nacc=%s\ntxt=%s\nsel=%s\n' "$b" "$a" "$t" "$sel" > "$H/dock-menu-colors.tmp" && mv "$H/dock-menu-colors.tmp" "$H/dock-menu-colors"
   write_drawer "$b" "$a" "$t" "$sel"
+  [ "$(cat "$H/dock-pointer" 2>/dev/null)" = 1 ] || [ "$(cat "$H/dock-pointer" 2>/dev/null)" = 2 ] && ( "$(dirname "$(readlink -f "$0")")/dock-pointer" apply >/dev/null 2>&1 & )   # keep the pointer matching the skin
 }
 
 # The app drawer ("All apps") wears the skin's colours too. nwg-drawer reads its stylesheet at start, so restart it when the colours change.

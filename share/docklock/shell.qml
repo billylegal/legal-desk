@@ -96,6 +96,16 @@ ShellRoot {
   Timer { interval: 1000; running: true; repeat: true; onTriggered: icoFile.reload() }
   Process { id: iconProc; property string a: "next"; command: ["/usr/lib/legal-dock/dock-icon-style", a]; onExited: icoFile.reload() }
   Process { id: resetProc; command: ["/usr/lib/legal-dock/dock-reset"]; onExited: icoFile.reload() }
+  property int ptrIdx: 0
+  readonly property var ptrNames: ["Original", "Solid", "Outlined"]
+  FileView {
+    id: ptrFile
+    path: Quickshell.env("HOME") + "/.cache/dock-pointer"
+    printErrors: false
+    onLoaded: { var n = parseInt(text()); ldr.ptrIdx = (isNaN(n) || n < 0 || n > 2) ? 0 : n }
+    onLoadFailed: ldr.ptrIdx = 0
+  }
+  Process { id: ptrProc; property string a: "next"; command: ["/usr/lib/legal-dock/dock-pointer", a]; onExited: ptrFile.reload() }
   property string wallTxt: ""
   Process { id: wallProc; property string a: "name"; command: ["/usr/lib/legal-dock/dock-wallpaper", a]
     stdout: StdioCollector { onStreamFinished: wallTxt = text.trim() } }
@@ -237,7 +247,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   property bool mNatural: false
   property bool mLeft: false
   property bool mFlat: false
-  readonly property int mouseH: 262
+  readonly property int mouseH: 7 * 36 + 40
   function openMouse() { if (!menuOpen) placeMenu(); mouseTop = (mac && menuLine > 0 && lastDock) ? screenH(lastDock.mon) - menuLine - mouseH : (lastDock ? lastDock.y : 600) - mouseH - 10; mouseProc.running = false; mouseProc.running = true; mouseOpen = true; mouseT.restart() }
   property real mouseTop: 400
   Timer { id: mouseT; interval: 20000; onTriggered: mouseOpen = false }
@@ -274,6 +284,19 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             width: parent.width; label: "Speed"; from: -1; to: 1; value: mSpeed; shown: (mSpeed > 0 ? "+" : "") + mSpeed.toFixed(2)
             onMoved: (v) => { mSpeed = Math.round(v * 20) / 20; mouseT.restart(); speedT.restart() }
           }
+          Row {
+            width: parent.width; height: 34; spacing: 4
+            Rectangle { width: 34; height: 34; radius: 6; color: pva.containsMouse ? selC : "transparent"
+              Text { anchors.centerIn: parent; text: "\u2039"; color: txtC; font.pixelSize: 20 }
+              MouseArea { id: pva; anchors.fill: parent; hoverEnabled: true; onClicked: { mouseT.restart(); ptrProc.a = "prev"; ptrProc.running = false; ptrProc.running = true } } }
+            Rectangle { width: parent.width - 76; height: 34; radius: 6; color: "transparent"; border.color: accC; border.width: 1
+              Row { anchors.centerIn: parent; spacing: 8
+                Text { text: "\uf245"; color: ptrIdx === 0 ? txtC : accC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 13 }
+                Text { text: "Pointer: " + ptrNames[ptrIdx]; color: txtC; font.pixelSize: 12 } } }
+            Rectangle { width: 34; height: 34; radius: 6; color: pna.containsMouse ? selC : "transparent"
+              Text { anchors.centerIn: parent; text: "\u203a"; color: txtC; font.pixelSize: 20 }
+              MouseArea { id: pna; anchors.fill: parent; hoverEnabled: true; onClicked: { mouseT.restart(); ptrProc.a = "next"; ptrProc.running = false; ptrProc.running = true } } }
+          }
           Timer { id: speedT; interval: 120; onTriggered: mset(["speed", String(mSpeed)]) }
           Repeater {
             model: [
@@ -301,7 +324,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           Rectangle {
             width: parent.width; height: 34; radius: 6; color: mra.containsMouse ? selC : "transparent"
             Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: "Reset To Default"; color: txtC; font.pixelSize: 13 }
-            MouseArea { id: mra; anchors.fill: parent; hoverEnabled: true; onClicked: { mSpeed = 0; mNatural = false; mLeft = false; mFlat = false; mset(["reset"]) } }
+            MouseArea { id: mra; anchors.fill: parent; hoverEnabled: true; onClicked: { mSpeed = 0; mNatural = false; mLeft = false; mFlat = false; mset(["reset"]); ptrProc.a = "0"; ptrProc.running = false; ptrProc.running = true } }
           }
           Rectangle {
             width: parent.width; height: 34; radius: 6; color: mca.containsMouse ? selC : "transparent"

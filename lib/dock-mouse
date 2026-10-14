@@ -18,7 +18,7 @@ apply() {
 }
 case "${1:-show}" in
   show) printf '{"speed": %s, "natural": %s, "left": %s, "flat": %s}\n' "$(get speed 0)" "$(b "$(get natural off)")" "$(b "$(get left off)")" "$(b "$(get flat off)")" ;;
-  apply) [ -e "$S" ] && apply ;;
+  apply) [ -e "$S" ] && apply; "$(dirname "$(readlink -f "$0")")/dock-pointer" apply >/dev/null 2>&1 ;;
   speed) v=$(awk -v v="${2:-0}" 'BEGIN{ if (v<-1) v=-1; if (v>1) v=1; printf "%.2f", v }'); put speed "$v"; apply ;;
   natural|left|flat) put "$1" "${2:-off}"; apply ;;
   reset) rm -f "$S"; echo "x=1" > "$S"; apply ;;

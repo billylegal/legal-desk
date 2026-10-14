@@ -8,4 +8,5 @@ if command -v omarchy-theme-set >/dev/null; then              # desktop theme + 
   [ -d "$T" ] || { [ -d /usr/share/legal-dock/themes/nebula ] && mkdir -p "$HOME/.config/omarchy/themes" && cp -r /usr/share/legal-dock/themes/nebula "$T"; }
   [ -d "$T" ] && omarchy-theme-set nebula >/dev/null 2>&1
 fi
+[ -x "$B/dock-pointer" ] && "$B/dock-pointer" 0 >/dev/null 2>&1   # pointer back to the original look
 "$B/macdock-skin" apply >/dev/null 2>&1                       # menu colours + classic dock style for Nebula

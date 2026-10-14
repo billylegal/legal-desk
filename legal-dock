@@ -47,6 +47,7 @@ case "${1:-menu}" in
     omarchy-theme-set nebula 2>/dev/null || echo "Theme copied to ~/.config/omarchy/themes/nebula - pick Nebula in the Omarchy theme menu."
     echo 19 > "$HOME/.cache/dock-skin-mac"; echo 13 > "$HOME/.cache/dock-skin-classic"; echo 9 > "$HOME/.cache/dock-skin-rubik"; "$B/macdock-skin" apply >/dev/null 2>&1 ;;
   reset) "$B/dock-reset" ;;
+  pointer) "$B/dock-pointer" "${2:-show}" ;;
   skin) "$B/macdock-skin" "${2:-show}" ;;
   small|medium|large) "$B/dock-size-set" "$1" ;;
   restart)
