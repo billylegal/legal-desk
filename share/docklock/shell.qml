@@ -20,11 +20,20 @@ ShellRoot {
   readonly property var skinNames: ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Cube"]
   readonly property int skinIdx: /^[0-7]$/.test(skinTxt) ? parseInt(skinTxt) : (rubik ? 7 : 0)
   readonly property int menuH: mac ? 10 * 36 + 12 : 10 * 36 + 12
+  // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
+  property real frozenLeft: 0
+  property real frozenTop: 0
+  onMenuOpenChanged: {
+    if (!menuOpen || !lastDock) return
+    var d = lastDock
+    frozenLeft = d.x + (mac ? d.w - 100 - (sizePx + 8) / 2 : Math.max(0, (d.w - (pinCount + 1) * cpitch) / 2) + pinCount * cpitch - 100 + cpitch / 2)
+    frozenTop = d.y - menuH - 10
+  }
   Timer { id: dragT; interval: 1500; onTriggered: dragging = false }
   Timer { id: writeT; interval: 50; onTriggered: { sizeW.running = false; sizeW.running = true; zoomW.running = false; zoomW.running = true } }
   Process { id: sizeW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-size\"", String(sizePx)] }
   Process { id: zoomW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-zoom\"", String(zoomRaw)] }
-  Process { id: skinProc; property string a: "next"; command: ["/usr/lib/legal-dock/macdock-skin", a]; onExited: poll.running = true }
+  Process { id: skinProc; property string a: "next"; command: ["/home/aigazoo/.local/bin/macdock-skin", a]; onExited: poll.running = true }
   component SliderRow: Rectangle {
     id: sr
     property string label: ""
@@ -100,8 +109,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-ski
   }
   Timer { interval: 500; running: true; repeat: true; onTriggered: if (!poll.running) poll.running = true }
   Process { id: mover; property int a: 0; property int b: 0
-    command: ["/usr/lib/legal-dock/dock-move-pin", String(a), String(b)] }
-  Process { id: toggle; command: ["/usr/lib/legal-dock/dock-lock-toggle"]; onExited: poll.running = true }
+    command: ["/home/aigazoo/.local/bin/dock-move-pin", String(a), String(b)] }
+  Process { id: toggle; command: ["/home/aigazoo/.local/bin/dock-lock-toggle"]; onExited: poll.running = true }
 
   // Edit mode (unlocked): drag an icon sideways and let go to move it.
   Variants {
@@ -151,15 +160,15 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-ski
     }
   }
 
-  Process { id: hideToggle; command: ["/usr/lib/legal-dock/dock-hide-toggle"]; onExited: poll.running = true }
-  Process { id: sizer; property string which: "medium"; command: ["/usr/lib/legal-dock/dock-size-set", which]; onExited: poll.running = true }
-  Process { id: styler; property string which: "off"; command: ["/usr/lib/legal-dock/macdock-toggle", which]; onExited: poll.running = true }
-  Process { id: appsProc; command: ["/usr/lib/legal-dock/drawer-only"] }
-  Process { id: fullToggle; command: ["/usr/lib/legal-dock/dock-full-toggle"]; onExited: poll.running = true }
+  Process { id: hideToggle; command: ["/home/aigazoo/.local/bin/dock-hide-toggle"]; onExited: poll.running = true }
+  Process { id: sizer; property string which: "medium"; command: ["/home/aigazoo/.local/bin/dock-size-set", which]; onExited: poll.running = true }
+  Process { id: styler; property string which: "off"; command: ["/home/aigazoo/.local/bin/macdock-toggle", which]; onExited: poll.running = true }
+  Process { id: appsProc; command: ["/home/aigazoo/.local/bin/drawer-only"] }
+  Process { id: fullToggle; command: ["/home/aigazoo/.local/bin/dock-full-toggle"]; onExited: poll.running = true }
   // Restart / Shut down always ask first ("Do you really want to ...?"), popup centered on screen.
-  Process { id: rebootProc; command: ["/usr/lib/legal-dock/reboot-confirm", "reboot", "center"] }
-  Process { id: shutdownProc; command: ["/usr/lib/legal-dock/reboot-confirm", "shutdown", "center"] }
-  Process { id: transToggle; command: ["/usr/lib/legal-dock/dock-transparent-toggle"]; onExited: poll.running = true }
+  Process { id: rebootProc; command: ["/home/aigazoo/.local/bin/reboot-confirm", "reboot", "center"] }
+  Process { id: shutdownProc; command: ["/home/aigazoo/.local/bin/reboot-confirm", "shutdown", "center"] }
+  Process { id: transToggle; command: ["/home/aigazoo/.local/bin/dock-transparent-toggle"]; onExited: poll.running = true }
 
   // One gear button at the right end of the dock; opens a small menu above it.
   Variants {
@@ -191,12 +200,12 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "skin": _rd("dock-ski
   }
 
   Variants {
-    model: lastDock && menuOpen ? [lastDock] : []
+    model: lastDock && menuOpen ? [lastDock.mon] : []
     PanelWindow {
       required property var modelData
-      screen: Quickshell.screens.find(s => s.name === modelData.mon) ?? Quickshell.screens[0]
+      screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
       anchors { top: true; left: true }
-      margins { left: modelData.x + (mac ? modelData.w - 100 - (sizePx + 8) / 2 : Math.max(0, (modelData.w - (pinCount + 1) * cpitch) / 2) + pinCount * cpitch - 100 + cpitch / 2); top: modelData.y - menuH - 10 }
+      margins { left: frozenLeft; top: frozenTop }
       implicitWidth: 200; implicitHeight: menuH
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore

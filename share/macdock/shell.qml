@@ -24,7 +24,7 @@ ShellRoot {
   readonly property bool rubik: styleName === "rubik"
   property real zoomVal: 0      // 0 = automatic (depends on size); else the magnification chosen with the Zoom slider
   readonly property int base: { var n = parseInt(sizeName); return isNaN(n) ? (sizeName === "small" ? 34 : (sizeName === "large" ? 58 : 46)) : Math.max(24, Math.min(110, n)) }
-  readonly property real maxScale: rubik ? 1.12 : (zoomVal >= 1 ? Math.min(2.6, zoomVal) : (base >= 56 ? 1.7 : (base <= 36 ? 1.9 : 1.85)))
+  readonly property real maxScale: rubik ? 1.12 : (zoomVal >= 1 ? Math.min(2.6, zoomVal) : (base >= 56 ? 1.8 : (base <= 36 ? 2.2 : 2.0)))
   readonly property real radius: base * 3.2
   readonly property int gap: rubik ? 5 : 6
   property string skinTxt: "auto"
@@ -108,7 +108,7 @@ ShellRoot {
       }
     }
   }
-  Timer { interval: 1500; running: true; repeat: true; triggeredOnStart: true; onTriggered: { if (!poll.running) poll.running = true; if (!countProc.running) countProc.running = true; hidChk.running = true } }
+  Timer { interval: 1500; running: true; repeat: true; triggeredOnStart: true; onTriggered: { if (!poll.running) poll.running = true; if (!countProc.running) countProc.running = true; hidChk.running = true; lockChk.running = true } }
 
   property var appmap: ({})
   Process {
@@ -172,9 +172,9 @@ print(json.dumps(out))
   function sh(args) { runner.cmd = args; runner.running = false; runner.running = true }
 
   function activate(cls) {
-    if (cls === "__launcher__") { sh(["/usr/lib/legal-dock/drawer-toggle"]); return }
-    if (cls === "reboot") { sh(["/usr/lib/legal-dock/reboot-confirm"]); return }
-    if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-dock/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && /usr/lib/legal-dock/hypr-dispatch focus \"$a\"", "x", cls]); return }
+    if (cls === "__launcher__") { sh(["/home/aigazoo/.local/bin/drawer-toggle"]); return }
+    if (cls === "reboot") { sh(["/home/aigazoo/.local/bin/reboot-confirm"]); return }
+    if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/home/aigazoo/.local/bin/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
     markLaunch(cls)
     var r = appmap[cls]
     if (r) launch(["gtk-launch", r.id + ".desktop"])
@@ -207,7 +207,7 @@ print(json.dumps(out))
     var k = ps.join("|")
     if (k === iconKey) return
     iconKey = k
-    measurer.cmd = ["/usr/lib/legal-dock/dock-icon-scale"].concat(ps)
+    measurer.cmd = ["/home/aigazoo/.local/bin/dock-icon-scale"].concat(ps)
     measurer.running = false; measurer.running = true
   }
   Process {
@@ -217,31 +217,69 @@ print(json.dumps(out))
   onAppmapChanged: remeasure()
   onItemsChanged: remeasure()
 
-  // Mouse position in the UNSCALED layout, taken from whichever (already magnified) icon is really under the pointer,
-  // so the icon under the cursor is always the biggest one and the wave follows the pointer without jitter.
-  property real um: 0
-  function updateU() {
-    var n = rep.count; if (n < 1) return
-    var mx = hover.mx - row.x, step = base + gap
-    var L0 = (win.width - baseTotal) / 2
-    var first = rep.itemAt(0), last = rep.itemAt(n - 1)
-    if (!first || !last) { um = hover.mx; return }
-    if (mx < first.x) { um = L0 + (mx - first.x); return }
-    if (mx >= last.x + last.width) { um = L0 + (n - 1) * step + base + (mx - last.x - last.width); return }
-    for (var i = 0; i < n; i++) {
-      var c = rep.itemAt(i); if (!c) continue
-      if (mx < c.x + c.width + gap / 2 || i === n - 1) {
-        var f = Math.max(0, Math.min(1, (mx - c.x) / Math.max(1, c.width)))
-        um = L0 + i * step + f * base; return
-      }
+  // ---- Magnification (Apple-style) ----
+  // Layout is computed from one number: um = the pointer position in the UNSCALED layout.
+  // Each icon's scale is a cosine bump of its distance to um, positions are the running sum of scaled widths,
+  // and um is solved so the icon under the pointer really stays under it (no feedback from the animated icons -> no jitter).
+  // mag (0..1) and umS are spring-animated, which gives the elastic pop when the mouse arrives, moves and leaves.
+  property real mag: 0
+  Behavior on mag { SpringAnimation { spring: 3.2; damping: 0.2; epsilon: 0.002 } }
+  property real umT: 0
+  property real umS: 0
+  Behavior on umS { enabled: root.mag > 0.15; SpringAnimation { spring: 7; damping: 0.6; epsilon: 0.05 } }
+  property int hoverIdx: -1
+  property int dragIdx: -1
+  property int dropIdx: -1
+  property real dragX: 0
+  property bool locked: false
+  Process { id: lockChk; command: ["test", "-e", Quickshell.env("HOME") + "/.cache/dock-locked"]; onExited: (c) => root.locked = (c === 0) }
+
+  function layoutFor(p, m, W) {
+    var n = items.length, step = base + gap, L0 = (W - baseTotal) / 2
+    var xs = [], ws = [], tot = 0, mm = Math.max(0, m)
+    if (dragIdx >= 0) {
+      var o = []; for (var k = 0; k < n; k++) if (k !== dragIdx) o.push(k)
+      o.splice(Math.max(0, Math.min(o.length, dropIdx)), 0, dragIdx)
+      for (var j = 0; j < n; j++) { xs[o[j]] = L0 + j * step; ws[o[j]] = base }
+      return { xs: xs, ws: ws, tot: baseTotal - gap }
     }
+    for (var i = 0; i < n; i++) {
+      var d = Math.abs(p - (L0 + i * step + base / 2))
+      var sc = d < radius ? 1 + (maxScale - 1) * mm * (0.5 + 0.5 * Math.cos(Math.PI * d / radius)) : 1
+      ws[i] = base * Math.max(0.9, sc); tot += ws[i]
+    }
+    tot += gap * (n - 1)
+    var x = (W - tot) / 2
+    for (var q = 0; q < n; q++) { xs[q] = x; x += ws[q] + gap }
+    return { xs: xs, ws: ws, tot: tot }
+  }
+  readonly property var lay: layoutFor(umS, mag, win.width)
+
+  function pointer(mx) {
+    var n = items.length; if (n < 1) return
+    var step = base + gap, L0 = (win.width - baseTotal) / 2
+    var p = (mag > 0.15) ? umT : mx
+    for (var it = 0; it < 10; it++) {
+      var l = layoutFor(p, 1, win.width)
+      var i = Math.max(0, Math.min(n - 1, Math.floor((p - L0) / step)))
+      var off = (p - L0) - i * step
+      var sx = off < 0 ? l.xs[i] + off : (off <= base ? l.xs[i] + off / base * l.ws[i] : l.xs[i] + l.ws[i] + (off - base))
+      p += (mx - sx) * 0.5
+    }
+    umT = p; umS = p
+    hoverIdx = Math.max(0, Math.min(n - 1, Math.round((p - L0 - base / 2) / step)))
+  }
+  function moveTo(from, to) {
+    if (from === to || from < 0 || to < 0 || from >= pinned.length || to >= pinned.length) return
+    var l = pinned.slice(); l.splice(to, 0, l.splice(from, 1)[0]); pinned = l
+    sh(["/home/aigazoo/.local/bin/dock-reorder", String(from), String(to)])
   }
 
   PanelWindow {
     id: win
     anchors { bottom: true }
     margins { bottom: root.testMode ? 150 : 4 }
-    implicitWidth: root.panelW
+    implicitWidth: Math.min(root.panelW, win.screen ? win.screen.width : 1900)
     implicitHeight: root.panelH
     color: "transparent"
     exclusionMode: root.testMode ? ExclusionMode.Ignore : ExclusionMode.Normal
@@ -261,7 +299,8 @@ print(json.dumps(out))
 
       HoverHandler {
         id: hover
-        onPointChanged: root.updateU()
+        onPointChanged: if (root.dragIdx < 0) root.pointer(point.position.x)
+        onHoveredChanged: root.mag = (hovered && root.dragIdx < 0) ? 1 : 0
         property real mx: point.position.x
         readonly property bool containsMouse: hovered
       }
@@ -270,22 +309,22 @@ print(json.dumps(out))
     // Solid dock: a plate behind the row (Rubik: black cube-plastic frame). Transparent dock: icons float.
     Rectangle {
       visible: root.solid
-      opacity: row.opacity
+      opacity: rowArea.opacity
       anchors.horizontalCenter: parent.horizontalCenter
       anchors.bottom: parent.bottom; anchors.bottomMargin: 3
-      width: row.width + 18; height: root.base + 22; radius: root.skin.r
+      width: root.lay.tot + 18; height: root.base + 22; radius: root.skin.r
       gradient: Gradient { GradientStop { position: 0; color: root.skin.c1 } GradientStop { position: 1; color: root.skin.c2 } }
       border.color: root.skin.b; border.width: 1
     }
     // Row of icons, centred. Positions come from the cumulative scaled widths, so neighbours push apart.
-    Row {
-      id: row
+    Item {
+      id: rowArea
       opacity: (!root.hidden || hover.containsMouse) ? 1 : 0
       Behavior on opacity { NumberAnimation { duration: 160 } }
-      spacing: root.gap
       anchors.bottom: parent.bottom
       anchors.bottomMargin: 8
-      anchors.horizontalCenter: parent.horizontalCenter
+      width: parent.width
+      height: parent.height - 8
 
       Repeater {
         id: rep
@@ -294,17 +333,14 @@ print(json.dumps(out))
           id: cell
           required property var modelData
           required property int index
-          // centre of this icon in the UNSCALED layout, in window coordinates
-          readonly property real unscaledCenter: (win.width - root.baseTotal) / 2 + index * (root.base + root.gap) + root.base / 2
-          readonly property real dist: Math.abs((root.simMode ? root.simX : root.um) - unscaledCenter)
-          readonly property real target: (hover.containsMouse || root.simMode) && dist < root.radius
-            ? 1 + (root.maxScale - 1) * (0.5 + 0.5 * Math.cos(Math.PI * dist / root.radius))
-            : 1
-          property real s: target
-          Behavior on s { NumberAnimation { duration: 70; easing.type: Easing.OutQuad } }
-
-          width: root.base * s
-          height: root.base * s
+          readonly property bool dragged: root.dragIdx === index
+          readonly property real lift: dragged ? 1.18 : 1
+          width: (root.lay.ws[index] || root.base) * lift
+          height: width
+          x: dragged ? root.dragX - width / 2 : (root.lay.xs[index] || 0)
+          Behavior on x { enabled: root.dragIdx >= 0 && !cell.dragged; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+          z: dragged ? 10 : 0
+          opacity: dragged ? 0.92 : 1
           anchors.bottom: parent.bottom
           property real bounce: 0
           anchors.bottomMargin: bounce
@@ -334,7 +370,7 @@ print(json.dumps(out))
             Text { anchors.centerIn: parent; text: root.letterOf(cell.modelData.cls); color: "white"; font.bold: true; font.pixelSize: parent.height * 0.55 }
           }
           Image {
-            visible: cell.modelData.cls !== "__launcher__"
+            visible: cell.modelData.cls !== "__launcher__" && cell.modelData.cls !== "chrome-127.0.0.1__globe_-Default"
             anchors.fill: parent
             scale: root.scaleOf(cell.modelData.cls) * (root.rubik ? 0.74 : 1)
             rotation: cell.twist
@@ -390,9 +426,61 @@ print(json.dumps(out))
                 poly(Rx - j3 * ax, Ry + j3 * ay + k3 * u, -ax, ay, 0, u, colorOf(2, j3, k3))
             }
           }
+          // A View From Space (Radio Globe): the app's bullseye + speaker, colour steps through the app's 8 themes every second, sound waves pulse
+          Canvas {
+            id: gb
+            visible: cell.modelData.cls === "chrome-127.0.0.1__globe_-Default"
+            anchors.fill: parent
+            onWidthChanged: requestPaint()
+            Timer { interval: 66; running: gb.visible; repeat: true; onTriggered: gb.requestPaint() }
+            onPaint: {
+              var ctx = getContext("2d"); ctx.reset()
+              var S = Math.min(width, height), cx = width / 2, cy = height / 2, now = Date.now()
+              var cols = ["#39ff14", "#ffb000", "#ff2a2a", "#00e5ff", "#b4ff3c", "#ffe066", "#ff6a00", "#d946ff"]
+              var c = cols[Math.floor(now / 1000) % 8]
+              function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath() }
+              var m = S * 0.03, W = S - 2 * m
+              rr(m, m, W, W, W * 0.22); ctx.fillStyle = "#070a1c"; ctx.fill()
+              ctx.save(); rr(m, m, W, W, W * 0.22); ctx.clip()
+              ctx.fillStyle = "#ffffff"
+              var st = [[.14, .16, 1.2], [.82, .13, 1.4], [.9, .5, 1], [.1, .55, 1], [.18, .86, 1.1], [.86, .88, 1.3]]
+              for (var i = 0; i < st.length; i++) { ctx.beginPath(); ctx.arc(st[i][0] * S, st[i][1] * S, st[i][2] * S * 0.007, 0, 6.2832); ctx.fill() }
+              // ripples (as on the app's globe): three rings expanding from the speaker
+              var R = S * 0.27, tt = now / 1300
+              ctx.lineWidth = Math.max(1, S * 0.018)
+              for (var k = 0; k < 3; k++) {
+                var t = ((tt + k / 3) % 1)
+                ctx.globalAlpha = (1 - t) * 0.65; ctx.strokeStyle = c
+                ctx.beginPath(); ctx.arc(cx, cy, R + t * S * 0.17, 0, 6.2832); ctx.stroke()
+              }
+              ctx.globalAlpha = 1
+              // bullseye: four ticks + white ring
+              ctx.strokeStyle = "#ffffff"; ctx.lineCap = "round"; ctx.lineWidth = Math.max(1.5, S * 0.03)
+              var t1 = R + S * 0.02, t2 = S * 0.47
+              ctx.beginPath()
+              ctx.moveTo(cx, cy - t2); ctx.lineTo(cx, cy - t1); ctx.moveTo(cx, cy + t1); ctx.lineTo(cx, cy + t2)
+              ctx.moveTo(cx - t2, cy); ctx.lineTo(cx - t1, cy); ctx.moveTo(cx + t1, cy); ctx.lineTo(cx + t2, cy)
+              ctx.stroke()
+              ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.2832); ctx.fillStyle = "#07101a"; ctx.fill(); ctx.stroke()
+              ctx.lineWidth = Math.max(1, S * 0.012); ctx.strokeStyle = c; ctx.globalAlpha = 0.9
+              ctx.beginPath(); ctx.arc(cx, cy, R * 0.86, 0, 6.2832); ctx.stroke(); ctx.globalAlpha = 1
+              // speaker glyph (same shape as the app's) in the theme colour
+              var kk = R / 14 * 1.15
+              ctx.save(); ctx.translate(cx - S * 0.012, cy); ctx.scale(kk, kk)
+              ctx.fillStyle = c; ctx.beginPath()
+              ctx.moveTo(-7, -3); ctx.lineTo(-3, -3); ctx.lineTo(2, -7); ctx.lineTo(2, 7); ctx.lineTo(-3, 3); ctx.lineTo(-7, 3); ctx.closePath(); ctx.fill()
+              ctx.strokeStyle = c; ctx.lineCap = "round"; ctx.lineWidth = 1.7
+              var tw = now / 1000
+              for (var j = 0; j < 2; j++) {
+                ctx.globalAlpha = 0.45 + 0.55 * Math.abs(Math.sin((tw * 2.4 - j * 0.25) * Math.PI))
+                ctx.beginPath(); ctx.arc(2.5, 0, 4 + j * 3.6, -0.85, 0.85); ctx.stroke()
+              }
+              ctx.restore(); ctx.restore()
+            }
+          }
           // name label above the hovered icon
           Rectangle {
-            readonly property bool on: hover.containsMouse && cell.dist < (root.base + root.gap) / 2
+            readonly property bool on: hover.containsMouse && root.dragIdx < 0 && root.hoverIdx === cell.index
             visible: on || opacity > 0
             opacity: on ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 120 } }
@@ -413,13 +501,39 @@ print(json.dumps(out))
             anchors.topMargin: 2
           }
           MouseArea {
+            id: cma
             anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
+            cursorShape: cell.dragged ? Qt.ClosedHandCursor : Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+            property real px0: 0
+            property bool moved: false
+            readonly property bool canDrag: !root.locked && cell.index < root.pinned.length
+            function rx(m) { return cma.mapToItem(rowArea, m.x, 0).x }
+            onPressed: (m) => { px0 = rx(m); moved = false }
+            onPositionChanged: (m) => {
+              if (!(pressedButtons & Qt.LeftButton) || !canDrag) return
+              var x = rx(m)
+              if (!moved && Math.abs(x - px0) > 6) { moved = true; root.mag = 0; root.dragIdx = cell.index; root.dropIdx = cell.index; root.ctx = "" }
+              if (moved && root.dragIdx === cell.index) {
+                root.dragX = x
+                var L0 = (win.width - root.baseTotal) / 2
+                root.dropIdx = Math.max(0, Math.min(root.pinned.length - 1, Math.round((x - L0 - root.base / 2) / (root.base + root.gap))))
+              }
+            }
+            onReleased: {
+              if (root.dragIdx === cell.index) {
+                var f = root.dragIdx, t = root.dropIdx
+                root.dragIdx = -1
+                root.moveTo(f, t)
+                root.mag = hover.hovered ? 1 : 0
+                root.pointer(hover.point.position.x)
+              }
+            }
             onClicked: (m) => {
+              if (moved) { moved = false; return }
               if (cell.modelData.cls === "__launcher__") { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate("__launcher__"); return }
               if (m.button === Qt.LeftButton) { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate(cell.modelData.cls) }
-              else if (m.button === Qt.MiddleButton) { root.sh(["/usr/lib/legal-dock/dock-pin-toggle", cell.modelData.cls]) }
+              else if (m.button === Qt.MiddleButton) { root.sh(["/home/aigazoo/.local/bin/dock-pin-toggle", cell.modelData.cls]) }
               else { root.ctxX = cell.mapToItem(null, cell.width / 2, 0).x; root.ctx = cell.modelData.cls }
             }
           }
@@ -490,10 +604,10 @@ print(json.dumps(out))
                 onClicked: {
                   var c = root.ctx, act = modelData.a, addr = modelData.addr
                   if (act === "hdr") return
-                  if (act === "pin") root.sh(["/usr/lib/legal-dock/dock-pin-toggle", c])
-                  else if (act === "close") root.sh(["/usr/lib/legal-dock/dock-close-app", c])
-                  else if (act === "focus") root.sh(["/usr/lib/legal-dock/hypr-dispatch", "focus", addr])
-                  else if (act === "incog") root.launch(["/usr/lib/legal-dock/browser-incognito", c])
+                  if (act === "pin") root.sh(["/home/aigazoo/.local/bin/dock-pin-toggle", c])
+                  else if (act === "close") root.sh(["/home/aigazoo/.local/bin/dock-close-app", c])
+                  else if (act === "focus") root.sh(["hyprctl", "dispatch", "hl.dsp.focus({window='address:" + addr + "'})"])
+                  else if (act === "incog") root.launch(["/home/aigazoo/.local/bin/browser-incognito", c])
                   else if (act === "new") { var r = root.appmap[c]; if (r) root.launch(["gtk-launch", r.id + ".desktop"]) }
                   root.ctx = ""
                 }
