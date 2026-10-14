@@ -1,5 +1,5 @@
 #!/bin/bash
-# dock-pointer next|prev|N|show|apply : the mouse pointer's look - 0 Original, 1 Solid, 2 Outlined (solid and outlined wear the skin's colour).
+# dock-pointer next|prev|N|show|apply|size <16..64> : the mouse pointer's look - 0 Original, 1 Solid, 2 Outlined (solid and outlined wear the skin's colour).
 # Builds a tiny cursor theme (~/.local/share/icons/legal-pointer, inherits your normal theme for hands, text, resize ...) and applies it live.
 # Remembered in ~/.cache/dock-pointer. Re-applied whenever the skin changes so the pointer keeps matching it.
 H="$HOME/.cache"; F="$H/dock-pointer"; T="$HOME/.local/share/icons/legal-pointer"; NAMES=(Original Solid Outlined); N=3
@@ -8,9 +8,11 @@ case "$1" in
   next) cur=$(( (cur + 1) % N )); echo "$cur" > "$F" ;;
   prev) cur=$(( (cur + N - 1) % N )); echo "$cur" > "$F" ;;
   [0-9]) [ "$1" -lt $N ] && { cur=$1; echo "$cur" > "$F"; } ;;
-  show) echo "$cur ${NAMES[$cur]}"; exit 0 ;;
+  show) echo "$cur ${NAMES[$cur]} size=$(cat "$H/dock-pointer-size" 2>/dev/null || echo ${XCURSOR_SIZE:-24})"; exit 0 ;;
+  size) v=${2:-24}; [[ $v =~ ^[0-9]+$ ]] || v=24; [ "$v" -lt 16 ] && v=16; [ "$v" -gt 64 ] && v=64; echo "$v" > "$H/dock-pointer-size" ;;
 esac
-SIZE=${XCURSOR_SIZE:-24}
+SZF="$H/dock-pointer-size"
+SIZE=$(cat "$SZF" 2>/dev/null); [[ $SIZE =~ ^[0-9]+$ ]] || SIZE=${XCURSOR_SIZE:-24}
 if [ "$cur" = 0 ]; then
   rm -rf "$T"; hyprctl setcursor default "$SIZE" >/dev/null 2>&1; echo "$cur ${NAMES[$cur]}"; exit 0
 fi

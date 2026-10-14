@@ -100,6 +100,7 @@ ShellRoot {
   Process { id: iconProc; property string a: "next"; command: ["/usr/lib/legal-dock/dock-icon-style", a]; onExited: icoFile.reload() }
   Process { id: resetProc; command: ["/usr/lib/legal-dock/dock-reset"]; onExited: icoFile.reload() }
   property int ptrIdx: 0
+  property real ptrSize: 24
   readonly property var ptrNames: ["Original", "Solid", "Outlined"]
   FileView {
     id: ptrFile
@@ -108,6 +109,14 @@ ShellRoot {
     onLoaded: { var n = parseInt(text()); ldr.ptrIdx = (isNaN(n) || n < 0 || n > 2) ? 0 : n }
     onLoadFailed: ldr.ptrIdx = 0
   }
+  FileView {
+    id: ptrSzFile
+    path: Quickshell.env("HOME") + "/.cache/dock-pointer-size"
+    printErrors: false
+    onLoaded: { var n = parseInt(text()); if (!isNaN(n)) ldr.ptrSize = n }
+  }
+  Timer { id: ptrSzT; interval: 150; onTriggered: { ptrSzProc.running = false; ptrSzProc.running = true } }
+  Process { id: ptrSzProc; command: ["/usr/lib/legal-dock/dock-pointer", "size", String(Math.round(ldr.ptrSize))] }
   Process { id: ptrProc; property string a: "next"; command: ["/usr/lib/legal-dock/dock-pointer", a]; onExited: ptrFile.reload() }
   property string wallTxt: ""
   Process { id: wallProc; property string a: "name"; command: ["/usr/lib/legal-dock/dock-wallpaper", a]
@@ -231,6 +240,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
     onLoaded: ldr.clock24 = text().trim() === "24"
     onLoadFailed: ldr.clock24 = false
   }
+  Process { id: snapProc; command: ["omarchy-capture-screenshot"] }
   Process { id: ckProc; property var a: ["pos", "next"]; command: ["/usr/lib/legal-dock/dock-clock"].concat(a); onExited: { ckPosFile.reload(); ckFmtFile.reload() } }
   Timer {
     interval: 1000; running: true; repeat: true; triggeredOnStart: true
@@ -247,23 +257,25 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       required property var modelData
       screen: Quickshell.screens.find(s => s.name === modelData.mon) ?? Quickshell.screens[0]
       anchors { top: true; left: true }
-      readonly property real cw: ctxt.implicitWidth + 22
+      readonly property real cw: ctxt.implicitWidth + 16 + 26 + 8
       margins {
         left: Math.max(2, clockPos === "left" ? modelData.x - cw - 8 : modelData.x + modelData.w + 8)
-        top: modelData.y + Math.max(0, (modelData.h - 28) / 2)
+        top: modelData.y + Math.max(0, (modelData.h - 40) / 2)
       }
-      implicitWidth: cw; implicitHeight: 28
+      implicitWidth: cw; implicitHeight: 40
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.layer: WlrLayer.Top
       WlrLayershell.namespace: "dockclock"
       Rectangle {
         anchors.fill: parent; radius: 8; color: bgC; border.color: accC; border.width: 1
-        Text { id: ctxt; anchors.centerIn: parent; text: clockTxt; color: txtC; font.pixelSize: 13; font.bold: true }
-        MouseArea { id: cka; anchors.fill: parent; hoverEnabled: true }
-        Rectangle { visible: cka.containsMouse; anchors.horizontalCenter: parent.horizontalCenter; anchors.bottom: parent.top; anchors.bottomMargin: 4
-          width: dtxt.width + 12; height: 18; radius: 5; color: bgC; border.color: accC; border.width: 1
-          Text { id: dtxt; anchors.centerIn: parent; text: clockDate; color: txtC; font.pixelSize: 10 } }
+        Column { x: 8; anchors.verticalCenter: parent.verticalCenter; spacing: 0
+          Text { id: ctxt; text: clockTxt; color: txtC; font.pixelSize: 13; font.bold: true }
+          Text { text: clockDate; color: accC; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 } }
+        Rectangle { width: 24; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
+          color: snapMa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+          Text { anchors.centerIn: parent; text: "\uf030"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
+          MouseArea { id: snapMa; anchors.fill: parent; hoverEnabled: true; onClicked: { snapProc.running = false; snapProc.running = true } } }
       }
     }
   }
@@ -323,7 +335,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   property bool mNatural: false
   property bool mLeft: false
   property bool mFlat: false
-  readonly property int mouseH: 8 * 36 + 40
+  readonly property int mouseH: 9 * 36 + 40
   function openMouse() { if (!menuOpen) placeMenu(); mouseTop = (mac && menuLine > 0 && lastDock) ? screenH(lastDock.mon) - menuLine - mouseH : (lastDock ? lastDock.y : 600) - mouseH - 10; mouseProc.running = false; mouseProc.running = true; mouseOpen = true; mouseT.restart() }
   property real mouseTop: 400
   Timer { id: mouseT; interval: 20000; onTriggered: mouseOpen = false }
@@ -378,6 +390,11 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             width: parent.width; label: "Scroll"; from: 0.2; to: 3; value: mScroll; shown: mScroll.toFixed(1) + "x"
             onMoved: (v) => { mScroll = Math.round(v * 10) / 10; mouseT.restart(); scrollT.restart() }
           }
+          SliderRow {
+            txtC: ldr.txtC; accC: ldr.accC; selC: ldr.selC; bgC: ldr.bgC
+            width: parent.width; label: "Size"; from: 16; to: 64; value: ptrSize; shown: Math.round(ptrSize) + "px"
+            onMoved: (v) => { ptrSize = Math.round(v); mouseT.restart(); ptrSzT.restart() }
+          }
           Timer { id: scrollT; interval: 120; onTriggered: mset(["scroll", String(mScroll)]) }
           Timer { id: speedT; interval: 120; onTriggered: mset(["speed", String(mSpeed)]) }
           Repeater {
@@ -406,7 +423,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           Rectangle {
             width: parent.width; height: 34; radius: 6; color: mra.containsMouse ? selC : "transparent"
             Text { x: 10; anchors.verticalCenter: parent.verticalCenter; text: "Reset To Default"; color: txtC; font.pixelSize: 13 }
-            MouseArea { id: mra; anchors.fill: parent; hoverEnabled: true; onClicked: { mSpeed = 0; mScroll = 1; mNatural = false; mLeft = false; mFlat = false; mset(["reset"]); ptrProc.a = "0"; ptrProc.running = false; ptrProc.running = true } }
+            MouseArea { id: mra; anchors.fill: parent; hoverEnabled: true; onClicked: { mSpeed = 0; mScroll = 1; ptrSize = 24; mNatural = false; mLeft = false; mFlat = false; mset(["reset"]); ptrSzProc.running = false; ptrProc.a = "0"; ptrProc.running = false; ptrProc.running = true } }
           }
           Rectangle {
             width: parent.width; height: 34; radius: 6; color: mca.containsMouse ? selC : "transparent"

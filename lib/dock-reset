@@ -1,7 +1,7 @@
 #!/bin/bash
 # dock-reset : put everything back to Nebula (the standard): skin (every style), icon look, wallpaper and the Omarchy theme.
 H="$HOME/.cache"; B="$(dirname "$(readlink -f "$0")")"
-rm -f "$H/dock-icon-style"                                   # icons follow the skin again
+rm -f "$H/dock-pointer-size" "$H/dock-icon-style"                                   # icons follow the skin again
 echo 19 > "$H/dock-skin-mac"; echo 9 > "$H/dock-skin-rubik"; echo 13 > "$H/dock-skin-classic"
 if command -v omarchy-theme-set >/dev/null; then              # desktop theme + its first wallpaper (Omarchy only)
   T="$HOME/.config/omarchy/themes/nebula"

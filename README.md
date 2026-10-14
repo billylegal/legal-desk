@@ -72,11 +72,11 @@ The **lock** button (a padlock, bottom row of the dock menu) locks the dock's la
 
 The menu's action buttons, **Move** (rearrange icons), **Mouse** (pointer settings) and **Shut Down** (plus **Hide** on the classic dock), are solid buttons on one line. The full-width bar is gone: Solid is the plate with a border around the icons.
 
-The **Mouse** popup has a **Scroll** speed slider (0.2x to 3x, remembered) and a **Pointer** row ‹ ›: **Original**, **Solid** (a filled pointer in the skin's colour) or **Outlined** (a hollow pointer with a skin-coloured outline). The pointer keeps matching the skin when you change it; hands, text cursors and resize cursors stay as your theme has them. `legal-dock pointer` also works from a terminal.
+The **Mouse** popup has a **Scroll** speed slider (0.2x to 3x, remembered) a pointer **Size** slider (16 to 64 px) and a **Pointer** row ‹ ›: **Original**, **Solid** (a filled pointer in the skin's colour) or **Outlined** (a hollow pointer with a skin-coloured outline). The pointer keeps matching the skin when you change it; hands, text cursors and resize cursors stay as your theme has them. `legal-dock pointer` also works from a terminal.
 
 The menu is identical for Classic, Mac and Rubik: same buttons, same size, nothing moves when you change style. The few things the classic dock can't do (**Zoom** magnification and the **Icons** looks) are shown dimmed there.
 
-**Clock:** the **CLOCK** button in the menu puts a small clock beside the dock, on the left or right side (or off), in the skin's colours; **TIME** switches 12 / 24 hour. Hover over it for the date. Works on Classic, Mac and Rubik.
+**Clock:** the **CLOCK** button in the menu puts a small clock beside the dock, on the left or right side (or off), in the skin's colours; **TIME** switches 12 / 24 hour. The date sits under the time, and a small camera button next to it takes a screenshot (Omarchy's screenshot tool). Works on Classic, Mac and Rubik.
 
 ## Minimize windows
 

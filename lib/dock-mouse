@@ -22,5 +22,5 @@ case "${1:-show}" in
   speed) v=$(awk -v v="${2:-0}" 'BEGIN{ if (v<-1) v=-1; if (v>1) v=1; printf "%.2f", v }'); put speed "$v"; apply ;;
   scroll) v=$(awk -v v="${2:-1}" 'BEGIN{ if (v<0.2) v=0.2; if (v>4) v=4; printf "%.2f", v }'); put scroll "$v"; apply ;;
   natural|left|flat) put "$1" "${2:-off}"; apply ;;
-  reset) rm -f "$S"; echo "x=1" > "$S"; apply ;;
+  reset) rm -f "$S" "$HOME/.cache/dock-pointer-size"; echo "x=1" > "$S"; apply ;;
 esac
