@@ -125,7 +125,7 @@ Panel {
     open: root.opened
     focusTarget: keys
     contentWidth: panel.fittedContentWidth(Style.space(400))
-    contentHeight: panel.fittedContentHeight(Style.space(508))
+    contentHeight: panel.fittedContentHeight(Style.space(522))
 
     PanelKeyCatcher {
       id: keys
@@ -314,9 +314,15 @@ Panel {
 
         // footer
         Item {
-          x: 14; y: 482; width: parent.width - 28; height: 20
-          Text { text: "Keep the volume up · Sponsored by BillyLegal.com"; color: root.nDim; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.openUrl("https://billylegal.com") } }
+          x: 14; y: 478; width: parent.width - 28; height: 34
+          Row {
+            anchors.verticalCenter: parent.verticalCenter; spacing: 5
+            Text { text: "Keep the volume up \u00b7 Sponsored by"; color: root.nDim; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: "BillyLegal.com"; color: root.nAcc2; font.pixelSize: 10; font.bold: true; anchors.verticalCenter: parent.verticalCenter
+              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.openUrl("https://billylegal.com") } }
+            Image { width: 24; height: 34; anchors.verticalCenter: parent.verticalCenter; source: Qt.resolvedUrl("billy-sticker.png"); fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
+              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.openUrl("https://billylegal.com") } }
+          }
           Text { anchors.right: parent.right; text: "1upradio.com"; color: root.nAcc2; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter
             MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.openUrl("https://1upradio.com") } }
         }

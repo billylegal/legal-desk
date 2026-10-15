@@ -1,13 +1,21 @@
 #!/bin/bash
 # legal-radio window|toggle|play|live|stop|volume N|mute : 1UP Radio from the dock (SnapDock's player, sd-radio).
-#   window  open (or close) the Nebula radio window; opening it also starts the radio when it is not playing. Closing the window never stops the music.
+#   window  open the Nebula radio window (small); press again for medium, large, then it closes. Opening it also starts the radio when it is not playing; closing never stops the music.
+#           Drag the window anywhere; the spot is remembered (~/.cache/dock-radio-pos).
 R=/usr/lib/snapdock/bin/sd-radio; command -v sd-radio >/dev/null && R=sd-radio
 [ -x "$R" ] || command -v "$R" >/dev/null || { notify-send "1UP Radio" "The radio player (SnapDock's sd-radio) is not installed."; exit 1; }
 case "${1:-window}" in
   window)
-    if pgrep -f '^quickshell.*legalradio' >/dev/null; then pkill -f '^quickshell.*legalradio'; exit 0; fi
+    # Each press of the dock button: open small -> medium -> large -> close. (The player stays on; only the window goes.)
+    S="$HOME/.cache/dock-radio-size"
+    if pgrep -f '^quickshell.*legalradio' >/dev/null; then
+      n=$(cat "$S" 2>/dev/null); [[ $n =~ ^[0-9]$ ]] || n=0
+      if [ "$n" -ge 2 ]; then pkill -f '^quickshell.*legalradio'; else echo $((n + 1)) > "$S"; fi
+      exit 0
+    fi
+    mkdir -p "$HOME/.cache"; echo 0 > "$S"
     "$R" status | grep -q '"playing": true' || "$R" play >/dev/null 2>&1 &
-    exec setsid quickshell -n -p "/usr/share/legal-desk/legalradio" >/dev/null 2>&1 ;;
+    setsid -f quickshell -n -p "/usr/share/legal-desk/legalradio" >/dev/null 2>&1 </dev/null; exit 0 ;;
   live) exec "$R" play --live ;;
   *) exec "$R" "$@" ;;
 esac
