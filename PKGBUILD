@@ -24,7 +24,7 @@ package() {
   ln -s legal-desk "$pkgdir/usr/bin/legal-dock"   # old command name keeps working (autostart lines, habits)
   install -d "$pkgdir/usr/lib/legal-desk" "$pkgdir/usr/share/legal-desk"
   find lib -maxdepth 1 -type f -exec install -m755 -t "$pkgdir/usr/lib/legal-desk/" {} +
-  for d in docklock macdock rebootconfirm appsmenu legalnotes legalcalendar legaltasks legalclock legaldisks deskpick; do
+  for d in docklock macdock rebootconfirm appsmenu legalnotes legalcalendar legaltasks legalclock legaldisks legalzones deskpick; do
     install -Dm644 "share/$d/shell.qml" "$pkgdir/usr/share/legal-desk/$d/shell.qml"
   done
   cp -r share/themes "$pkgdir/usr/share/legal-desk/themes"

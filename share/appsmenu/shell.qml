@@ -75,6 +75,7 @@ ShellRoot {
   readonly property var own: [
     { name: "Mail", glyph: "\u2709", own: true, cmd: ["/usr/lib/legal-desk/legal-mail"] },
     { name: "Calendar", glyph: "\u25A6", own: true, token: "__calendar__", cmd: ["/usr/lib/legal-desk/legal-calendar"] },
+    { name: "Desk Zones", glyph: "\u229E", own: true, cmd: ["/usr/lib/legal-desk/legal-zones"] },
     { name: "Disk Management", glyph: "\u26C1", own: true, token: "__disks__", cmd: ["/usr/lib/legal-desk/legal-disks"] },
     { name: "Clock", glyph: "\u25F7", own: true, cmd: ["/usr/lib/legal-desk/legal-clock"] },
     { name: "Task Manager", glyph: "\u25A4", own: true, token: "__tasks__", cmd: ["/usr/lib/legal-desk/legal-tasks"] },

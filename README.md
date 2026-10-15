@@ -100,3 +100,17 @@ o.bind("SUPER + CTRL + ALT + U", "Restore last minimized", hl.dsp.exec_cmd("/usr
 ## License
 
 [MIT](LICENSE) © 2026 5ive7 Development Labs
+
+## Desk Zones (window layouts, like FancyZones)
+
+Open **Desk Zones** from the Apps window (or `legal-desk zones`) to pick a layout (two or three columns, grid, priority grid, focus), edit zones (split, merge, drag the dividers), set the gap, and snap your open windows into the zones. Add these to `~/.config/hypr/bindings.lua` for the shortcuts:
+
+```lua
+o.bind("SUPER + SHIFT + Z", "Zones: pick a zone for this window", "legal-desk zones pick")
+o.bind("SUPER + CTRL + Z", "Zones: open Desk Zones", "legal-desk zones manage")
+o.bind("SUPER + ALT + LEFT", "Zones: window to the zone on the left", "legal-desk zones dir left")
+o.bind("SUPER + ALT + RIGHT", "Zones: window to the zone on the right", "legal-desk zones dir right")
+```
+
+Switch on "Auto-snap new windows" in Desk Zones to have every new window land in the next free zone.
+

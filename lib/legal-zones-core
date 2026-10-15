@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+# legal-zones-core : the engine of Legal Desk Zones (a FancyZones for Hyprland).
+#   legal-zones-core list                      layouts + active one (JSON)
+#   legal-zones-core use NAME                  switch layout
+#   legal-zones-core snap [ADDR] N             put a window (default: the active one) into zone N (0-based)
+#   legal-zones-core dir left|right|up|down    move the active window to the neighbouring zone
+#   legal-zones-core cycle [-1|1]              next / previous zone
+#   legal-zones-core apply                     put the open windows of this desktop into the zones (most recent first)
+#   legal-zones-core release [ADDR]            let a window go (back to normal tiling)
+#   legal-zones-core watch                     auto-place new windows into free zones (when "auto" is on in the settings)
+# Layouts: ~/.local/share/legal-desk/zones.json - zones are fractions of the screen area that is free of bar and dock.
+import sys, os, json, subprocess, socket, time
+
+CFG = os.path.expanduser('~/.local/share/legal-desk/zones.json')
+STATE = os.path.expanduser('~/.cache/legal-zones-state')
+NOBAR = ('org.telegram.desktop', 'org.gnome.')
+
+def T(cols, rows=None):
+    return None
+
+def tpl():
+    c = lambda n: [[i / n, 0, 1 / n, 1] for i in range(n)]
+    r = lambda n: [[0, i / n, 1, 1 / n] for i in range(n)]
+    return [
+        {'name': 'Two columns', 'zones': c(2)},
+        {'name': 'Three columns', 'zones': c(3)},
+        {'name': 'Two rows', 'zones': r(2)},
+        {'name': 'Grid', 'zones': [[0, 0, .5, .5], [.5, 0, .5, .5], [0, .5, .5, .5], [.5, .5, .5, .5]]},
+        {'name': 'Priority grid', 'zones': [[0, 0, .6, 1], [.6, 0, .4, .5], [.6, .5, .4, .5]]},
+        {'name': 'Focus', 'zones': [[.15, .08, .7, .84], [0, 0, .15, 1], [.85, 0, .15, 1]]},
+    ]
+
+def load():
+    try: d = json.load(open(CFG))
+    except Exception: d = {}
+    if not d.get('layouts'): d['layouts'] = tpl()
+    d.setdefault('active', d['layouts'][0]['name']); d.setdefault('gap', 8); d.setdefault('auto', False)
+    return d
+
+def save(d):
+    os.makedirs(os.path.dirname(CFG), exist_ok=True)
+    json.dump(d, open(CFG + '.tmp', 'w')); os.replace(CFG + '.tmp', CFG)
+
+def hj(*a):
+    return json.loads(subprocess.run(['hyprctl', '-j', *a], capture_output=True, text=True).stdout or 'null')
+
+def disp(code):
+    subprocess.run(['hyprctl', 'dispatch', code], capture_output=True)
+
+def layout(d):
+    for l in d['layouts']:
+        if l['name'] == d['active']: return l
+    return d['layouts'][0]
+
+def area():
+    ms = hj('monitors'); m = [x for x in ms if x.get('focused')][0] if ms else None
+    w, h = m['width'] / m['scale'], m['height'] / m['scale']
+    rl, rt, rr, rb = m['reserved']
+    return m['x'] + rl, m['y'] + rt, w - rl - rr, h - rt - rb, m['activeWorkspace']['id']
+
+def rect(z, gap):
+    ax, ay, aw, ah, _ = area()
+    x0, y0, x1, y1 = ax + z[0] * aw, ay + z[1] * ah, ax + (z[0] + z[2]) * aw, ay + (z[1] + z[3]) * ah
+    g = gap / 2
+    return x0 + g, y0 + g, x1 - g, y1 - g
+
+def barh(c):
+    return 0 if any(c.startswith(n) for n in NOBAR) else 28
+
+def wins(ws=None):
+    out = []
+    for c in hj('clients') or []:
+        if not c.get('mapped') or c.get('hidden'): continue
+        if c['workspace']['id'] < 0: continue
+        if ws is not None and c['workspace']['id'] != ws: continue
+        if c['class'] in ('', 'nwg-drawer') or c['class'].startswith('quickshell'): continue
+        out.append(c)
+    return out
+
+def snap(addr, n, d=None):
+    d = d or load(); L = layout(d)
+    if not (0 <= n < len(L['zones'])): return
+    cs = [c for c in (hj('clients') or []) if c['address'] == addr]
+    if not cs: return
+    c = cs[0]
+    x0, y0, x1, y1 = rect(L['zones'][n], d['gap'])
+    bh = barh(c['class'])
+    w = f'window = "address:{addr}"'
+    if not c['floating']: disp(f'hl.dsp.window.float({{ action = "enable", {w} }})')
+    disp(f'hl.dsp.window.resize({{ x = {int(x1 - x0)}, y = {int(y1 - y0 - bh)}, exact = true, {w} }})')
+    disp(f'hl.dsp.window.move({{ x = {int(x0)}, y = {int(y0 + bh)}, exact = true, {w} }})')
+    try: st = json.load(open(STATE))
+    except Exception: st = {}
+    st[addr] = n; json.dump(st, open(STATE, 'w'))
+
+def zone_of(c, d):
+    L = layout(d); cx, cy = c['at'][0] + c['size'][0] / 2, c['at'][1] + c['size'][1] / 2
+    best, bd = None, 1e18
+    for i, z in enumerate(L['zones']):
+        x0, y0, x1, y1 = rect(z, 0)
+        dd = 0 if (x0 <= cx <= x1 and y0 <= cy <= y1) else ((cx - (x0 + x1) / 2) ** 2 + (cy - (y0 + y1) / 2) ** 2)
+        if dd < bd: best, bd = i, dd
+    return best
+
+def active():
+    a = hj('activewindow')
+    return a if a and a.get('address') else None
+
+def main(a):
+    cmd = a[0] if a else 'list'
+    d = load()
+    if cmd == 'list': print(json.dumps(d))
+    elif cmd == 'use':
+        d['active'] = a[1]; save(d)
+    elif cmd == 'snap':
+        if len(a) == 3: snap(a[1], int(a[2]), d)
+        else:
+            w = active()
+            if w: snap(w['address'], int(a[1]), d)
+    elif cmd == 'cycle':
+        w = active()
+        if not w: return
+        step = int(a[1]) if len(a) > 1 else 1; n = len(layout(d)['zones'])
+        cur = zone_of(w, d) if w['floating'] else -1
+        snap(w['address'], (cur + step) % n, d)
+    elif cmd == 'dir':
+        w = active()
+        if not w: return
+        L = layout(d); cur = zone_of(w, d); zs = L['zones']
+        cx = zs[cur][0] + zs[cur][2] / 2; cy = zs[cur][1] + zs[cur][3] / 2
+        vec = {'left': (-1, 0), 'right': (1, 0), 'up': (0, -1), 'down': (0, 1)}[a[1]]
+        best, bs = None, 1e9
+        for i, z in enumerate(zs):
+            if i == cur: continue
+            dx, dy = z[0] + z[2] / 2 - cx, z[1] + z[3] / 2 - cy
+            along = dx * vec[0] + dy * vec[1]; across = abs(dx * vec[1]) + abs(dy * vec[0])
+            if along <= 0.01: continue
+            s = along + 2 * across
+            if s < bs: best, bs = i, s
+        if best is not None: snap(w['address'], best, d)
+    elif cmd == 'apply':
+        ax, ay, aw, ah, ws = area()
+        cs = sorted(wins(ws), key=lambda c: c.get('focusHistoryID', 99))
+        for i, c in enumerate(cs[:len(layout(d)['zones'])]): snap(c['address'], i, d)
+    elif cmd == 'release':
+        addr = a[1] if len(a) > 1 else (active() or {}).get('address')
+        if addr: disp(f'hl.dsp.window.float({{ action = "disable", window = "address:{addr}" }})')
+    elif cmd == 'watch': watch()
+
+def watch():
+    sig = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE', '')
+    path = f"{os.environ.get('XDG_RUNTIME_DIR', '/run/user/%d' % os.getuid())}/hypr/{sig}/.socket2.sock"
+    s = socket.socket(socket.AF_UNIX); s.connect(path); buf = b''
+    while True:
+        buf += s.recv(4096)
+        while b'\n' in buf:
+            line, buf = buf.split(b'\n', 1); line = line.decode('utf-8', 'ignore')
+            if not line.startswith('openwindow>>'): continue
+            d = load()
+            if not d.get('auto'): continue
+            addr = '0x' + line.split('>>')[1].split(',')[0]
+            time.sleep(0.4)
+            cs = [c for c in (hj('clients') or []) if c['address'] == addr]
+            if not cs or cs[0]['class'] in ('',) or cs[0]['class'].startswith('quickshell') or cs[0].get('floating') and cs[0]['class'].startswith('legal'): continue
+            ax, ay, aw, ah, ws = area()
+            if cs[0]['workspace']['id'] != ws: continue
+            taken = set()
+            for c in wins(ws):
+                if c['address'] != addr and c['floating']: taken.add(zone_of(c, d))
+            free = [i for i in range(len(layout(d)['zones'])) if i not in taken]
+            if free: snap(addr, free[0], d)
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

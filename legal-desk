@@ -35,6 +35,7 @@ start_all() {
   { pgrep -f "dock-keepalive" >/dev/null || setsid "$B/dock-keepalive"; } >/dev/null 2>&1 </dev/null &
   { pgrep -f "dock-lock-guard" >/dev/null || setsid "$B/dock-lock-guard"; } >/dev/null 2>&1 </dev/null &
   "$B/macdock-start" >/dev/null 2>&1 </dev/null &
+  "$B/legal-zones" start >/dev/null 2>&1 </dev/null &
 }
 
 case "${1:-menu}" in
@@ -48,6 +49,7 @@ case "${1:-menu}" in
     mkdir -p "$HOME/.config/omarchy/themes" && rm -rf "$HOME/.config/omarchy/themes/nebula" && cp -r "$src" "$HOME/.config/omarchy/themes/nebula" || exit 1
     omarchy-theme-set nebula 2>/dev/null || echo "Theme copied to ~/.config/omarchy/themes/nebula - pick Nebula in the Omarchy theme menu."
     echo 19 > "$HOME/.cache/dock-skin-mac"; echo 13 > "$HOME/.cache/dock-skin-classic"; echo 9 > "$HOME/.cache/dock-skin-rubik"; "$B/macdock-skin" apply >/dev/null 2>&1 ;;
+  zones) shift; "$B/legal-zones" "$@" ;;
   reset) "$B/dock-reset" ;;
   pointer) "$B/dock-pointer" "${2:-show}" ;;
   skin) "$B/macdock-skin" "${2:-show}" ;;
