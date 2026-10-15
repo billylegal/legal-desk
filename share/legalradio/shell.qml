@@ -60,29 +60,33 @@ ShellRoot {
   Process { id: posSave; property var cmd: []; command: cmd }
   function savePos() { posSave.cmd = ["bash", "-c", "mkdir -p \"$HOME/.cache\" && echo \"$0 $1\" > \"$HOME/.cache/dock-radio-pos\"", "" + Math.round(px), "" + Math.round(py)]; posSave.running = false; posSave.running = true }
 
+  // The window itself never moves: it is a transparent full-screen layer that only takes input where the card is (mask),
+  // and the card is dragged inside it. That keeps the drag perfectly smooth (no window being resized or re-placed under the pointer).
   PanelWindow {
     id: win
-    anchors { top: true; left: true }
-    readonly property real sw: screen ? screen.width : 1920
-    readonly property real sh: screen ? screen.height : 1080
-    implicitWidth: rd.sz === 0 ? 330 : (rd.sz === 1 ? 372 : 412)
-    implicitHeight: rd.sz === 0 ? 86 : body.implicitHeight + 20
-    // where it sits: the remembered spot, else bottom centre above the dock; always kept on the screen
-    margins.left: Math.max(0, Math.min(sw - implicitWidth, rd.px >= 0 ? rd.px : (sw - implicitWidth) / 2))
-    margins.top: Math.max(0, Math.min(sh - implicitHeight, rd.py >= 0 ? rd.py : sh - implicitHeight - 130))
+    anchors { top: true; bottom: true; left: true; right: true }
+    mask: Region { item: card }
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.layer: WlrLayer.Top
+    WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "legalradio"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
-    // drag anywhere on the card that is not a button
-    property real dragX: 0
-    property real dragY: 0
+    readonly property real sw: width > 0 ? width : 1920
+    readonly property real sh: height > 0 ? height : 1080
+    property real pressX: 0
+    property real pressY: 0
+    property real startX: 0
+    property real startY: 0
 
     Rectangle {
       id: card
-      anchors.fill: parent
+      readonly property real cw: rd.sz === 0 ? 330 : (rd.sz === 1 ? 372 : 412)
+      readonly property real ch: rd.sz === 0 ? 86 : body.implicitHeight + 20
+      width: cw; height: ch
+      // the remembered spot, else bottom centre above the dock; always kept on the screen
+      x: Math.max(0, Math.min(win.sw - cw, rd.px >= 0 ? rd.px : (win.sw - cw) / 2))
+      y: Math.max(0, Math.min(win.sh - ch, rd.py >= 0 ? rd.py : win.sh - ch - 130))
       radius: rd.sz === 0 ? 18 : 22; color: rd.bgC; clip: true
       border.color: rd.lineC; border.width: 1
       focus: true
@@ -106,11 +110,15 @@ ShellRoot {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton
         cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-        onPressed: (m) => { win.dragX = m.x; win.dragY = m.y; if (rd.px < 0) { rd.px = win.margins.left; rd.py = win.margins.top } }
+        onPressed: (m) => {
+          var p = mapToItem(win.contentItem, m.x, m.y)
+          win.pressX = p.x; win.pressY = p.y; win.startX = card.x; win.startY = card.y
+        }
         onPositionChanged: (m) => {
           if (!pressed) return
-          rd.px = Math.max(0, Math.min(win.sw - win.implicitWidth, rd.px + (m.x - win.dragX)))
-          rd.py = Math.max(0, Math.min(win.sh - win.implicitHeight, rd.py + (m.y - win.dragY)))
+          var p = mapToItem(win.contentItem, m.x, m.y)
+          rd.px = Math.max(0, Math.min(win.sw - card.width, win.startX + (p.x - win.pressX)))
+          rd.py = Math.max(0, Math.min(win.sh - card.height, win.startY + (p.y - win.pressY)))
         }
         onReleased: rd.savePos()
       }
