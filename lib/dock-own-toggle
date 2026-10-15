@@ -1,7 +1,7 @@
 #!/bin/bash
-# dock-own-toggle __calendar__|__notes__|__tasks__|__disks__ : keep Legal Desk's own apps in the Mac/Rubik dock (list in ~/.cache/macdock-own), or take them out again.
+# dock-own-toggle __calendar__|__notes__|__tasks__|__disks__|__zones__ : keep Legal Desk's own apps in the Mac/Rubik dock (list in ~/.cache/macdock-own), or take them out again.
 T="$1"; O="$HOME/.cache/macdock-own"; L="$HOME/.cache/macdock-layout"
-case "$T" in __calendar__|__notes__|__tasks__|__disks__) ;; *) exit 1;; esac
+case "$T" in __calendar__|__notes__|__tasks__|__disks__|__zones__) ;; *) exit 1;; esac
 touch "$O"
 if grep -qxF -- "$T" "$O"; then
   grep -vxF -- "$T" "$O" > "$O.tmp"; mv "$O.tmp" "$O"

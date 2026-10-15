@@ -75,7 +75,7 @@ ShellRoot {
   readonly property var own: [
     { name: "Mail", glyph: "\u2709", own: true, cmd: ["/usr/lib/legal-desk/legal-mail"] },
     { name: "Calendar", glyph: "\u25A6", own: true, token: "__calendar__", cmd: ["/usr/lib/legal-desk/legal-calendar"] },
-    { name: "Desk Zones", glyph: "\u229E", own: true, cmd: ["/usr/lib/legal-desk/legal-zones"] },
+    { name: "Desk Zones", glyph: "\u229E", own: true, token: "__zones__", cmd: ["/usr/lib/legal-desk/legal-zones"] },
     { name: "Disk Management", glyph: "\u26C1", own: true, token: "__disks__", cmd: ["/usr/lib/legal-desk/legal-disks"] },
     { name: "Clock", glyph: "\u25F7", own: true, cmd: ["/usr/lib/legal-desk/legal-clock"] },
     { name: "Task Manager", glyph: "\u25A4", own: true, token: "__tasks__", cmd: ["/usr/lib/legal-desk/legal-tasks"] },
@@ -185,7 +185,7 @@ ShellRoot {
               id: plate
               anchors.horizontalCenter: parent.horizontalCenter; y: 8; width: 62; height: 62
               radius: Math.min(31, ap.plateR + 4); color: modelData.own ? ap.selC : "transparent"; border.color: ap.accC; border.width: modelData.own ? 1 : 0
-              Text { visible: !!modelData.glyph && modelData.token !== "__calendar__" && modelData.token !== "__notes__" && modelData.token !== "__tasks__" && modelData.token !== "__disks__"; anchors.centerIn: parent; text: modelData.glyph || ""; color: ap.accC; font.pixelSize: 30 }
+              Text { visible: !!modelData.glyph && modelData.token !== "__calendar__" && modelData.token !== "__notes__" && modelData.token !== "__tasks__" && modelData.token !== "__disks__" && modelData.token !== "__zones__"; anchors.centerIn: parent; text: modelData.glyph || ""; color: ap.accC; font.pixelSize: 30 }
               // Calendar shows today's date (Apple style); Notes is a yellow pad
               Rectangle { visible: modelData.token === "__calendar__"; anchors.centerIn: parent; width: 46; height: 46; radius: 10; color: ap.neb ? "#E6E1FA" : "#fbfbfd"; clip: true
                 Rectangle { width: parent.width; height: 14; color: ap.neb ? "#8B5CF6" : "#ff3b30"
@@ -195,6 +195,10 @@ ShellRoot {
                 Rectangle { x: 7; y: 14; width: 32; height: 19; radius: 4; color: ap.neb ? "#C9BAFF" : "#c8c8cc"
                   Rectangle { x: 3; y: 12; width: 16; height: 2; color: ap.neb ? "#5b3fb5" : "#777" }
                   Rectangle { x: 25; y: 11; width: 4; height: 4; radius: 2; color: "#4cd964" } } }
+              Rectangle { visible: modelData.token === "__zones__"; anchors.centerIn: parent; width: 46; height: 46; radius: 10; color: ap.neb ? "#1d1238" : "#2b2b30"; border.color: ap.accC; border.width: 1; clip: true
+                Rectangle { x: 6; y: 6; width: 19; height: 34; radius: 3; color: ap.accC }
+                Rectangle { x: 28; y: 6; width: 13; height: 16; radius: 3; color: Qt.lighter(ap.accC, 1.5) }
+                Rectangle { x: 28; y: 24; width: 13; height: 16; radius: 3; color: Qt.darker(ap.accC, 1.2) } }
               Rectangle { visible: modelData.token === "__tasks__"; anchors.centerIn: parent; width: 46; height: 46; radius: 10; color: ap.neb ? "#1d1238" : "#222"; border.color: ap.accC; border.width: 1; clip: true
                 Repeater { model: [0.45, 0.8, 0.6]; Rectangle { width: 7; x: 9 + index * 12; height: 32 * modelData; y: 38 - height; radius: 2; color: index === 1 ? Qt.lighter(ap.accC, 1.5) : ap.accC } } }
               Rectangle { visible: modelData.token === "__notes__"; anchors.centerIn: parent; width: 46; height: 46; radius: 10; color: ap.neb ? "#D8CCFF" : "#ffd84a"; clip: true
