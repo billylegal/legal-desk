@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""legal-radio-bar on|off|status : put 1UP Radio in the Omarchy bar (a bar widget like Hertz Radio) or take it out again.
+Installs the plugin to ~/.config/omarchy/plugins/legaldesk.oneup-radio and adds it to the right side of the bar in ~/.config/omarchy/shell.json (backup: shell.json.bak.oneup)."""
+import json, os, shutil, sys
+
+ID = "legaldesk.oneup-radio"
+HOME = os.path.expanduser("~")
+SH = "/usr/share/legal-desk"
+here = os.path.dirname(os.path.realpath(__file__))
+for p in (SH, os.path.join(here, "..", "share", "legal-desk"), os.path.join(here, "..")):
+    if os.path.isdir(os.path.join(p, "plugin", ID)):
+        SRC = os.path.join(p, "plugin", ID)
+        break
+else:
+    SRC = None
+DST = os.path.join(HOME, ".config", "omarchy", "plugins", ID)
+CFG = os.path.join(HOME, ".config", "omarchy", "shell.json")
+cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
+
+
+def load():
+    return json.load(open(CFG))
+
+
+def save(d):
+    shutil.copy(CFG, CFG + ".bak.oneup") if not os.path.exists(CFG + ".bak.oneup") else None
+    tmp = CFG + ".tmp"
+    json.dump(d, open(tmp, "w"), indent=1)
+    os.replace(tmp, CFG)
+
+
+def entries(d):
+    lay = d.setdefault("bar", {}).setdefault("layout", {})
+    return lay, [(s, i) for s, l in lay.items() for i, e in enumerate(l) if isinstance(e, dict) and e.get("id") == ID]
+
+
+if cmd == "on":
+    if not SRC:
+        sys.exit("plugin files not found")
+    shutil.rmtree(DST, ignore_errors=True)
+    shutil.copytree(SRC, DST)
+    d = load()
+    lay, found = entries(d)
+    if not found:
+        right = lay.setdefault("right", [])
+        at = next((i for i, e in enumerate(right) if isinstance(e, dict) and e.get("id") in ("aigazoo.audio", "omarchy.audio")), len(right))
+        right.insert(at, {"id": ID})
+        save(d)
+    print("1UP Radio is in the bar")
+elif cmd == "off":
+    d = load()
+    lay, found = entries(d)
+    for s, _ in found:
+        lay[s] = [e for e in lay[s] if not (isinstance(e, dict) and e.get("id") == ID)]
+    if found:
+        save(d)
+    shutil.rmtree(DST, ignore_errors=True)
+    print("1UP Radio is out of the bar")
+else:
+    print("on" if entries(load())[1] else "off")

@@ -28,6 +28,7 @@ package() {
     install -Dm644 "share/$d/shell.qml" "$pkgdir/usr/share/legal-desk/$d/shell.qml"
   done
   install -m644 share/legalradio/logo.png share/legalradio/nebula-bg.jpg -t "$pkgdir/usr/share/legal-desk/legalradio/"
+  install -d "$pkgdir/usr/share/legal-desk/plugin" && cp -r plugin/legaldesk.oneup-radio "$pkgdir/usr/share/legal-desk/plugin/"
   cp -r share/themes "$pkgdir/usr/share/legal-desk/themes"
   install -Dm644 share/skins.json "$pkgdir/usr/share/legal-desk/skins.json"
   install -Dm644 share/5ive7.png "$pkgdir/usr/share/legal-desk/5ive7.png"

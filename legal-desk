@@ -1,6 +1,6 @@
 #!/bin/bash
 # Legal Desk — one command for the whole dock.
-# legal-desk [start|menu|classic|mac|rubik|theme|reset|small|medium|large|restart|status|uninstall|version]
+# legal-desk [start|menu|classic|mac|rubik|theme|reset|small|medium|large|restart|status|radio|radio-bar|uninstall|version]
 B="/usr/lib/legal-desk"
 SH="/usr/share/legal-desk"
 VERSION="2.0.0"
@@ -49,6 +49,9 @@ case "${1:-menu}" in
     mkdir -p "$HOME/.config/omarchy/themes" && rm -rf "$HOME/.config/omarchy/themes/nebula" && cp -r "$src" "$HOME/.config/omarchy/themes/nebula" || exit 1
     omarchy-theme-set nebula 2>/dev/null || echo "Theme copied to ~/.config/omarchy/themes/nebula - pick Nebula in the Omarchy theme menu."
     for s in classic mac rubik; do echo 0 > "$HOME/.cache/dock-skin-$s"; done; "$B/macdock-skin" apply >/dev/null 2>&1 ;;
+  radio) shift; "$B/legal-radio" "$@" ;;
+  radio-info) "$B/legal-radio-info" ;;
+  radio-bar) "$B/legal-radio-bar" "${2:-status}" ;;
   zones) shift; "$B/legal-zones" "$@" ;;
   reset) "$B/dock-reset" ;;
   pointer) "$B/dock-pointer" "${2:-show}" ;;
@@ -67,5 +70,5 @@ case "${1:-menu}" in
     sleep 1; { setsid nwg-dock-hyprland -r -x -i 56; } >/dev/null 2>&1 </dev/null &
     echo "Legal Desk stopped; the classic dock is back. Remove the package with: sudo pacman -R legal-desk" ;;
   version|--version|-v) echo "legal-desk $VERSION" ;;
-  *) echo "usage: legal-desk [start|menu|classic|mac|rubik|theme|reset|small|medium|large|restart|status|uninstall|version]"; exit 1 ;;
+  *) echo "usage: legal-desk [start|menu|classic|mac|rubik|theme|reset|small|medium|large|restart|status|radio|radio-bar|uninstall|version]"; exit 1 ;;
 esac

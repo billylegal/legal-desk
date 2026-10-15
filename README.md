@@ -125,3 +125,12 @@ o.bind("SUPER + ALT + RIGHT", "Zones: window to the zone on the right", "legal-d
 
 Switch on "Auto-snap new windows" in Legal Zones to have every new window land in the next free zone.
 
+
+## 1UP Radio
+
+Legal Desk carries [1UP Radio](https://1upradio.com) in two forms, both in the **Nebula skin of 1upradio.com**, both driven by SnapDock's radio player (`sd-radio`):
+
+- **Dock button + floating window:** the 1UP Radio button on the dock starts the radio and opens a window with the artwork, title, progress, Play/Pause, Live, Stop, mute, volume, **Up next** and **Just played**. It stays open while you work; Esc or the X closes it and the music keeps playing. Right-click the button for Play / Pause, Live, Stop. Keep it in the dock from the Apps window (right-click, Keep in Dock).
+- **Bar widget** (like Hertz Radio): `legal-desk radio-bar on` installs the plugin `legaldesk.oneup-radio` and adds it to the right side of the Omarchy bar (`radio-bar off` removes it). A waveform icon beats while it plays, the track scrolls next to it; click for the same Nebula player, middle-click Play/Pause, right-click Stop, scroll for volume. Options on its entry in `shell.json`: `"showTitle": false`, `"maxTitleWidth": 150`.
+
+`legal-desk radio play|toggle|live|stop|volume N|mute|window` controls it from a terminal.

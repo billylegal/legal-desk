@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "legaldesk.oneup-radio",
+  "name": "1UP Radio",
+  "version": "1.0.0",
+  "author": "5ive7 Development Labs",
+  "license": "MIT",
+  "description": "1UP Radio in the bar: now playing ticker, and a Nebula-skin popup player with play/pause, live, stop, volume, up next and just played. Part of Legal Desk.",
+  "homepage": "https://1upradio.com",
+  "keywords": ["radio", "music", "1up", "legal desk"],
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "Panel.qml" },
+  "barWidget": {
+    "displayName": "1UP Radio",
+    "description": "1UP Radio player with a Nebula skin",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
