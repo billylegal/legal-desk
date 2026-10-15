@@ -124,6 +124,11 @@ def G(name, now=None):
         "folder-download": '''
 <path d="M10 28 a8 8 0 0 1 8 -8 H36 L44 30 H78 a8 8 0 0 1 8 8 V70 a8 8 0 0 1 -8 8 H18 a8 8 0 0 1 -8 -8 Z" fill="{main}" {S}/>
 <path d="M48 40 V62 M38 54 L48 64 L58 54" {I}/>'''.replace("{S}", S).replace("{I}", I),
+        "radio": '''
+<path d="M26 30 L66 12" {I}/>
+<rect x="8" y="30" width="80" height="54" rx="10" fill="{main}" {S}/>
+<circle cx="32" cy="57" r="14" fill="{lo}" {S}/>
+<path d="M56 48 H78 M56 58 H78 M56 68 H70" {I}/>''',
         "power": '''
 <path d="M30 26 A32 32 0 1 0 66 26" fill="none" stroke="{strk}" stroke-width="{psw}" stroke-linecap="round"/>
 <path d="M48 10 V44" fill="none" stroke="{strk2}" stroke-width="{psw}" stroke-linecap="round"/>''',
@@ -133,9 +138,9 @@ def G(name, now=None):
     return s.replace("{S}", S).replace("{I}", I)
 
 
-NAMES = ["calendar", "notes", "tasks", "disks", "zones", "clock", "camera", "desk", "apps", "mail", "trash", "trash-full", "folder", "folder-download", "power"]
+NAMES = ["calendar", "notes", "tasks", "disks", "zones", "clock", "camera", "desk", "apps", "mail", "trash", "trash-full", "folder", "folder-download", "power", "radio"]
 STICKER_OF = {"calendar": 1, "notes": 0, "tasks": 3, "disks": 5, "zones": 2, "clock": 1, "camera": 5, "desk": 0, "apps": 4, "mail": 1, "trash": 5, "trash-full": 5,
-              "folder": 0, "folder-download": 0, "power": 2}
+              "folder": 0, "folder-download": 0, "power": 2, "radio": 4}
 
 
 def fill(s, d):
@@ -253,6 +258,9 @@ def refresh(idx=None, now=None):
     os.makedirs(d, exist_ok=True)
     for n in NAMES:
         open(os.path.join(d, n + ".svg"), "w").write(draw(setname, n, p, now))
+    for src in ("/usr/lib/snapdock/icons3d/radio-1up.svg",):   # 1UP Radio keeps its own logo in every set
+        if os.path.exists(src):
+            shutil.copy(src, os.path.join(d, "radio.svg"))
     tmp = os.path.join(OUT, "current.tmp")
     open(tmp, "w").write(stamp + "\n")
     os.replace(tmp, os.path.join(OUT, "current"))

@@ -232,7 +232,7 @@ ShellRoot {
   Timer { interval: 1000; running: true; repeat: true; onTriggered: artFile.reload() }
   function artName(cls) {
     return cls === "__calendar__" ? "calendar" : cls === "__notes__" ? "notes" : cls === "__tasks__" ? "tasks" : cls === "__disks__" ? "disks" : cls === "__zones__" ? "zones"
-         : cls === "__snap__" ? "camera" : cls === "__folder__" ? "folder-download" : cls === "__trash__" ? (trashFull ? "trash-full" : "trash") : ""
+         : cls === "__snap__" ? "camera" : cls === "__radio__" ? "radio" : cls === "__folder__" ? "folder-download" : cls === "__trash__" ? (trashFull ? "trash-full" : "trash") : ""
   }
   property int artDay: -1
   Process { id: artProc; command: ["/usr/lib/legal-desk/legal-icons", "refresh"] }   // a new day: the Calendar icon shows the new date
@@ -463,6 +463,7 @@ print(json.dumps(out))
     if (cls === "__disks__") { sh(["/usr/lib/legal-desk/legal-disks"]); return }
     if (cls === "__snap__") { sh(["omarchy-capture-screenshot"]); return }
     if (cls === "__tasks__") { sh(["/usr/lib/legal-desk/legal-tasks"]); return }
+    if (cls === "__radio__") { sh(["/usr/lib/legal-desk/legal-radio", "toggle"]); return }
     if (cls === "reboot") { sh(["/usr/lib/legal-desk/reboot-confirm"]); return }
     if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-desk/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
     markLaunch(cls)
@@ -678,7 +679,7 @@ print(json.dumps(out))
           required property int index
           readonly property bool dragged: root.dragIdx === index
           readonly property bool isSep: root.isSep(modelData.cls)
-          readonly property bool ownIcon: modelData.cls === "__trash__" || modelData.cls === "__folder__" || modelData.cls === "__calendar__" || modelData.cls === "__notes__" || modelData.cls === "__tasks__" || modelData.cls === "__disks__" || modelData.cls === "__zones__" || modelData.cls === "__snap__"   // draw their own tile
+          readonly property bool ownIcon: modelData.cls === "__radio__" || modelData.cls === "__trash__" || modelData.cls === "__folder__" || modelData.cls === "__calendar__" || modelData.cls === "__notes__" || modelData.cls === "__tasks__" || modelData.cls === "__disks__" || modelData.cls === "__zones__" || modelData.cls === "__snap__"   // draw their own tile
           readonly property real lift: dragged ? 1.18 : 1
           width: (root.lay.ws[index] || root.base) * lift
           height: isSep ? root.base : width
@@ -1003,7 +1004,7 @@ print(json.dumps(out))
             width: lbl.width + 16; height: lbl.height + 8; radius: 7
             color: Qt.rgba(root.bgC.r, root.bgC.g, root.bgC.b, 0.92); border.color: root.accC; border.width: 1
             Text { id: lbl; anchors.centerIn: parent; color: root.txtC; font.pixelSize: 12
-              text: cell.modelData.cls === "__launcher__" ? "Legal Desk" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__snap__" ? "Screenshot" : cell.modelData.cls === "__disks__" ? "Disk Management" : cell.modelData.cls === "__zones__" ? "Desk Zones" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
+              text: cell.modelData.cls === "__launcher__" ? "Legal Desk" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__snap__" ? "Screenshot" : cell.modelData.cls === "__radio__" ? "1UP Radio" : cell.modelData.cls === "__disks__" ? "Disk Management" : cell.modelData.cls === "__zones__" ? "Desk Zones" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
           }
           // ring around the icon whose menu is open
           Rectangle { visible: root.ctx !== "" && root.ctx === cell.modelData.cls; anchors.fill: parent; anchors.margins: -2; radius: width * 0.24; color: "transparent"; border.color: root.accC; border.width: 2 }
@@ -1086,6 +1087,7 @@ print(json.dumps(out))
     if (ctx === "__trash__") return [{ l: "Trash", a: "hdr" }, { l: "Open trash", a: "open" }, { l: "Empty trash", a: "empty" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__folder__") return [{ l: "Downloads", a: "hdr" }, { l: "Open folder", a: "open" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__" || ctx === "__disks__" || ctx === "__zones__") return [{ l: ctx === "__zones__" ? "Desk Zones" : ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : ctx === "__disks__" ? "Disk Management" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === "__radio__") return [{ l: "1UP Radio", a: "hdr" }, { l: "Play / Pause", a: "open" }, { l: "Live (jump to now)", a: "rlive" }, { l: "Stop", a: "rstop" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "settings") return [{ l: "Settings", a: "hdr" }, { l: "Open settings", a: "open" }, { l: "Task manager", a: "tasks" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__snap__") return [{ l: "Screenshot", a: "hdr" }, { l: "Take screenshot", a: "open" }, { l: "Cancel", a: "cancel" }]
     var w = ctxWins
@@ -1138,6 +1140,8 @@ print(json.dumps(out))
                   if (act === "hdr") return
                   if (act === "open") root.activate(c)
                   else if (act === "tasks") root.sh(["/usr/lib/legal-desk/legal-tasks"])
+                  else if (act === "rlive") root.sh(["/usr/lib/legal-desk/legal-radio", "live"])
+                  else if (act === "rstop") root.sh(["/usr/lib/legal-desk/legal-radio", "stop"])
                   else if (act === "unown") root.sh(["/usr/lib/legal-desk/dock-own-toggle", c])
                   else if (act === "empty") root.sh(["gio", "trash", "--empty"])
                   else if (act === "pin") root.sh(["/usr/lib/legal-desk/dock-pin-toggle", c])
