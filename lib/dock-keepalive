@@ -13,9 +13,9 @@ while true; do
     case "$sz" in small) I=32;; large) I=80;; [0-9]*) I=$(( sz * 122 / 100 )); [ $I -lt 28 ] && I=28; [ $I -gt 110 ] && I=110;; *) I=56;; esac   # numeric = the Size slider
     F=""; [ -e "$HOME/.cache/dock-full" ] && F="-f"
     if [ -e "$HOME/.cache/dock-hidden" ]; then
-      nwg-dock-hyprland -d -i $I $F -c "$HOME/.local/bin/drawer-toggle" >/dev/null 2>&1 9>&-
+      nwg-dock-hyprland -d -i $I $F -c "/usr/lib/legal-desk/drawer-toggle" >/dev/null 2>&1 9>&-
     else
-      nwg-dock-hyprland -r -x -i $I $F -c "$HOME/.local/bin/drawer-toggle" >/dev/null 2>&1 9>&-
+      nwg-dock-hyprland -r -x -i $I $F -c "/usr/lib/legal-desk/drawer-toggle" >/dev/null 2>&1 9>&-
     fi
   fi
   sleep 2

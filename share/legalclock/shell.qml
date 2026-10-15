@@ -46,7 +46,7 @@ ShellRoot {
   function saveCities() { wr.running = false; wr.running = true; wr.write(JSON.stringify(ck.chosen)); wr.stdinEnabled = false; wr.stdinEnabled = true; offProc.running = false; offProc.running = true }
   Process {
     id: offProc
-    command: [ck.home + "/.local/bin/legal-worldclock-sample"].concat(ck.chosen.map(c => c[1]))
+    command: ["/usr/lib/legal-desk/legal-worldclock-sample"].concat(ck.chosen.map(c => c[1]))
     stdout: StdioCollector { onStreamFinished: { try { ck.offs = JSON.parse(text) } catch (e) { } } }
   }
   Timer { interval: 120000; running: true; repeat: true; onTriggered: { offProc.running = false; offProc.running = true } }
@@ -80,7 +80,7 @@ ShellRoot {
   property int setSec: 0
   readonly property real remainSec: tState === "run" ? Math.max(0, Math.ceil((tEnd - now.getTime()) / 1000)) : (tState === "pause" ? tRemain : (tState === "done" ? 0 : setMin * 60 + setSec))
   Process { id: tp; property var cmd: []; command: cmd }
-  function tcmd(a) { tp.cmd = [ck.home + "/.local/bin/legal-timer"].concat(a); tp.running = false; tp.running = true; reloadT.restart() }
+  function tcmd(a) { tp.cmd = ["/usr/lib/legal-desk/legal-timer"].concat(a); tp.running = false; tp.running = true; reloadT.restart() }
   Timer { id: reloadT; interval: 300; onTriggered: timerFile.reload() }
   function fmt(s) { var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); return (h > 0 ? h + ":" + two(m) : two(m)) + ":" + two(s % 60) }
 
