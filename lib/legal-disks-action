@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+# legal-disks-action mount|unmount|eject|format|erase PATH [FSTYPE LABEL]
+#   Uses UDisks2 (no root needed for removable drives; internal drives ask for your password through polkit).
+#   Refuses anything on the drive the system runs from.
+import sys, subprocess, json, os, re
+act, path = sys.argv[1], sys.argv[2]
+fst = sys.argv[3] if len(sys.argv) > 3 else 'ext4'
+label = sys.argv[4] if len(sys.argv) > 4 else ''
+MAP = {'ext4': 'ext4', 'exFAT': 'exfat', 'FAT32': 'vfat', 'NTFS': 'ntfs', 'Btrfs': 'btrfs', 'XFS': 'xfs'}
+fst = MAP.get(fst, fst)
+if not re.match(r'^/dev/[A-Za-z0-9_-]+$', path): sys.exit('bad device')
+data = json.loads(subprocess.run([os.path.join(os.path.dirname(os.path.realpath(__file__)), 'legal-disks-list')], capture_output=True, text=True).stdout)
+node = None
+for d in data['disks']:
+    if d['path'] == path: node = d
+    for p in d['parts']:
+        if p['path'] == path: node = p
+if not node: sys.exit('unknown device')
+if node['system'] and act in ('unmount', 'eject', 'format', 'erase'): sys.exit('refused: this is part of the system drive')
+def run(*a):
+    r = subprocess.run(a, capture_output=True, text=True)
+    if r.returncode: sys.exit((r.stderr or r.stdout).strip() or 'failed')
+    return r.stdout
+def obj(p): return '/org/freedesktop/UDisks2/block_devices/' + os.path.basename(p)
+def gv(s): return s.replace("'", "\\'")
+def call(p, iface, method, *args):
+    return run('gdbus', 'call', '--system', '--dest', 'org.freedesktop.UDisks2', '--object-path', p, '--method', 'org.freedesktop.UDisks2.' + iface + '.' + method, *args)
+def unmount_all(n):
+    for m in n.get('mounts', []): run('udisksctl', 'unmount', '-b', n['path'], '--force') if m else None
+    for p in n.get('parts', []): unmount_all(p)
+if act == 'mount': run('udisksctl', 'mount', '-b', path)
+elif act == 'unmount': unmount_all(node)
+elif act == 'eject': unmount_all(node); run('udisksctl', 'power-off', '-b', path)
+elif act == 'format':
+    unmount_all(node)
+    opts = "{'label': <'%s'>, 'take-ownership': <true>}" % gv(label) if label else "{'take-ownership': <true>}"
+    call(obj(path), 'Block', 'Format', fst, opts)
+elif act == 'erase':   # whole drive: new GPT table with one partition that fills it
+    unmount_all(node)
+    call(obj(path), 'Block', 'Format', 'gpt', '{}')
+    call(obj(path), 'PartitionTable', 'CreatePartitionAndFormat', '1048576', '0', '', label or 'Disk', '{}', fst, "{'label': <'%s'>}" % gv(label or 'Disk'))
+else: sys.exit('unknown action')
+print('ok')

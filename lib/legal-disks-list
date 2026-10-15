@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+# legal-disks-list : drives and partitions as JSON for Legal Dock Disks. Marks the drives the system runs from ("system": true) - those can never be formatted here.
+import json, subprocess, shutil
+cols = 'NAME,PATH,SIZE,TYPE,FSTYPE,LABEL,MOUNTPOINTS,RM,HOTPLUG,MODEL,PKNAME,FSUSED,RO,TRAN'
+d = json.loads(subprocess.run(['lsblk', '-J', '-b', '-o', cols], capture_output=True, text=True).stdout or '{}').get('blockdevices', [])
+SYS = ('/', '/boot', '/boot/efi', '/efi', '/home', '/usr', '/var', '/etc', '/nix', '[SWAP]')
+def mounts(n):
+    m = list(n.get('mountpoints') or []); m = [x for x in m if x]
+    for c in n.get('children') or []: m += mounts(c)
+    return m
+def is_sys(n): return any(x in SYS or x.startswith('/boot') for x in mounts(n))
+out = []
+for n in d:
+    if n['type'] in ('loop',) and not n.get('mountpoints') and not n.get('children') and not n.get('fstype') and not (n.get('size') or 0): continue
+    if n['name'].startswith(('zram', 'ram')): continue
+    if n['type'] not in ('disk', 'loop', 'rom'): continue
+    kids = []
+    for c in n.get('children') or []:
+        if c['type'] not in ('part', 'crypt', 'lvm'): continue
+        kids.append({k: c.get(k) for k in ('name', 'path', 'size', 'fstype', 'label', 'fsused', 'ro')} | {'mounts': [x for x in (c.get('mountpoints') or []) if x], 'system': is_sys(c)})
+    out.append({k: n.get(k) for k in ('name', 'path', 'size', 'type', 'fstype', 'label', 'model', 'tran', 'hotplug', 'fsused', 'ro')} |
+               {'mounts': [x for x in (n.get('mountpoints') or []) if x], 'system': is_sys(n), 'parts': kids})
+fs = {'ext4': 'mkfs.ext4', 'exFAT': 'mkfs.exfat', 'FAT32': 'mkfs.vfat', 'NTFS': 'mkfs.ntfs', 'Btrfs': 'mkfs.btrfs', 'XFS': 'mkfs.xfs'}
+print(json.dumps({'disks': out, 'fstypes': [k for k, v in fs.items() if shutil.which(v)]}))

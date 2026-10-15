@@ -1,0 +1,4 @@
+#!/bin/bash
+# legal-disks : open (or close) Legal Dock Disks (disk management: mount, unmount, eject, format).
+if pgrep -f '^quickshell.*legaldisks' >/dev/null; then pkill -f '^quickshell.*legaldisks'; exit 0; fi
+exec setsid quickshell -n -p "/usr/share/legal-dock/legaldisks" >/dev/null 2>&1
