@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""dock-icon-outline PATH... : draw other apps' icons as line art in the skin's accent colour (the Outline icon set).
+Prints one JSON object {icon path: outline png}. Outlines are cached in ~/.cache/legal-desk/outline (per icon file, modification time and colour).
+An icon is flattened, its edges are found (canny) together with the edge of its silhouette, thickened a little and filled with the accent."""
+import hashlib, json, os, re, subprocess, sys, tempfile
+
+HOME = os.path.expanduser("~")
+OUT = os.path.join(HOME, ".cache", "legal-desk", "outline")
+os.makedirs(OUT, exist_ok=True)
+acc = "#8B5CF6"
+try:
+    for line in open(os.path.join(HOME, ".cache", "dock-menu-colors")):
+        m = re.match(r"\s*acc\s*=\s*(#[0-9a-fA-F]{6})", line)
+        if m:
+            acc = m.group(1)
+except OSError:
+    pass
+# the line colour: the accent, lifted a little on dark skins so thin lines stay readable
+r, g, b = (int(acc[i:i + 2], 16) for i in (1, 3, 5))
+if 0.2126 * r + 0.7152 * g + 0.0722 * b < 150:
+    r, g, b = (int(v + (255 - v) * 0.35) for v in (r, g, b))
+col = "#%02x%02x%02x" % (r, g, b)
+S = 256
+
+
+def theme_order():
+    try: th = subprocess.run(['gsettings','get','org.gnome.desktop.interface','icon-theme'],capture_output=True,text=True,timeout=3).stdout.strip().strip("'")
+    except Exception: th = ''
+    roots = [os.path.expanduser('~/.local/share/icons'), '/usr/share/icons']
+    names = [n for n in (th, 'hicolor') if n]
+    for r in roots:
+        try: names += [n for n in sorted(os.listdir(r)) if n not in names]
+        except Exception: pass
+    return roots, names
+
+def resolve(name):
+    """image://icon/NAME -> file path (scalable first, else largest raster)."""
+    best, bsz = None, -1
+    roots, names = theme_order()
+    for n in names:
+        for r in roots:
+            base = os.path.join(r, n)
+            if not os.path.isdir(base): continue
+            for dp, _, fs in os.walk(base):
+                for ext in ('svg', 'png'):
+                    if name + '.' + ext in fs:
+                        f = os.path.join(dp, name + '.' + ext)
+                        if ext == 'svg' or 'scalable' in dp: return f
+                        import re
+                        m = re.search(r'(\d+)x\d+', dp)
+                        sz = int(m.group(1)) if m else 0
+                        if sz > bsz: best, bsz = f, sz
+        if best: return best
+    for ext in ('svg', 'png', 'xpm'):
+        f = '/usr/share/pixmaps/%s.%s' % (name, ext)
+        if os.path.isfile(f): return f
+    return best
+
+
+
+def make(src, dst, tmp):
+    png = os.path.join(tmp, "a.png")
+    if src.lower().endswith(".svg"):
+        subprocess.run(["rsvg-convert", "-w", str(S), "-h", str(S), "-a", src, "-o", png], check=True, capture_output=True)
+    else:
+        subprocess.run(["magick", src + "[0]", "-background", "none", "-resize", f"{S}x{S}", "-gravity", "center", "-extent", f"{S}x{S}", png], check=True, capture_output=True)
+    # opaque square icons have no silhouette edge of their own: frame them
+    cov = subprocess.run(["magick", png, "-alpha", "extract", "-threshold", "50%", "-format", "%[fx:mean]", "info:"], capture_output=True, text=True).stdout
+    cov = float(cov or 0)
+    e1, e2, em = (os.path.join(tmp, n) for n in ("e1.png", "e2.png", "m.png"))
+    subprocess.run(["magick", png, "-background", "black", "-alpha", "remove", "-alpha", "off", "-colorspace", "Gray", "-canny", "0x1+8%+20%", e1], check=True, capture_output=True)
+    flat = float(subprocess.run(["magick", png, "-alpha", "extract", "-format", "%[fx:minima]", "info:"], capture_output=True, text=True).stdout or 0) > 0.98
+    if flat:   # fully opaque: no silhouette edge (canny would turn a flat image solid white)
+        subprocess.run(["magick", "-size", f"{S}x{S}", "xc:black", e2], check=True, capture_output=True)
+    else:
+        subprocess.run(["magick", png, "-alpha", "extract", "-canny", "0x1+10%+30%", e2], check=True, capture_output=True)
+    args = ["magick", e1, e2, "-compose", "lighten", "-composite"]
+    if cov > 0.8:
+        args += ["(", "-size", f"{S}x{S}", "xc:black", "-fill", "none", "-stroke", "white", "-strokewidth", "2", "-draw", f"roundrectangle 8,8 {S - 9},{S - 9} 46,46", ")", "-compose", "lighten", "-composite"]
+    args += ["-morphology", "Dilate", "Disk:2.6", "-blur", "0x0.8", "-level", "0%,70%", em]
+    subprocess.run(args, check=True, capture_output=True)
+    # a busy picture turns into a solid blob: keep only its silhouette (and the frame) then
+    fill = float(subprocess.run(["magick", em, "-format", "%[fx:mean]", "info:"], capture_output=True, text=True).stdout or 0)
+    if fill > 0.38:
+        args = ["magick", e2, "(", "-size", f"{S}x{S}", "xc:black", "-fill", "none", "-stroke", "white", "-strokewidth", "2", "-draw", f"roundrectangle 8,8 {S - 9},{S - 9} 46,46", ")",
+                "-compose", "lighten", "-composite", "-morphology", "Dilate", "Disk:2.6", "-blur", "0x0.8", "-level", "0%,70%", em]
+        subprocess.run(args, check=True, capture_output=True)
+    subprocess.run(["magick", "-size", f"{S}x{S}", f"xc:{col}", em, "-compose", "CopyOpacity", "-composite", dst], check=True, capture_output=True)
+
+
+res = {}
+with tempfile.TemporaryDirectory() as tmp:
+    for arg in sys.argv[1:]:
+        try:
+            src = resolve(arg[len("image://icon/"):]) if arg.startswith("image://icon/") else arg
+            if not src or not os.path.isfile(src):
+                continue
+            key = hashlib.sha1(f"{src}|{int(os.path.getmtime(src))}|{col}".encode()).hexdigest()[:16]
+            dst = os.path.join(OUT, key + ".png")
+            if not os.path.exists(dst):
+                make(src, dst, tmp)
+            res[arg] = dst
+        except Exception:
+            pass
+print(json.dumps(res))

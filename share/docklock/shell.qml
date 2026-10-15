@@ -97,14 +97,14 @@ ShellRoot {
     onLoadFailed: ldr.iconIdx = 0
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: icoFile.reload() }
-  property int launchIdx: 0
-  readonly property var launchNames: ["Cube", "Desk tile", "Zones", "Desk", "3D Cube", "3D Layers", "3D Flip", "Hop", "Orbit", "Pulse", "Spark"]
+  property int launchIdx: 11
+  readonly property var launchNames: ["Cube", "Desk tile", "Zones", "Desk", "3D Cube", "3D Layers", "3D Flip", "Hop", "Orbit", "Pulse", "Spark", "Legal Desk"]
   FileView {
     id: launchFile
     path: Quickshell.env("HOME") + "/.cache/dock-launcher-icon"
     printErrors: false
-    onLoaded: { var n = parseInt(text()); ldr.launchIdx = (isNaN(n) || n < 0 || n >= ldr.launchNames.length) ? 0 : n }
-    onLoadFailed: ldr.launchIdx = 0
+    onLoaded: { var n = parseInt(text()); ldr.launchIdx = (isNaN(n) || n < 0 || n >= ldr.launchNames.length) ? 11 : n }
+    onLoadFailed: ldr.launchIdx = 11
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: launchFile.reload() }
   Process { id: launchProc; property string a: "next"; command: ["/usr/lib/legal-desk/dock-launcher-icon", a]; onExited: launchFile.reload() }

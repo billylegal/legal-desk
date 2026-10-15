@@ -180,18 +180,18 @@ ShellRoot {
   // A few shapes too: Pearls and Bubbles (circles), Blocks (every icon on a block in the skin's colours) and Cube (Rubik blocks). File: ~/.cache/dock-icon-style
   // Launcher icon (menu: Launcher < >): what the button at the right of the dock looks like. 0 is the Rubik's Cube; the rest are drawn here.
   // 1-3 flat, 4-6 3D, 7-10 moving. File: ~/.cache/dock-launcher-icon
-  property int launcherIcon: 0
-  readonly property var launcherNames: ["Cube", "Desk tile", "Zones", "Desk", "3D Cube", "3D Layers", "3D Flip", "Hop", "Orbit", "Pulse", "Spark"]
+  property int launcherIcon: 11
+  readonly property var launcherNames: ["Cube", "Desk tile", "Zones", "Desk", "3D Cube", "3D Layers", "3D Flip", "Hop", "Orbit", "Pulse", "Spark", "Legal Desk"]
   FileView {
     id: launchFile
     path: Quickshell.env("HOME") + "/.cache/dock-launcher-icon"
     printErrors: false
-    onLoaded: { var n = parseInt(text()); root.launcherIcon = (isNaN(n) || n < 0 || n >= root.launcherNames.length) ? 0 : n }
-    onLoadFailed: root.launcherIcon = 0
+    onLoaded: { var n = parseInt(text()); root.launcherIcon = (isNaN(n) || n < 0 || n >= root.launcherNames.length) ? 11 : n }
+    onLoadFailed: root.launcherIcon = 11
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: launchFile.reload() }
   property real lPhase: 0
-  NumberAnimation on lPhase { from: 0; to: 1; duration: 3200; loops: Animation.Infinite; running: root.launcherIcon >= 6 }
+  NumberAnimation on lPhase { from: 0; to: 1; duration: 3200; loops: Animation.Infinite; running: root.launcherIcon >= 6 && root.launcherIcon < 11 }
   // a 3 x 3 block of tiles (the Legal Desk logo's tile), optionally lighting up in a wave
   component LTiles: Item {
     property real ts: 44
@@ -210,7 +210,7 @@ ShellRoot {
   property int iconStyle: 0
   readonly property var iconNames: ["Tile", "Outline", "Glyph", "Duotone", "Glass", "Neon", "Flat", "Pixel", "Sticker", "Cube"]
   readonly property var iconDefs: [
-    {}, { ic: "gray" }, { ic: "skin" }, { blk: true }, { sk: "Glass" }, { ic: "skin", blk: true }, { sk: "Flat" }, { sk: "Pixel" }, { sk: "Sticker" }, { sk: "Cube" }
+    {}, {}, { ic: "skin" }, { blk: true }, { sk: "Glass" }, { ic: "skin", blk: true }, { sk: "Flat" }, { sk: "Pixel" }, { sk: "Sticker" }, { sk: "Cube" }
   ]
   readonly property var tileDefs: ({
     "Glass":   { c1: "#58ffffff", c2: "#22ffffff", b: "#aaffffff", r: 18, t: [] },
@@ -509,11 +509,34 @@ print(json.dumps(out))
   // Per-icon scale so every icon fills the same share of its square (measured by dock-icon-scale).
   property var iscale: ({})
   property string iconKey: ""
+  // Outline icon set: other apps' icons are drawn as line art in the accent colour (dock-icon-outline makes them once and caches them).
+  property var outlines: ({})
+  property string outKey: ""
+  function shownIcon(cls) {
+    var u = iconFor(cls)
+    if (iconStyle === 1 && u !== "") { var o = outlines[plainPath(u)]; if (o) return "file://" + o }
+    return u
+  }
+  function reoutline() {
+    if (iconStyle !== 1) return
+    var ps = []
+    for (var i = 0; i < items.length; i++) { var u = iconFor(items[i].cls); if (u !== "" && !String(u).startsWith(artDir)) ps.push(plainPath(u)) }
+    var k = ps.join("|") + "#" + accC
+    if (k === outKey) return
+    outKey = k
+    outliner.cmd = ["/usr/lib/legal-desk/dock-icon-outline"].concat(ps)
+    outliner.running = false; outliner.running = true
+  }
+  Process { id: outliner; property var cmd: []; command: cmd
+    stdout: StdioCollector { onStreamFinished: { try { root.outlines = JSON.parse(text) } catch (e) { } } } }
+  onIconStyleChanged: { outKey = ""; reoutline() }
+  onAccCChanged: { outKey = ""; reoutline() }
   function plainPath(s) { return s.startsWith("file://") ? s.substring(7) : s }
   function scaleOf(cls) { var s = iscale[plainPath(iconFor(cls))]; return s ? s : 1 }
   function remeasure() {
     var ps = []
     for (var i = 0; i < items.length; i++) { var u = iconFor(items[i].cls); if (u !== "") ps.push(plainPath(u)) }
+    reoutline()
     var k = ps.join("|")
     if (k === iconKey) return
     iconKey = k
@@ -746,7 +769,7 @@ print(json.dumps(out))
           Rectangle {
             visible: root.rubik && cell.modelData.cls !== "__launcher__"
             anchors.fill: parent; radius: width * (root.skin.rr !== undefined ? root.skin.rr : 0.2)
-            color: cell.ownIcon ? "#0d0d0d" : root.iconTiles ? root.tc1(cell.modelData.cls) : ((root.rpal && root.rpal.length) ? root.rpal[cell.index % root.rpal.length] : "#333333"); border.color: "#0d0d0d"; border.width: 2
+            color: (cell.ownIcon || root.iconStyle === 1) ? "#0d0d0d" : root.iconTiles ? root.tc1(cell.modelData.cls) : ((root.rpal && root.rpal.length) ? root.rpal[cell.index % root.rpal.length] : "#333333"); border.color: (root.iconStyle === 1 && !cell.ownIcon) ? root.accC : "#0d0d0d"; border.width: (root.iconStyle === 1 && !cell.ownIcon) ? 1.5 : 2
             rotation: cell.twist
             Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: "#33ffffff"; border.width: 1 }
           }
@@ -788,7 +811,7 @@ print(json.dumps(out))
             anchors.fill: parent
             scale: root.scaleOf(cell.modelData.cls) * ((root.rubik || (root.blocks && (root.skin.tile || "") === "") || (root.iconTiles && (root.skin.tile || "") !== "circle")) ? (root.iconCircle ? 0.66 : 0.74) : (root.skin.ik || 1))
             rotation: cell.twist
-            source: root.iconFor(cell.modelData.cls)
+            source: root.shownIcon(cell.modelData.cls)
             sourceSize: Qt.size(256, 256)
             fillMode: Image.PreserveAspectFit
             smooth: true
@@ -804,7 +827,7 @@ print(json.dumps(out))
           // The other launcher icons (see launcherNames): all drawn on a 192 x 192 board and scaled to the cell
           Item {
             id: lnch
-            visible: cell.modelData.cls === "__launcher__" && root.launcherIcon > 0
+            visible: cell.modelData.cls === "__launcher__" && root.launcherIcon > 0 && root.launcherIcon < 11
             width: 192; height: 192; anchors.centerIn: parent
             scale: cell.width / 192 * 0.92
             readonly property color c0: root.accC
@@ -889,6 +912,17 @@ print(json.dumps(out))
                 g.fillStyle = "" + lnch.c1; g.beginPath(); g.moveTo(96, 14); g.lineTo(112, 80); g.lineTo(178, 96); g.lineTo(112, 112); g.lineTo(96, 178); g.lineTo(80, 112); g.lineTo(14, 96); g.lineTo(80, 80); g.closePath(); g.fill()
                 g.fillStyle = "" + lnch.c0; g.beginPath(); g.moveTo(96, 58); g.lineTo(106, 86); g.lineTo(134, 96); g.lineTo(106, 106); g.lineTo(96, 134); g.lineTo(86, 106); g.lineTo(58, 96); g.lineTo(86, 86); g.closePath(); g.fill()
               } }
+          }
+          // The Legal Desk launcher: the set's launcher art (a desk tile with LEGAL DESK written inside, centred), in the skin's colours.
+          Image {
+            visible: cell.modelData.cls === "__launcher__" && root.launcherIcon === 11 && root.artDir !== ""
+            anchors.centerIn: parent
+            width: parent.width * root.ownK; height: width
+            source: visible ? root.artDir + "/launcher.svg" : ""
+            sourceSize: Qt.size(192, 192)
+            fillMode: Image.PreserveAspectFit
+            smooth: true; mipmap: true
+            rotation: cell.twist
           }
           // Rubik's Cube launcher: solved with no windows open, scrambles a little more with every window you open.
           Canvas {

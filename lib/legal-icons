@@ -129,6 +129,11 @@ def G(name, now=None):
 <rect x="8" y="30" width="80" height="54" rx="10" fill="{main}" {S}/>
 <circle cx="32" cy="57" r="14" fill="{lo}" {S}/>
 <path d="M56 48 H78 M56 58 H78 M56 68 H70" {I}/>''',
+        "launcher": "".join(
+            f'<rect x="{36 + (i % 3) * 9}" y="{6 + (i // 3) * 9}" width="7" height="7" rx="1.6" fill="{{{c}}}" {S}/>'
+            for i, c in enumerate(["main", "hi", "lo", "lo", "main", "hi", "hi", "lo", "main"]))
+        + f'''<text x="48" y="62" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-weight="700" font-size="26" letter-spacing="0" fill="{{txt}}">LEGAL</text>
+<text x="48" y="89" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-weight="700" font-size="26" letter-spacing="2.5" fill="{{txt}}">DESK</text>''',
         "power": '''
 <path d="M30 26 A32 32 0 1 0 66 26" fill="none" stroke="{strk}" stroke-width="{psw}" stroke-linecap="round"/>
 <path d="M48 10 V44" fill="none" stroke="{strk2}" stroke-width="{psw}" stroke-linecap="round"/>''',
@@ -138,9 +143,9 @@ def G(name, now=None):
     return s.replace("{S}", S).replace("{I}", I)
 
 
-NAMES = ["calendar", "notes", "tasks", "disks", "zones", "clock", "camera", "desk", "apps", "mail", "trash", "trash-full", "folder", "folder-download", "power", "radio"]
+NAMES = ["calendar", "notes", "tasks", "disks", "zones", "clock", "camera", "desk", "apps", "mail", "trash", "trash-full", "folder", "folder-download", "power", "radio", "launcher"]
 STICKER_OF = {"calendar": 1, "notes": 0, "tasks": 3, "disks": 5, "zones": 2, "clock": 1, "camera": 5, "desk": 0, "apps": 4, "mail": 1, "trash": 5, "trash-full": 5,
-              "folder": 0, "folder-download": 0, "power": 2, "radio": 4}
+              "folder": 0, "folder-download": 0, "power": 2, "radio": 4, "launcher": 0}
 
 
 def fill(s, d):
@@ -151,8 +156,11 @@ def fill(s, d):
 
 def glyph_in(name, col, scale, now):
     """Glyph centred on the 96 board at the given scale."""
+    if name == "launcher":
+        scale = min(0.95, scale * 1.4)
     t = (96 - 96 * scale) / 2
     col = dict(col)
+    col.setdefault("txt", CURTXT)
     out = col["main"] == "none"
     col.setdefault("strk", col["line"] if out else col["main"])
     col.setdefault("strk2", col["line"] if out else col["hi"])
@@ -169,8 +177,14 @@ def grad(i, a, b):
     return f'<linearGradient id="{i}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="{a}"/><stop offset="1" stop-color="{b}"/></linearGradient>'
 
 
+CURTXT = "#ffffff"
+
+
 def render(setname, name, p, now=None):
+    global CURTXT
     bg, acc, txt = p["bg"], p["acc"], p["txt"]
+    # the colour of words drawn inside an icon (the launcher's LEGAL DESK)
+    CURTXT = {"Outline": acc, "Glyph": acc, "Duotone": txt, "Neon": mix(acc, "#ffffff", 0.35), "Flat": on(acc), "Sticker": mix(acc, "#000000", 0.25)}.get(setname, "#ffffff")
     dark = lum(bg) < 0.5
     base = dict(line="none", sw=0, isw=5)
     if setname == "Tile":

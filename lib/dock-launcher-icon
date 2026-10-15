@@ -1,10 +1,10 @@
 #!/bin/bash
 # dock-launcher-icon next|prev|N|show : choose the look of the dock's launcher button (the one that used to be only the Rubik's Cube).
-# 0 Cube, 1 Desk tile, 2 Zones, 3 Desk (flat) - 4 3D Cube, 5 3D Layers, 6 3D Flip (3D) - 7 Hop, 8 Orbit, 9 Pulse, 10 Spark (moving). Remembered in ~/.cache/dock-launcher-icon.
+# 11 Legal Desk (the standard: LEGAL DESK written in a desk tile), 0 Cube, 1 Desk tile, 2 Zones, 3 Desk (flat) - 4 3D Cube, 5 3D Layers, 6 3D Flip (3D) - 7 Hop, 8 Orbit, 9 Pulse, 10 Spark (moving). Remembered in ~/.cache/dock-launcher-icon.
 F="$HOME/.cache/dock-launcher-icon"
-NAMES=("Cube" "Desk tile" "Zones" "Desk" "3D Cube" "3D Layers" "3D Flip" "Hop" "Orbit" "Pulse" "Spark")
+NAMES=("Cube" "Desk tile" "Zones" "Desk" "3D Cube" "3D Layers" "3D Flip" "Hop" "Orbit" "Pulse" "Spark" "Legal Desk")
 N=${#NAMES[@]}
-cur=$(cat "$F" 2>/dev/null); [[ $cur =~ ^[0-9]+$ ]] && [ "$cur" -lt $N ] || cur=0
+cur=$(cat "$F" 2>/dev/null); [[ $cur =~ ^[0-9]+$ ]] && [ "$cur" -lt $N ] || cur=11
 case "$1" in
   next) cur=$(( (cur + 1) % N )) ;;
   prev) cur=$(( (cur + N - 1) % N )) ;;
