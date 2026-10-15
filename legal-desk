@@ -50,6 +50,7 @@ case "${1:-menu}" in
     omarchy-theme-set nebula 2>/dev/null || echo "Theme copied to ~/.config/omarchy/themes/nebula - pick Nebula in the Omarchy theme menu."
     for s in classic mac rubik; do echo 0 > "$HOME/.cache/dock-skin-$s"; done; "$B/macdock-skin" apply >/dev/null 2>&1 ;;
   radio) shift; "$B/legal-radio" "$@" ;;
+  radio-icon) "$B/dock-radio-icon" "${2:-show}" ;;
   radio-info) "$B/legal-radio-info" ;;
   radio-bar) "$B/legal-radio-bar" "${2:-status}" ;;
   zones) shift; "$B/legal-zones" "$@" ;;

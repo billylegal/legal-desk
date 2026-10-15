@@ -236,6 +236,16 @@ ShellRoot {
   }
   // 1UP Radio: is it playing? (the dock icon's meters move while it plays and drop to nothing when it is off)
   property bool radioOn: false
+  // 1UP Radio icon style: "logo" = the original logo from 1upradio.com with its own meter animated; "meters" = the drawn icon with nine level meters.
+  property string radioStyle: "logo"
+  FileView {
+    id: radioStyleFile
+    path: Quickshell.env("HOME") + "/.cache/dock-radio-icon"
+    printErrors: false
+    onLoaded: root.radioStyle = text().trim() === "meters" ? "meters" : "logo"
+    onLoadFailed: root.radioStyle = "logo"
+  }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: radioStyleFile.reload() }
   Process {
     id: radioPoll
     command: ["/usr/lib/legal-desk/legal-radio-info"]
@@ -955,8 +965,48 @@ print(json.dumps(out))
             anchors.centerIn: parent
             width: parent.width * root.ownK; height: width
             readonly property bool live: root.radioOn
-            Rectangle { anchors.fill: parent; radius: width * 0.2; color: "#0b0b10"; border.color: "#44ffffff"; border.width: 1 }
+            // The original 1UP Radio logo (from 1upradio.com). Its meter is redrawn on top (same grid: 9 columns x 6 segments) and moves while the radio plays.
+            Item {
+              id: logoHost
+              visible: root.radioStyle === "logo"
+              anchors.fill: parent
+              readonly property real k: width / 512
+              layer.enabled: visible
+              layer.effect: MultiEffect { maskEnabled: true; maskSource: logoMask }
+              Image { anchors.fill: parent; source: Qt.resolvedUrl("1up-logo.png"); sourceSize: Qt.size(512, 512); smooth: true; mipmap: true }
+              Rectangle { x: 112 * logoHost.k; y: 50 * logoHost.k; width: 288 * logoHost.k; height: 83 * logoHost.k; color: "#121212" }
+              Repeater {
+                model: 9
+                Item {
+                  id: lcol
+                  required property int index
+                  property real lvl: 0
+                  readonly property var ghost: [4, 3, 5, 2, 5, 3, 4, 6, 6]
+                  Behavior on lvl { NumberAnimation { duration: rad.live ? 150 : 380; easing.type: Easing.OutCubic } }
+                  Timer {
+                    interval: 120 + lcol.index * 11; repeat: true; running: rad.live && logoHost.visible
+                    onTriggered: lcol.lvl = 0.3 + Math.random() * 0.7 * (0.7 + 0.3 * Math.sin(lcol.index * 0.8 + Date.now() / 800))
+                  }
+                  Connections { target: rad; function onLiveChanged() { if (!rad.live) lcol.lvl = 0 } }
+                  Repeater {
+                    model: 6
+                    Rectangle {
+                      required property int index
+                      readonly property int seg: index          // 0 = bottom row
+                      x: (122 + lcol.index * 30.5) * logoHost.k; y: (123 - seg * 13) * logoHost.k
+                      width: 22 * logoHost.k; height: 10 * logoHost.k
+                      visible: seg < Math.round(lcol.lvl * 6) || seg < lcol.ghost[lcol.index]
+                      color: seg < Math.round(lcol.lvl * 6) ? "#51f219" : "#010101"
+                    }
+                  }
+                }
+              }
+            }
+            Item { id: logoMask; anchors.fill: parent; visible: false; layer.enabled: true
+              Rectangle { anchors.fill: parent; radius: width * 0.2 } }
+            Rectangle { visible: root.radioStyle === "meters"; anchors.fill: parent; radius: width * 0.2; color: "#0b0b10"; border.color: "#44ffffff"; border.width: 1 }
             Row {
+              visible: root.radioStyle === "meters"
               x: parent.width * 0.12; y: parent.height * 0.1; width: parent.width * 0.76; height: parent.height * 0.4
               spacing: width * 0.035
               Repeater {
@@ -988,9 +1038,9 @@ print(json.dumps(out))
                 }
               }
             }
-            Text { x: 0; width: parent.width; y: parent.height * 0.5; horizontalAlignment: Text.AlignHCenter; text: "1UP"; color: "white"
+            Text { visible: root.radioStyle === "meters"; x: 0; width: parent.width; y: parent.height * 0.5; horizontalAlignment: Text.AlignHCenter; text: "1UP"; color: "white"
               font.bold: true; font.pixelSize: parent.height * 0.27; font.letterSpacing: -parent.height * 0.01 }
-            Text { x: 0; width: parent.width; y: parent.height * 0.78; horizontalAlignment: Text.AlignHCenter; text: "RADIO"; color: "#f2f2f2"
+            Text { visible: root.radioStyle === "meters"; x: 0; width: parent.width; y: parent.height * 0.78; horizontalAlignment: Text.AlignHCenter; text: "RADIO"; color: "#f2f2f2"
               font.bold: true; font.pixelSize: parent.height * 0.13; font.letterSpacing: parent.height * 0.025 }
           }
           // A View From Space (Radio Globe): the app's bullseye + speaker, drawn once (no animation, no CPU) in the skin's colours
@@ -1140,7 +1190,7 @@ print(json.dumps(out))
     if (ctx === "__trash__") return [{ l: "Trash", a: "hdr" }, { l: "Open trash", a: "open" }, { l: "Empty trash", a: "empty" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__folder__") return [{ l: "Downloads", a: "hdr" }, { l: "Open folder", a: "open" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__" || ctx === "__disks__" || ctx === "__zones__") return [{ l: ctx === "__zones__" ? "Desk Zones" : ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : ctx === "__disks__" ? "Disk Management" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
-    if (ctx === "__radio__") return [{ l: "1UP Radio", a: "hdr" }, { l: "Open radio window", a: "open" }, { l: "Play / Pause", a: "rtoggle" }, { l: "Live (jump to now)", a: "rlive" }, { l: "Stop", a: "rstop" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === "__radio__") return [{ l: "1UP Radio", a: "hdr" }, { l: "Open radio window", a: "open" }, { l: "Play / Pause", a: "rtoggle" }, { l: "Live (jump to now)", a: "rlive" }, { l: "Stop", a: "rstop" }, { l: radioStyle === "logo" ? "Icon: meters" : "Icon: original logo", a: "ricon" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "settings") return [{ l: "Settings", a: "hdr" }, { l: "Open settings", a: "open" }, { l: "Task manager", a: "tasks" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__snap__") return [{ l: "Screenshot", a: "hdr" }, { l: "Take screenshot", a: "open" }, { l: "Cancel", a: "cancel" }]
     var w = ctxWins
@@ -1194,6 +1244,7 @@ print(json.dumps(out))
                   if (act === "open") root.activate(c)
                   else if (act === "tasks") root.sh(["/usr/lib/legal-desk/legal-tasks"])
                   else if (act === "rtoggle") root.sh(["/usr/lib/legal-desk/legal-radio", "toggle"])
+                  else if (act === "ricon") root.sh(["/usr/lib/legal-desk/dock-radio-icon", "toggle"])
                   else if (act === "rlive") root.sh(["/usr/lib/legal-desk/legal-radio", "live"])
                   else if (act === "rstop") root.sh(["/usr/lib/legal-desk/legal-radio", "stop"])
                   else if (act === "unown") root.sh(["/usr/lib/legal-desk/dock-own-toggle", c])

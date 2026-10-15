@@ -1,0 +1,10 @@
+#!/bin/bash
+# dock-radio-icon logo|meters|toggle|show : the 1UP Radio icon on the dock.
+#   logo   = the original logo from 1upradio.com, its meter moves while the radio plays (the standard)
+#   meters = the drawn icon with nine level meters
+F="$HOME/.cache/dock-radio-icon"; cur=$(cat "$F" 2>/dev/null); [ "$cur" = meters ] || cur=logo
+case "$1" in
+  logo|meters) cur=$1 ;;
+  toggle) [ "$cur" = logo ] && cur=meters || cur=logo ;;
+esac
+mkdir -p "$HOME/.cache"; echo "$cur" > "$F"; echo "$cur"
