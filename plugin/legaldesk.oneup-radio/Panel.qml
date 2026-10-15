@@ -88,6 +88,8 @@ Panel {
 
   BarIconButton {
     id: button
+    opticalSize: 28
+    slotSize: 32
     anchors.left: parent.left
     anchors.top: parent.top
     anchors.bottom: parent.bottom
@@ -96,18 +98,22 @@ Panel {
     iconComponent: Component {
       Item {
         id: glyph
-        implicitWidth: 16; implicitHeight: 16
+        readonly property real sz: Math.max(1, Math.min(width, height))
         property real phase: 0
-        NumberAnimation on phase { running: root.on && glyph.visible; from: 0; to: Math.PI * 2; duration: 1500; loops: Animation.Infinite }
+        NumberAnimation on phase { running: root.on && glyph.visible; from: 0; to: Math.PI * 2; duration: 1000; loops: Animation.Infinite }
+        // 1UP Radio logo; its static green meter (3 bars, top right of the logo) is covered and redrawn animated
+        Image { anchors.fill: parent; source: Qt.resolvedUrl("logo.png"); smooth: true; mipmap: true; fillMode: Image.PreserveAspectFit; opacity: root.info.playing ? 1 : 0.75 }
+        Rectangle { x: glyph.sz * 0.575; y: glyph.sz * 0.08; width: glyph.sz * 0.22; height: glyph.sz * 0.2; color: "#171717" }
         Repeater {
-          model: 5
+          model: 3
           Rectangle {
             required property int index
-            readonly property real base: [0.4, 0.75, 1.0, 0.65, 0.35][index]
-            width: 2; radius: 1; x: index * 3.4
-            height: 16 * base * (root.on ? 0.45 + 0.55 * Math.abs(Math.sin(glyph.phase + index * 1.3)) : 1)
-            anchors.verticalCenter: parent.verticalCenter
-            color: root.on ? root.nAcc2 : (root.bar ? root.bar.barForeground : "white")
+            readonly property real mh: glyph.sz * 0.17
+            width: glyph.sz * 0.047
+            x: glyph.sz * (0.594 + index * 0.0625)
+            height: root.on ? mh * (0.25 + 0.75 * Math.abs(Math.sin(glyph.phase * (index === 1 ? 1 : 1) + index * 1.9))) : mh * [0.45, 0.75, 1.0][index]
+            y: glyph.sz * 0.263 - height
+            color: root.on ? "#39ff14" : "#2f9a22"
           }
         }
       }
@@ -173,6 +179,21 @@ Panel {
           }
           Row {
             anchors.right: parent.right; anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter; spacing: 6
+            Rectangle {
+              id: pwr; width: 30; height: 30; radius: 15; anchors.verticalCenter: parent.verticalCenter
+              readonly property bool lit: !!root.info.playing
+              color: pwma.containsMouse ? (lit ? "#3339ff14" : "#228B5CF6") : "#0affffff"; border.width: 1; border.color: lit ? "#39ff14" : "#66ffffff"
+              Canvas {
+                anchors.centerIn: parent; width: 16; height: 16
+                property bool lit: pwr.lit
+                onLitChanged: requestPaint()
+                Component.onCompleted: requestPaint()
+                onPaint: { var c = getContext("2d"); c.reset(); c.strokeStyle = lit ? "#39ff14" : "#CC8CFF"; c.lineWidth = 2; c.lineCap = "round"
+                  c.beginPath(); c.arc(8, 9, 5.6, -Math.PI * 0.32, Math.PI * 1.32 - Math.PI * 0.0, false); c.stroke()
+                  c.beginPath(); c.moveTo(8, 1.5); c.lineTo(8, 8); c.stroke() }
+              }
+              MouseArea { id: pwma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.run([root.info.playing ? "stop" : "play"]) }
+            }
             Rectangle { width: 8; height: 8; radius: 4; anchors.verticalCenter: parent.verticalCenter; color: root.on ? "#8dffc7" : "#46567a" }
             Text { text: root.on ? "ON AIR" : "OFF AIR"; color: root.on ? "#8dffc7" : root.nDim; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2.4; anchors.verticalCenter: parent.verticalCenter }
           }
