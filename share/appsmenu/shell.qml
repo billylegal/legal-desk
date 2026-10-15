@@ -85,7 +85,7 @@ ShellRoot {
     { name: "Disk Management", art: "disks", glyph: "\u26C1", own: true, token: "__disks__", cmd: ["/usr/lib/legal-desk/legal-disks"] },
     { name: "Clock", art: "clock", glyph: "\u25F7", own: true, cmd: ["/usr/lib/legal-desk/legal-clock"] },
     { name: "Task Manager", art: "tasks", glyph: "\u25A4", own: true, token: "__tasks__", cmd: ["/usr/lib/legal-desk/legal-tasks"] },
-    { name: "1UP Radio", art: "radio", glyph: "\u266B", own: true, token: "__radio__", cmd: ["/usr/lib/legal-desk/legal-radio", "toggle"] },
+    { name: "1UP Radio", art: "radio", glyph: "\u266B", own: true, token: "__radio__", cmd: ["/usr/lib/legal-desk/legal-radio", "window"] },
     { name: "Notes", art: "notes", glyph: "\u270E", own: true, token: "__notes__", cmd: ["/usr/lib/legal-desk/legal-notes"] }
   ]
   readonly property var all: {

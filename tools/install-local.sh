@@ -15,7 +15,7 @@ for f in "$SRC"/lib/*; do [ -f "$f" ] && put "$f" "$BIN/$(basename "$f")" 755; d
 rm -rf "$DATA/themes"; cp -r "$SRC/share/themes" "$DATA/themes"
 for d in "$SRC"/share/*/; do
   n=$(basename "$d"); [ "$n" = themes ] && continue
-  mkdir -p "$DATA/$n"; put "$d/shell.qml" "$DATA/$n/shell.qml" 644
+  mkdir -p "$DATA/$n"; for f in "$d"*; do [ -f "$f" ] || continue; case "$f" in *.qml) put "$f" "$DATA/$n/$(basename "$f")" 644;; *) install -m644 "$f" "$DATA/$n/";; esac; done
 done
 install -m644 "$SRC/share/skins.json" "$DATA/skins.json"
 for f in 5ive7.png style.css mac-animations.lua; do install -m644 "$SRC/share/$f" "$DATA/$f"; done

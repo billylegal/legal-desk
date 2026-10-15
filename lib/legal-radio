@@ -1,8 +1,13 @@
 #!/bin/bash
-# legal-radio toggle|play|live|stop : 1UP Radio from the dock (uses SnapDock's player, sd-radio).
+# legal-radio window|toggle|play|live|stop|volume N|mute : 1UP Radio from the dock (SnapDock's player, sd-radio).
+#   window  open (or close) the Nebula radio window; opening it also starts the radio when it is not playing. Closing the window never stops the music.
 R=/usr/lib/snapdock/bin/sd-radio; command -v sd-radio >/dev/null && R=sd-radio
 [ -x "$R" ] || command -v "$R" >/dev/null || { notify-send "1UP Radio" "The radio player (SnapDock's sd-radio) is not installed."; exit 1; }
-case "${1:-toggle}" in
+case "${1:-window}" in
+  window)
+    if pgrep -f '^quickshell.*legalradio' >/dev/null; then pkill -f '^quickshell.*legalradio'; exit 0; fi
+    "$R" status | grep -q '"playing": true' || "$R" play >/dev/null 2>&1 &
+    exec setsid quickshell -n -p "/usr/share/legal-desk/legalradio" >/dev/null 2>&1 ;;
   live) exec "$R" play --live ;;
-  *) exec "$R" "${1:-toggle}" ;;
+  *) exec "$R" "$@" ;;
 esac

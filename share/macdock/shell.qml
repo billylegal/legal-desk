@@ -463,7 +463,7 @@ print(json.dumps(out))
     if (cls === "__disks__") { sh(["/usr/lib/legal-desk/legal-disks"]); return }
     if (cls === "__snap__") { sh(["omarchy-capture-screenshot"]); return }
     if (cls === "__tasks__") { sh(["/usr/lib/legal-desk/legal-tasks"]); return }
-    if (cls === "__radio__") { sh(["/usr/lib/legal-desk/legal-radio", "toggle"]); return }
+    if (cls === "__radio__") { sh(["/usr/lib/legal-desk/legal-radio", "window"]); return }
     if (cls === "reboot") { sh(["/usr/lib/legal-desk/reboot-confirm"]); return }
     if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-desk/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
     markLaunch(cls)
@@ -1087,7 +1087,7 @@ print(json.dumps(out))
     if (ctx === "__trash__") return [{ l: "Trash", a: "hdr" }, { l: "Open trash", a: "open" }, { l: "Empty trash", a: "empty" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__folder__") return [{ l: "Downloads", a: "hdr" }, { l: "Open folder", a: "open" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__" || ctx === "__disks__" || ctx === "__zones__") return [{ l: ctx === "__zones__" ? "Desk Zones" : ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : ctx === "__disks__" ? "Disk Management" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
-    if (ctx === "__radio__") return [{ l: "1UP Radio", a: "hdr" }, { l: "Play / Pause", a: "open" }, { l: "Live (jump to now)", a: "rlive" }, { l: "Stop", a: "rstop" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === "__radio__") return [{ l: "1UP Radio", a: "hdr" }, { l: "Open radio window", a: "open" }, { l: "Play / Pause", a: "rtoggle" }, { l: "Live (jump to now)", a: "rlive" }, { l: "Stop", a: "rstop" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "settings") return [{ l: "Settings", a: "hdr" }, { l: "Open settings", a: "open" }, { l: "Task manager", a: "tasks" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__snap__") return [{ l: "Screenshot", a: "hdr" }, { l: "Take screenshot", a: "open" }, { l: "Cancel", a: "cancel" }]
     var w = ctxWins
@@ -1140,6 +1140,7 @@ print(json.dumps(out))
                   if (act === "hdr") return
                   if (act === "open") root.activate(c)
                   else if (act === "tasks") root.sh(["/usr/lib/legal-desk/legal-tasks"])
+                  else if (act === "rtoggle") root.sh(["/usr/lib/legal-desk/legal-radio", "toggle"])
                   else if (act === "rlive") root.sh(["/usr/lib/legal-desk/legal-radio", "live"])
                   else if (act === "rstop") root.sh(["/usr/lib/legal-desk/legal-radio", "stop"])
                   else if (act === "unown") root.sh(["/usr/lib/legal-desk/dock-own-toggle", c])
