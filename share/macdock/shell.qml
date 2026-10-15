@@ -42,44 +42,23 @@ ShellRoot {
   property string skinTxt: "auto"
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skins.length) ? skinDefault : n }
   // ic = how the icons look on that plate: "" as they are, "gray" black & white, "#rrggbb" tinted in one colour.
-  readonly property var macSkins: [
-    { n: "Emerald",   c1: "#111c18", c2: "#111c18", b: "#55C1C497", r: 16, ic: "", t: [] },
-    { n: "Glass",     c1: "#70ffffff", c2: "#30ffffff", b: "#aaffffff", r: 18, ic: "", t: [] },
-    { n: "Midnight",  c1: "#0f1a4a", c2: "#04061a", b: "#554a7aff", r: 16, ic: "", t: [] },
-    { n: "Neon",      c1: "#06080c", c2: "#06080c", b: "#39ff14", r: 14, ic: "", t: [] },
-    { n: "Aluminum",  c1: "#f0f0f2", c2: "#a4a8b0", b: "#ffffff", r: 10, ic: "", t: [] },
-    { n: "Aqua",      c1: "#8fd0ff", c2: "#1565d0", b: "#d8eeff", r: 20, ic: "", t: [] },
-    { n: "Sunset",    c1: "#ff9a3d", c2: "#a8124a", b: "#ffd9b0", r: 18, ic: "", t: [] },
-    { n: "Mono",      c1: "#000000", c2: "#1c1c1c", b: "#ffffff", r: 14, ic: "gray", t: [] },
-    { n: "Paper",     c1: "#fbfaf6", c2: "#e2dfd5", b: "#bdb8a8", r: 12, ic: "gray", t: [] },
-    { n: "Terminal",  c1: "#020a02", c2: "#020a02", b: "#33ff33", r: 6, ic: "#33ff33", t: [] },
-    { n: "Amber",     c1: "#0e0700", c2: "#0e0700", b: "#ffb000", r: 6, ic: "#ffb000", t: [] },
-    { n: "Blueprint", c1: "#0d4a9a", c2: "#082a5a", b: "#ffffff", r: 4, ic: "#d6ecff", t: [] },
-    // tile = what sits behind every icon: circle | btn (raised Windows button) | hbtn (raises on hover) | hpill (rounded hover highlight)
-    // ik = icon size inside the tile, plate = always draw the bar, nz = no zoom (flat bar), bevel = 3D Windows edge
-    { n: "Bubbles",    c1: "#0b1020", c2: "#0b1020", b: "#334466", r: 26, ic: "", tile: "circle", ik: 0.7, t: ["#ff6b6b", "#ffd166", "#06d6a0", "#4cc9f0", "#8338ec", "#ff9f1c"] },
-    { n: "Pearls",     c1: "#15181f", c2: "#0b0d12", b: "#44ffffff", r: 26, ic: "", tile: "circle", ik: 0.7, tc: "#f2f2f2", t: [] },
-    { n: "Windows 95", c1: "#c0c0c0", c2: "#c0c0c0", b: "transparent", r: 0, ic: "", plate: true, nz: true, bevel: true, tile: "btn", ik: 0.78, t: [] },
-    { n: "Windows 98", c1: "#d8d8d8", c2: "#bcbcbc", b: "transparent", r: 0, ic: "", plate: true, nz: true, bevel: true, tile: "hbtn", ik: 0.86, t: [] },
-    { n: "Windows 11", c1: "#ee202020", c2: "#ee181818", b: "#33ffffff", r: 12, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.86, t: [] },
-    { n: "Polybar",    c1: "#1d2021", c2: "#1d2021", b: "#fabd2f", r: 0, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.9, t: [] },
-    { n: "Tint2",      c1: "#e0505050", c2: "#e0101010", b: "#66ffffff", r: 6, ic: "", plate: true, nz: true, tile: "hpill", ik: 0.88, t: [] },
-    { n: "Nebula", c1: "#2a1466", c2: "#07050f", b: "#8B5CF6", r: 18, ic: "#B8A2FF", t: [] },
-    { n: "Omarchy", c1: root.omaBg, c2: root.omaBg2, b: root.omaAcc, r: 16, ic: "", t: [] }
-  ]
-  readonly property var rubikSkins: [
-    { n: "Cube",   c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 12, ic: "", t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
-    { n: "Pastel", c1: "#f4eef7", c2: "#e4d8ea", b: "#d2c3da", r: 14, ic: "", t: ["#ffb3c1", "#b5ead7", "#c7ceea", "#ffdac1", "#e2f0cb", "#fff1a8"] },
-    { n: "Mono",   c1: "#000000", c2: "#000000", b: "#ffffff", r: 12, ic: "gray", t: ["#ffffff", "#bdbdbd", "#7d7d7d", "#3d3d3d", "#e8e8e8", "#9a9a9a"] },
-    { n: "Neon",   c1: "#06080c", c2: "#06080c", b: "#39ff14", r: 12, ic: "", t: ["#39ff14", "#00e5ff", "#ff2a2a", "#ffe066", "#d946ff", "#ff6a00"] },
-    { n: "Sunset", c1: "#3a0a2a", c2: "#1c0614", b: "#ffd9b0", r: 12, ic: "", t: ["#ffd500", "#ff5a00", "#c41e3a", "#ff8fb1", "#7a1fa2", "#fff1d6"] },
-    { n: "Ocean",  c1: "#04202e", c2: "#021520", b: "#0096c7", r: 12, ic: "", t: ["#00b4d8", "#0077b6", "#90e0ef", "#023e8a", "#48cae4", "#caf0f8"] },
-    { n: "Candy",  c1: "#2b0a3d", c2: "#1a0626", b: "#ff4d9d", r: 12, ic: "", t: ["#ff4d9d", "#ffd166", "#06d6a0", "#8338ec", "#ff6b6b", "#4cc9f0"] },
-    { n: "Jungle", c1: "#0a1f0a", c2: "#061106", b: "#52b788", r: 12, ic: "", t: ["#2d6a4f", "#52b788", "#95d5b2", "#d8f3dc", "#1b4332", "#b7e4c7"] },
-    { n: "Circles", c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 26, ic: "", rr: 0.5, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] },
-    { n: "Nebula", c1: "#1a0f3d", c2: "#07050f", b: "#8B5CF6", r: 12, ic: "", t: ["#8B5CF6", "#B061FF", "#6C8CFF", "#5CC8F5", "#CC8CFF", "#E6E1FA"] },
-    { n: "Omarchy", c1: root.omaBg, c2: root.omaBg2, b: root.omaAcc, r: 12, ic: "", t: [root.oc.red || "#f7768e", root.oc.yellow || "#e0af68", root.oc.green || "#9ece6a", root.oc.blue || "#7aa2f7", root.oc.magenta || "#bb9af7", root.oc.cyan || "#7dcfff"] }
-  ]
+  // The 10 skins come from skins.json (one list for every dock style); "$name" colours follow the active Omarchy theme.
+  FileView { id: skinsFile; path: "/usr/share/legal-desk/skins.json"; blockLoading: true; printErrors: false }
+  readonly property var skinList: { try { return JSON.parse(skinsFile.text()).skins } catch (e) { return [{ name: "Nebula", mac: { c1: "#2a1466", c2: "#07050f", b: "#8B5CF6", r: 18 }, rubik: { c1: "#1a0f3d", c2: "#07050f", b: "#8B5CF6", r: 12, t: ["#8B5CF6", "#B061FF", "#6C8CFF", "#5CC8F5", "#CC8CFF", "#E6E1FA"] } }] } }
+  function sub(v) {
+    if (typeof v === "string" && v.charAt(0) === "$") {
+      var k = v.substring(1)
+      return k === "omaBg" ? "" + omaBg : k === "omaBg2" ? "" + omaBg2 : k === "omaAcc" ? "" + omaAcc : (oc[k] || "#888888")
+    }
+    return v
+  }
+  function skinOf(def, name) {
+    var o = { n: name, ic: "", t: [] }
+    for (var k in def) o[k] = Array.isArray(def[k]) ? def[k].map(sub) : sub(def[k])
+    return o
+  }
+  readonly property var macSkins: skinList.map(function (s) { return skinOf(s.mac, s.name) })
+  readonly property var rubikSkins: skinList.map(function (s) { return skinOf(s.rubik, s.name) })
   readonly property var skins: rubik ? rubikSkins : macSkins
   readonly property int skinDefault: { for (var i = 0; i < skins.length; i++) if (skins[i].n === "Nebula") return i; return 0 }
   readonly property var skin: skins[skinIdx]
@@ -199,17 +178,65 @@ ShellRoot {
   }
   // Icon colours (menu: Icons < >), independent of the skin. Mostly colour swaps: the icons are tinted in one colour (Match skin = the skin's own colour).
   // A few shapes too: Pearls and Bubbles (circles), Blocks (every icon on a block in the skin's colours) and Cube (Rubik blocks). File: ~/.cache/dock-icon-style
-  property int iconStyle: 0
-  readonly property var iconNames: ["Original", "Match skin", "Nebula", "Omarchy", "Emerald", "Sunset", "Ocean", "Neon", "Amber", "Rose", "Gold", "Mono", "Pearls", "Bubbles", "Blocks", "Cube"]
-  readonly property var iconDefs: [
-    {}, { ic: "skin" }, { ic: "#B8A2FF" }, { ic: "#7aa2f7" }, { ic: "#7fd6a0" }, { ic: "#ff9a3d" }, { ic: "#4cc9f0" }, { ic: "#39ff14" }, { ic: "#ffb000" }, { ic: "#ff7aa8" }, { ic: "#e8c547" }, { ic: "gray" },
-    { sk: "Pearls" }, { sk: "Bubbles" }, { blk: true }, { sk: "Cube" }
-  ]
-  function styleSkin(n) {
-    for (var j = 0; j < macSkins.length; j++) if (macSkins[j].n === n) return macSkins[j]
-    for (var k = 0; k < rubikSkins.length; k++) if (rubikSkins[k].n === n) return rubikSkins[k]
-    return null
+  // Launcher icon (menu: Launcher < >): what the button at the right of the dock looks like. 0 is the Rubik's Cube; the rest are drawn here.
+  // 1-3 flat, 4-6 3D, 7-10 moving. File: ~/.cache/dock-launcher-icon
+  property int launcherIcon: 0
+  readonly property var launcherNames: ["Cube", "Desk tile", "Zones", "Desk", "3D Cube", "3D Layers", "3D Flip", "Hop", "Orbit", "Pulse", "Spark"]
+  FileView {
+    id: launchFile
+    path: Quickshell.env("HOME") + "/.cache/dock-launcher-icon"
+    printErrors: false
+    onLoaded: { var n = parseInt(text()); root.launcherIcon = (isNaN(n) || n < 0 || n >= root.launcherNames.length) ? 0 : n }
+    onLoadFailed: root.launcherIcon = 0
   }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: launchFile.reload() }
+  property real lPhase: 0
+  NumberAnimation on lPhase { from: 0; to: 1; duration: 3200; loops: Animation.Infinite; running: root.launcherIcon >= 6 }
+  // a 3 x 3 block of tiles (the Legal Desk logo's tile), optionally lighting up in a wave
+  component LTiles: Item {
+    property real ts: 44
+    property real gp: 8
+    property bool wave: false
+    property real ph: 0
+    readonly property var pal: ["#8B5CF6", "#E6E1FA", "#6C8CFF", "#CC8CFF", "#5CC8F5", "#B061FF", "#E6E1FA", "#8B5CF6", "#B8A2FF"]
+    width: ts * 3 + gp * 2; height: width
+    Repeater { model: 9
+      Rectangle { required property int index
+        x: (index % 3) * (parent.ts + parent.gp); y: Math.floor(index / 3) * (parent.ts + parent.gp); width: parent.ts; height: parent.ts
+        color: parent.pal[index]; opacity: parent.wave ? 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(parent.ph * 6.2832 - (index % 3 + Math.floor(index / 3)) * 0.9)) : 1 } }
+  }
+  // The 10 icon sets (menu: Icons < >). Each is a full look: the art of Legal Desk's own icons (drawn by legal-icons, see artDir below)
+  // and how other apps' icons are dressed: ic = tinted ("gray" / "skin"), sk = on plates (see tileDefs), blk = on blocks in the skin's colours.
+  property int iconStyle: 0
+  readonly property var iconNames: ["Tile", "Outline", "Glyph", "Duotone", "Glass", "Neon", "Flat", "Pixel", "Sticker", "Cube"]
+  readonly property var iconDefs: [
+    {}, { ic: "gray" }, { ic: "skin" }, { blk: true }, { sk: "Glass" }, { ic: "skin", blk: true }, { sk: "Flat" }, { sk: "Pixel" }, { sk: "Sticker" }, { sk: "Cube" }
+  ]
+  readonly property var tileDefs: ({
+    "Glass":   { c1: "#58ffffff", c2: "#22ffffff", b: "#aaffffff", r: 18, t: [] },
+    "Flat":    { c1: Qt.darker(accC, 1.6), c2: Qt.darker(accC, 2.0), b: accC, r: 10, t: [] },
+    "Pixel":   { c1: "#262636", c2: "#14141e", b: accC, r: 4, t: [] },
+    "Sticker": { c1: "#ffffff", c2: "#e8e8f0", b: "#bdbdcc", r: 14, t: [] },
+    "Cube":    { c1: "#0d0d0d", c2: "#0d0d0d", b: "#2a2a2a", r: 12, t: ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"] }
+  })
+  function styleSkin(n) { return tileDefs[n] || null }
+  // Own icons: SVGs drawn by legal-icons for the chosen set + skin into ~/.cache/legal-desk/icons/<stamp>/ (pointer file: current).
+  property string artDir: ""
+  FileView {
+    id: artFile
+    path: Quickshell.env("HOME") + "/.cache/legal-desk/icons/current"
+    printErrors: false
+    onLoaded: { var t = text().trim(); root.artDir = t ? "file://" + Quickshell.env("HOME") + "/.cache/legal-desk/icons/" + t : "" }
+    onLoadFailed: root.artDir = ""
+  }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: artFile.reload() }
+  function artName(cls) {
+    return cls === "__calendar__" ? "calendar" : cls === "__notes__" ? "notes" : cls === "__tasks__" ? "tasks" : cls === "__disks__" ? "disks" : cls === "__zones__" ? "zones"
+         : cls === "__snap__" ? "camera" : cls === "__folder__" ? "folder-download" : cls === "__trash__" ? (trashFull ? "trash-full" : "trash") : ""
+  }
+  property int artDay: -1
+  Process { id: artProc; command: ["/usr/lib/legal-desk/legal-icons", "refresh"] }   // a new day: the Calendar icon shows the new date
+  Connections { target: root; function onNowDChanged() { var d = root.nowD.getDate(); if (root.artDay >= 0 && d !== root.artDay) { artProc.running = false; artProc.running = true } root.artDay = d } }
   readonly property var idef: iconDefs[iconStyle] || iconDefs[0]
   readonly property var istyle: idef.sk ? styleSkin(idef.sk) : (idef.blk ? skin : null)
   readonly property bool iconTiles: !!istyle
@@ -240,6 +267,8 @@ ShellRoot {
   Timer { interval: 1000; running: true; repeat: true; onTriggered: blockFile.reload() }
   // Block look (menu: Block): every icon sits on its own block in the skin's colours, no plate behind them (flag file ~/.cache/dock-block).
   property bool blocks: false
+  readonly property bool ownPlate: blocks || iconTiles || (skin.tile || "") !== ""   // Calendar/Notes/etc. sit on a plate only when the other icons do
+  readonly property real ownK: 0.94
   FileView {
     id: blocksFile
     path: Quickshell.env("HOME") + "/.cache/dock-block"
@@ -443,8 +472,7 @@ print(json.dumps(out))
   }
   function iconFor(cls) {
     if (cls === "__launcher__") return "file:///usr/share/nwg-dock-hyprland/images/grid.svg"
-    if (cls === "__trash__") return trashFull ? "file:///usr/share/icons/Adwaita/scalable/status/user-trash-full.svg" : "file:///usr/share/icons/Adwaita/scalable/places/user-trash.svg"
-    if (cls === "__folder__") return "file:///usr/share/icons/Adwaita/scalable/places/folder-download.svg"
+    if (cls === "__trash__" || cls === "__folder__") return artDir !== "" ? artDir + "/" + artName(cls) + ".svg" : ""
     var r = appmap[cls]
     var n = r && r.icon ? r.icon : cls
     if (n.startsWith("/")) return "file://" + n
@@ -650,7 +678,7 @@ print(json.dumps(out))
           required property int index
           readonly property bool dragged: root.dragIdx === index
           readonly property bool isSep: root.isSep(modelData.cls)
-          readonly property bool ownIcon: modelData.cls === "__calendar__" || modelData.cls === "__notes__" || modelData.cls === "__tasks__" || modelData.cls === "__disks__" || modelData.cls === "__zones__" || modelData.cls === "__snap__"   // draw their own tile
+          readonly property bool ownIcon: modelData.cls === "__trash__" || modelData.cls === "__folder__" || modelData.cls === "__calendar__" || modelData.cls === "__notes__" || modelData.cls === "__tasks__" || modelData.cls === "__disks__" || modelData.cls === "__zones__" || modelData.cls === "__snap__"   // draw their own tile
           readonly property real lift: dragged ? 1.18 : 1
           width: (root.lay.ws[index] || root.base) * lift
           height: isSep ? root.base : width
@@ -699,7 +727,7 @@ print(json.dumps(out))
           Rectangle {
             visible: root.rubik && cell.modelData.cls !== "__launcher__"
             anchors.fill: parent; radius: width * (root.skin.rr !== undefined ? root.skin.rr : 0.2)
-            color: cell.ownIcon ? root.selC : root.iconTiles ? root.tc1(cell.modelData.cls) : ((root.rpal && root.rpal.length) ? root.rpal[cell.index % root.rpal.length] : "#333333"); border.color: "#0d0d0d"; border.width: 2
+            color: cell.ownIcon ? "#0d0d0d" : root.iconTiles ? root.tc1(cell.modelData.cls) : ((root.rpal && root.rpal.length) ? root.rpal[cell.index % root.rpal.length] : "#333333"); border.color: "#0d0d0d"; border.width: 2
             rotation: cell.twist
             Rectangle { anchors.fill: parent; radius: parent.radius; color: "transparent"; border.color: "#33ffffff"; border.width: 1 }
           }
@@ -754,10 +782,99 @@ print(json.dumps(out))
               colorizationColor: root.icEff === "gray" ? "#ffffff" : root.icEff
             }
           }
+          // The other launcher icons (see launcherNames): all drawn on a 192 x 192 board and scaled to the cell
+          Item {
+            id: lnch
+            visible: cell.modelData.cls === "__launcher__" && root.launcherIcon > 0
+            width: 192; height: 192; anchors.centerIn: parent
+            scale: cell.width / 192 * 0.92
+            readonly property color c0: root.accC
+            readonly property color c1: Qt.lighter(root.accC, 1.7)
+            readonly property color c2: Qt.darker(root.accC, 1.45)
+            Connections { target: root; function onAccCChanged() { cubeIso.requestPaint(); layers.requestPaint(); spark.requestPaint() } }
+            // 1 Desk tile
+            LTiles { visible: root.launcherIcon === 1; anchors.centerIn: parent; ts: 44; gp: 8 }
+            // 2 Zones
+            Item { visible: root.launcherIcon === 2; anchors.centerIn: parent; width: 150; height: 150
+              Rectangle { x: 0; y: 0; width: 88; height: 150; color: lnch.c0 }
+              Rectangle { x: 98; y: 0; width: 52; height: 70; color: lnch.c1 }
+              Rectangle { x: 98; y: 80; width: 52; height: 70; color: lnch.c2 } }
+            // 3 Desk (a monitor with two windows)
+            Item { visible: root.launcherIcon === 3; anchors.centerIn: parent; width: 160; height: 140
+              Rectangle { x: 0; y: 0; width: 160; height: 106; color: "transparent"; border.color: lnch.c1; border.width: 8
+                Rectangle { x: 14; y: 14; width: 60; height: 78; color: lnch.c0 }
+                Rectangle { x: 82; y: 14; width: 54; height: 34; color: lnch.c1 }
+                Rectangle { x: 82; y: 56; width: 54; height: 36; color: lnch.c2 } }
+              Rectangle { x: 70; y: 106; width: 20; height: 16; color: lnch.c1 }
+              Rectangle { x: 40; y: 122; width: 80; height: 10; color: lnch.c1 } }
+            // 4 3D cube
+            Canvas { id: cubeIso; visible: root.launcherIcon === 4; anchors.fill: parent
+              onVisibleChanged: if (visible) requestPaint()
+              onPaint: {
+                var g = getContext("2d"); g.reset()
+                function face(a, b, c, d, col) {
+                  g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.lineTo(c[0], c[1]); g.lineTo(d[0], d[1]); g.closePath(); g.fillStyle = col; g.fill()
+                  g.strokeStyle = "rgba(0,0,0,0.35)"; g.lineWidth = 1.6
+                  for (var k = 1; k < 3; k++) {
+                    var t = k / 3
+                    g.beginPath(); g.moveTo(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t); g.lineTo(d[0] + (c[0] - d[0]) * t, d[1] + (c[1] - d[1]) * t); g.stroke()
+                    g.beginPath(); g.moveTo(a[0] + (d[0] - a[0]) * t, a[1] + (d[1] - a[1]) * t); g.lineTo(b[0] + (c[0] - b[0]) * t, b[1] + (c[1] - b[1]) * t); g.stroke()
+                  }
+                }
+                face([96, 20], [150, 52], [96, 84], [42, 52], "" + lnch.c1)
+                face([42, 52], [96, 84], [96, 152], [42, 120], "" + lnch.c0)
+                face([96, 84], [150, 52], [150, 120], [96, 152], "" + lnch.c2)
+              } }
+            // 5 3D layers (three stacked plates)
+            Canvas { id: layers; visible: root.launcherIcon === 5; anchors.fill: parent
+              onVisibleChanged: if (visible) requestPaint()
+              onPaint: {
+                var g = getContext("2d"); g.reset()
+                var cols = ["" + lnch.c2, "" + lnch.c0, "" + lnch.c1]
+                for (var k = 0; k < 3; k++) {
+                  var cy = 138 - k * 34
+                  g.fillStyle = "" + Qt.darker(cols[k], 1.5); g.beginPath(); g.moveTo(32, cy); g.lineTo(96, cy + 32); g.lineTo(96, cy + 46); g.lineTo(32, cy + 14); g.closePath(); g.fill()
+                  g.fillStyle = "" + Qt.darker(cols[k], 1.25); g.beginPath(); g.moveTo(96, cy + 32); g.lineTo(160, cy); g.lineTo(160, cy + 14); g.lineTo(96, cy + 46); g.closePath(); g.fill()
+                  g.fillStyle = cols[k]; g.beginPath(); g.moveTo(96, cy - 32); g.lineTo(160, cy); g.lineTo(96, cy + 32); g.lineTo(32, cy); g.closePath(); g.fill()
+                }
+              } }
+            // 6 3D flip: the tile turns like a coin
+            Item { visible: root.launcherIcon === 6; anchors.centerIn: parent; width: 148; height: 148
+              transform: Rotation { origin.x: 74; origin.y: 74; axis { x: 0; y: 1; z: 0 }
+                angle: { var p = root.lPhase; if (p > 0.45) return 0; var q = p / 0.45; return 360 * q * q * (3 - 2 * q) } }
+              LTiles { anchors.fill: parent; ts: 44; gp: 8 }
+              Rectangle { x: 6; y: 6; width: 148; height: 148; z: -1; color: lnch.c2 } }
+            // 7 Hop: a small tile hopping, with motion lines
+            Item { visible: root.launcherIcon === 7; anchors.fill: parent
+              readonly property real hop: Math.abs(Math.sin(root.lPhase * 3.1416 * 2))
+              Repeater { model: 3
+                Rectangle { required property int index
+                  x: 62 + index * 32; y: 30 - parent.hop * 24; width: 8; height: 22 - index % 2 * 8; color: lnch.c1; opacity: 0.25 + 0.6 * parent.hop } }
+              LTiles { x: 38; y: 66 - parent.hop * 34; ts: 36; gp: 7 }
+              Rectangle { x: 56; y: 182; width: 80 - parent.hop * 28; height: 6; color: lnch.c2; anchors.horizontalCenter: undefined } }
+            // 8 Orbit: a satellite circling a core
+            Item { visible: root.launcherIcon === 8; anchors.fill: parent
+              Rectangle { anchors.centerIn: parent; width: 132; height: 132; radius: 66; color: "transparent"; border.color: lnch.c2; border.width: 4 }
+              Rectangle { anchors.centerIn: parent; width: 56; height: 56; color: lnch.c0 }
+              Rectangle { anchors.centerIn: parent; width: 26; height: 26; color: lnch.c1 }
+              Item { anchors.centerIn: parent; width: 132; height: 132; rotation: root.lPhase * 360
+                Rectangle { x: 56; y: -12; width: 24; height: 24; color: lnch.c1 } } }
+            // 9 Pulse: the tiles light up in a wave
+            LTiles { visible: root.launcherIcon === 9; anchors.centerIn: parent; ts: 44; gp: 8; wave: true; ph: root.lPhase }
+            // 10 Spark: a four-point star turning and twinkling
+            Canvas { id: spark; visible: root.launcherIcon === 10; anchors.fill: parent
+              rotation: root.lPhase * 90; scale: 0.9 + 0.1 * Math.sin(root.lPhase * 6.2832)
+              onVisibleChanged: if (visible) requestPaint()
+              onPaint: {
+                var g = getContext("2d"); g.reset()
+                g.fillStyle = "" + lnch.c1; g.beginPath(); g.moveTo(96, 14); g.lineTo(112, 80); g.lineTo(178, 96); g.lineTo(112, 112); g.lineTo(96, 178); g.lineTo(80, 112); g.lineTo(14, 96); g.lineTo(80, 80); g.closePath(); g.fill()
+                g.fillStyle = "" + lnch.c0; g.beginPath(); g.moveTo(96, 58); g.lineTo(106, 86); g.lineTo(134, 96); g.lineTo(106, 106); g.lineTo(96, 134); g.lineTo(86, 106); g.lineTo(58, 96); g.lineTo(86, 86); g.closePath(); g.fill()
+              } }
+          }
           // Rubik's Cube launcher: solved with no windows open, scrambles a little more with every window you open.
           Canvas {
             id: cube
-            visible: cell.modelData.cls === "__launcher__"
+            visible: cell.modelData.cls === "__launcher__" && root.launcherIcon === 0
             // Painted once at a fixed size and scaled as a texture, so the hover zoom never repaints it.
             width: 192; height: 192
             anchors.centerIn: parent
@@ -806,78 +923,21 @@ print(json.dumps(out))
             }
           }
           Rectangle {   // plate like the other icons' (skin colours) behind Calendar / Notes
-            visible: cell.ownIcon && !root.rubik
+            visible: false
             anchors.centerIn: parent; width: parent.width * 0.98; height: width; radius: width * 0.22
             gradient: Gradient { GradientStop { position: 0; color: Qt.lighter(root.skin.c1, 1.4) } GradientStop { position: 1; color: Qt.lighter(root.skin.c2, 1.4) } }
             border.color: root.omaSkin ? "transparent" : root.skin.b; border.width: root.omaSkin ? 0 : 1
           }
-          // Calendar: an Apple-style date icon (weekday on red, big day number) that follows the real date.
-          Item {
-            visible: cell.modelData.cls === "__calendar__"
+          // Legal Desk's own icons (Calendar, Notes, Tasks, Disks, Zones, Screenshot, Downloads, Trash): the art of the chosen icon set, in the skin's colours.
+          Image {
+            visible: cell.ownIcon && root.artName(cell.modelData.cls) !== "" && root.artDir !== ""
             anchors.centerIn: parent
-            width: parent.width * 0.74; height: width
-            Rectangle {
-              anchors.fill: parent; radius: width * 0.2; color: root.skin.n === "Nebula" ? "#E6E1FA" : "#fbfbfd"; border.color: root.skin.n === "Nebula" ? "#C9BAFF" : "#33000000"; border.width: 1; clip: true
-              Rectangle { width: parent.width; height: parent.height * 0.3; color: root.skin.n === "Nebula" ? "#8B5CF6" : "#ff3b30"
-                Text { anchors.centerIn: parent; text: Qt.formatDate(root.nowD, "ddd").toUpperCase(); color: "#ffffff"; font.pixelSize: parent.height * 0.62; font.bold: true } }
-              Text { anchors.horizontalCenter: parent.horizontalCenter; y: parent.height * 0.3; height: parent.height * 0.7; verticalAlignment: Text.AlignVCenter
-                text: root.nowD.getDate(); color: root.skin.n === "Nebula" ? "#2A1B52" : "#1d1d1f"; font.pixelSize: parent.height * 0.5; font.weight: Font.DemiBold }
-            }
-          }
-          // Screenshot: a camera on the skin's plate (fixed at the end of the dock)
-          Item {
-            visible: cell.modelData.cls === "__snap__"
-            anchors.centerIn: parent
-            width: parent.width * 0.74; height: width
-            Text { anchors.centerIn: parent; text: "\uf030"; color: root.accC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: parent.height * 0.62 }
-          }
-          // Desk Zones: four zones
-          Item {
-            visible: cell.modelData.cls === "__zones__"
-            anchors.centerIn: parent
-            width: parent.width * 0.74; height: width
-            Rectangle {
-              anchors.fill: parent; radius: width * 0.2; color: root.skin.n === "Nebula" ? "#1d1238" : "#2b2b30"; border.color: root.skin.n === "Nebula" ? "#8B5CF6" : "#666"; border.width: 1; clip: true
-              Rectangle { x: parent.width * 0.14; y: parent.height * 0.14; width: parent.width * 0.4; height: parent.height * 0.72; radius: 3; color: root.skin.n === "Nebula" ? "#8B5CF6" : "#0a84ff" }
-              Rectangle { x: parent.width * 0.58; y: parent.height * 0.14; width: parent.width * 0.28; height: parent.height * 0.34; radius: 3; color: root.skin.n === "Nebula" ? "#C9BAFF" : "#30d158" }
-              Rectangle { x: parent.width * 0.58; y: parent.height * 0.52; width: parent.width * 0.28; height: parent.height * 0.34; radius: 3; color: root.skin.n === "Nebula" ? "#6c4cd0" : "#ff9f0a" }
-            }
-          }
-          // Disk Management: a drive
-          Item {
-            visible: cell.modelData.cls === "__disks__"
-            anchors.centerIn: parent
-            width: parent.width * 0.74; height: width
-            Rectangle {
-              anchors.fill: parent; radius: width * 0.2; color: root.skin.n === "Nebula" ? "#1d1238" : "#2b2b30"; border.color: root.skin.n === "Nebula" ? "#8B5CF6" : "#666"; border.width: 1; clip: true
-              Rectangle { x: parent.width * 0.14; y: parent.height * 0.3; width: parent.width * 0.72; height: parent.height * 0.4; radius: parent.height * 0.08; color: root.skin.n === "Nebula" ? "#C9BAFF" : "#c8c8cc"
-                Rectangle { x: parent.width * 0.1; y: parent.height * 0.62; width: parent.width * 0.5; height: Math.max(2, parent.height * 0.12); radius: 1; color: root.skin.n === "Nebula" ? "#5b3fb5" : "#777" }
-                Rectangle { x: parent.width * 0.78; y: parent.height * 0.62; width: Math.max(4, parent.height * 0.14); height: width; radius: width / 2; color: "#4cd964" } }
-            }
-          }
-          // Task Manager: three activity bars
-          Item {
-            visible: cell.modelData.cls === "__tasks__"
-            anchors.centerIn: parent
-            width: parent.width * 0.74; height: width
-            Rectangle {
-              anchors.fill: parent; radius: width * 0.2; color: root.skin.n === "Nebula" ? "#1d1238" : "#222"; border.color: root.skin.n === "Nebula" ? "#8B5CF6" : "#555"; border.width: 1; clip: true
-              Repeater { model: [0.45, 0.8, 0.6]
-                Rectangle { width: parent.width * 0.16; x: parent.width * (0.2 + index * 0.25); height: parent.height * modelData * 0.7; y: parent.height * 0.82 - height; radius: 2
-                  color: root.skin.n === "Nebula" ? (index === 1 ? "#C9BAFF" : "#8B5CF6") : (index === 1 ? "#ff9f0a" : "#30d158") } }
-            }
-          }
-          // Notes: a yellow note pad
-          Item {
-            visible: cell.modelData.cls === "__notes__"
-            anchors.centerIn: parent
-            width: parent.width * 0.74; height: width
-            Rectangle {
-              anchors.fill: parent; radius: width * 0.2; color: root.skin.n === "Nebula" ? "#D8CCFF" : "#ffd84a"; border.color: root.skin.n === "Nebula" ? "#C9BAFF" : "#33000000"; border.width: 1; clip: true
-              Rectangle { width: parent.width; height: parent.height * 0.22; color: root.skin.n === "Nebula" ? "#8B5CF6" : "#f2c230" }
-              Repeater { model: 3
-                Rectangle { x: parent.width * 0.16; y: parent.height * (0.42 + index * 0.17); width: parent.width * 0.68; height: Math.max(1, parent.height * 0.03); color: root.skin.n === "Nebula" ? "#7C5CD6" : "#b08a1a"; opacity: 0.7 } }
-            }
+            width: parent.width * root.ownK; height: width
+            source: visible ? root.artDir + "/" + root.artName(cell.modelData.cls) + ".svg" : ""
+            sourceSize: Qt.size(192, 192)
+            fillMode: Image.PreserveAspectFit
+            smooth: true; mipmap: true
+            rotation: cell.twist
           }
           // A View From Space (Radio Globe): the app's bullseye + speaker, drawn once (no animation, no CPU) in the skin's colours
           Canvas {
@@ -943,7 +1003,7 @@ print(json.dumps(out))
             width: lbl.width + 16; height: lbl.height + 8; radius: 7
             color: Qt.rgba(root.bgC.r, root.bgC.g, root.bgC.b, 0.92); border.color: root.accC; border.width: 1
             Text { id: lbl; anchors.centerIn: parent; color: root.txtC; font.pixelSize: 12
-              text: cell.modelData.cls === "__launcher__" ? "Legal Control" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__snap__" ? "Screenshot" : cell.modelData.cls === "__disks__" ? "Disk Management" : cell.modelData.cls === "__zones__" ? "Desk Zones" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
+              text: cell.modelData.cls === "__launcher__" ? "Legal Desk" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__snap__" ? "Screenshot" : cell.modelData.cls === "__disks__" ? "Disk Management" : cell.modelData.cls === "__zones__" ? "Desk Zones" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
           }
           // ring around the icon whose menu is open
           Rectangle { visible: root.ctx !== "" && root.ctx === cell.modelData.cls; anchors.fill: parent; anchors.margins: -2; radius: width * 0.24; color: "transparent"; border.color: root.accC; border.width: 2 }
@@ -1009,7 +1069,7 @@ print(json.dumps(out))
   IpcHandler { target: "macdock"; function closeMenu(): void { root.ctx = "" } function menu(cls: string): void { root.ctxX = 800; root.ctx = cls } function moveMode(on: bool): void { root.moveMode = on; root.ctx = ""; root.mag = 0 } }
   property string ctx: ""
   // Opening a right-click menu, or clicking any icon, closes the grid-button menu if it is open.
-  function closeMain() { sh(["/usr/lib/legal-desk/dock-menu-close", "main"]) }
+  function closeMain() { sh([Quickshell.env("HOME") + "/.local/bin/dock-menu-close", "main"]) }
   property real ctxX: 0
   property var ctxWins: []
   onCtxChanged: { ctxWins = []; if (ctx !== "") { closeMain(); winsProc.cls = ctx; winsProc.running = false; winsProc.running = true } }

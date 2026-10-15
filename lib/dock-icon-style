@@ -1,9 +1,10 @@
 #!/bin/bash
-# dock-icon-style next|prev|N|show : give the dock's icons the look of one of the original skins (Mac/Rubik dock), independent of the skin in use.
-# 0 = Original (the skin's own plain look, icons untouched; choosing a skin always returns here), then every skin: Emerald, Glass, ... Nebula, Omarchy, and the Rubik palettes (Cube, Pastel, Ocean, Candy, Jungle, Circles).
+# dock-icon-style next|prev|N|show : choose one of the 10 icon sets (Legal Desk 2.0). Each set is a complete look for the dock's icons:
+#   the art of Legal Desk's own icons (drawn by legal-icons in the skin's colours) and how other apps' icons are dressed.
+#   0 Tile (the standard)  1 Outline  2 Glyph  3 Duotone  4 Glass  5 Neon  6 Flat  7 Pixel  8 Sticker  9 Cube
 # Remembered in ~/.cache/dock-icon-style. It never changes the skin or the menu colours.
-F="$HOME/.cache/dock-icon-style"
-NAMES=("Original" "Match skin" "Nebula" "Omarchy" "Emerald" "Sunset" "Ocean" "Neon" "Amber" "Rose" "Gold" "Mono" "Pearls" "Bubbles" "Blocks" "Cube")
+F="$HOME/.cache/dock-icon-style"; B="$(dirname "$(readlink -f "$0")")"
+NAMES=("Tile" "Outline" "Glyph" "Duotone" "Glass" "Neon" "Flat" "Pixel" "Sticker" "Cube")
 N=${#NAMES[@]}
 cur=$(cat "$F" 2>/dev/null); [[ $cur =~ ^[0-9]+$ ]] && [ "$cur" -lt $N ] || cur=0
 case "$1" in
@@ -11,4 +12,6 @@ case "$1" in
   prev) cur=$(( (cur + N - 1) % N )) ;;
   [0-9]|[0-9][0-9]) [ "$1" -lt $N ] && cur=$1 ;;
 esac
-mkdir -p "$HOME/.cache"; echo "$cur" > "$F"; echo "$cur ${NAMES[$cur]}"
+mkdir -p "$HOME/.cache"; echo "$cur" > "$F"
+[ -x "$B/legal-icons" ] && "$B/legal-icons" refresh >/dev/null 2>&1
+echo "$cur ${NAMES[$cur]}"

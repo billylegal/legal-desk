@@ -1,8 +1,8 @@
 # Maintainer: 5ive7 Development Labs <5ive7@mail.com>
 pkgname=legal-desk
-pkgver=1.1.1
+pkgver=2.0.0
 pkgrel=1
-pkgdesc='Dock, app launcher, calendar, notes, clock, task manager and disk management for Hyprland/Omarchy'
+pkgdesc='Dock (10 skins, 10 icon sets), app launcher, calendar, notes, clock, task manager, disk management and window zones for Hyprland/Omarchy'
 provides=('legal-dock')
 replaces=('legal-dock')
 conflicts=('legal-dock')
@@ -16,7 +16,7 @@ optdepends=('exfatprogs: format drives as exFAT' 'ntfs-3g: format drives as NTFS
             'hyprland-plugins: title bars with Apple / Windows style window buttons (hyprbars)'
             'omarchy: desktop theme, web-app windows for Mail, screenshots')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('a9aa0fc9c6563a67ebe03f8d64ccf4aa982bff3417bf7f34df120e479f7fd679')
+sha256sums=('SKIP')   # fill in with updpkgsums once the v2.0.0 tag is published
 
 package() {
   cd "$pkgname-$pkgver"
@@ -24,10 +24,11 @@ package() {
   ln -s legal-desk "$pkgdir/usr/bin/legal-dock"   # old command name keeps working (autostart lines, habits)
   install -d "$pkgdir/usr/lib/legal-desk" "$pkgdir/usr/share/legal-desk"
   find lib -maxdepth 1 -type f -exec install -m755 -t "$pkgdir/usr/lib/legal-desk/" {} +
-  for d in docklock macdock rebootconfirm appsmenu legalnotes legalcalendar legaltasks legalclock legaldisks legalzones deskpick; do
+  for d in docklock macdock rebootconfirm appsmenu legalnotes legalcalendar legaltasks legalclock legaldisks legalzones legalzonesbar legalzonesdrag deskpick; do
     install -Dm644 "share/$d/shell.qml" "$pkgdir/usr/share/legal-desk/$d/shell.qml"
   done
   cp -r share/themes "$pkgdir/usr/share/legal-desk/themes"
+  install -Dm644 share/skins.json "$pkgdir/usr/share/legal-desk/skins.json"
   install -Dm644 share/5ive7.png "$pkgdir/usr/share/legal-desk/5ive7.png"
   install -Dm644 share/style.css "$pkgdir/usr/share/legal-desk/style.css"
   install -Dm644 share/mac-animations.lua "$pkgdir/usr/share/legal-desk/mac-animations.lua"

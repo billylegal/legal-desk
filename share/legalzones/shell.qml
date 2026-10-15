@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-// Legal Desk Zones: a FancyZones for Hyprland.
+// Legal Zones: a FancyZones for Hyprland.
 //   manage - pick a layout, edit / duplicate / delete layouts, gap, auto-snap, "snap open windows now"
 //   edit   - full-screen editor: split zones (click), merge, delete, drag the dividers, name and save
 //   pick   - full-screen picker: click a zone (or press its number) to put the window you were using there
@@ -61,7 +61,7 @@ ShellRoot {
     property var zones: []
     property bool numbers: false
     property color fillC: zr.selC
-    Rectangle { anchors.fill: parent; color: zr.bgC; radius: 6; border.color: zr.accC; border.width: 1; opacity: 0.9 }
+    Rectangle { anchors.fill: parent; color: zr.bgC; radius: 0; border.color: zr.accC; border.width: 1; opacity: 0.9 }
     Repeater {
       model: zones
       Rectangle {
@@ -69,7 +69,7 @@ ShellRoot {
         required property int index
         x: modelData[0] * parent.width + 2; y: modelData[1] * parent.height + 2
         width: Math.max(2, modelData[2] * parent.width - 4); height: Math.max(2, modelData[3] * parent.height - 4)
-        radius: 4; color: Qt.rgba(zr.accC.r, zr.accC.g, zr.accC.b, 0.28); border.color: zr.accC; border.width: 1
+        radius: 0; color: Qt.rgba(zr.accC.r, zr.accC.g, zr.accC.b, 0.28); border.color: zr.accC; border.width: 1
         Text { visible: numbers; anchors.centerIn: parent; text: index + 1; color: zr.txtC; font.pixelSize: Math.min(parent.height * 0.5, 40); font.bold: true }
       }
     }
@@ -88,14 +88,14 @@ ShellRoot {
         id: card
         width: Math.min(960, parent.width - 40); height: Math.min(640, parent.height - 100)
         x: (parent.width - width) / 2; y: (parent.height - height) / 2 - 20
-        radius: 16; color: zr.bgC; border.color: zr.accC; border.width: 2
+        radius: 0; color: zr.bgC; border.color: zr.accC; border.width: 2
         MouseArea { anchors.fill: parent }
         Keys.onEscapePressed: Qt.quit()
         readonly property var sel: zr.byName(zr.selName)
 
-        Text { x: 24; y: 16; text: "Desk Zones"; color: zr.txtC; font.pixelSize: 22; font.bold: true }
+        Text { x: 24; y: 16; text: "Legal Zones"; color: zr.txtC; font.pixelSize: 22; font.bold: true }
         Text { x: 168; y: 23; text: "Snap windows into zones"; color: zr.accC; font.pixelSize: 13 }
-        Rectangle { x: card.width - 44; y: 14; width: 28; height: 28; radius: 14; color: xma.containsMouse ? zr.accC : "transparent"; border.color: zr.accC; border.width: 1
+        Rectangle { x: card.width - 44; y: 14; width: 28; height: 28; radius: 0; color: xma.containsMouse ? zr.accC : "transparent"; border.color: zr.accC; border.width: 1
           Text { anchors.centerIn: parent; text: "✕"; color: xma.containsMouse ? zr.bgC : zr.txtC; font.pixelSize: 12 }
           MouseArea { id: xma; anchors.fill: parent; hoverEnabled: true; onClicked: Qt.quit() } }
 
@@ -106,7 +106,7 @@ ShellRoot {
           model: zr.data.layouts
           delegate: Rectangle {
             required property var modelData
-            width: ll.width; height: 74; radius: 12
+            width: ll.width; height: 74; radius: 0
             color: modelData.name === zr.selName ? zr.selC : (lma.containsMouse ? Qt.darker(zr.selC, 1.25) : "transparent")
             border.color: modelData.name === zr.selName ? zr.accC : Qt.rgba(zr.accC.r, zr.accC.g, zr.accC.b, 0.3); border.width: 1
             Mini { x: 10; y: 9; width: 90; height: 56; zones: modelData.zones }
@@ -117,14 +117,14 @@ ShellRoot {
           }
         }
         // new layout from a template
-        Rectangle { x: 20; y: card.height - 60; width: 290; height: 38; radius: 10; color: nwa.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
+        Rectangle { x: 20; y: card.height - 60; width: 290; height: 38; radius: 0; color: nwa.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
           Text { anchors.centerIn: parent; text: "+ New layout"; color: nwa.containsMouse ? zr.bgC : zr.txtC; font.pixelSize: 14; font.bold: true }
           MouseArea { id: nwa; anchors.fill: parent; hoverEnabled: true; onClicked: tplMenu.visible = !tplMenu.visible } }
         Rectangle {
-          id: tplMenu; visible: false; z: 10; x: 20; y: card.height - 60 - 8 - height; width: 290; height: zr.templates.length * 34 + 12; radius: 12; color: zr.bgC; border.color: zr.accC; border.width: 1
+          id: tplMenu; visible: false; z: 10; x: 20; y: card.height - 60 - 8 - height; width: 290; height: zr.templates.length * 34 + 12; radius: 0; color: zr.bgC; border.color: zr.accC; border.width: 1
           Column { x: 6; y: 6; width: parent.width - 12
             Repeater { model: zr.templates
-              Rectangle { width: parent.width; height: 34; radius: 8; color: tma.containsMouse ? zr.selC : "transparent"
+              Rectangle { width: parent.width; height: 34; radius: 0; color: tma.containsMouse ? zr.selC : "transparent"
                 Text { x: 12; anchors.verticalCenter: parent.verticalCenter; text: "Start from: " + modelData.name; color: zr.txtC; font.pixelSize: 14 }
                 MouseArea { id: tma; anchors.fill: parent; hoverEnabled: true
                   onClicked: { var d = zr.data, n = zr.uniqueName("My layout"); d.layouts = d.layouts.concat([{ name: n, zones: modelData.zones.map(z => z.slice()) }]); zr.persist(d); zr.selName = n; tplMenu.visible = false
@@ -132,22 +132,22 @@ ShellRoot {
         }
 
         // big preview + actions
-        Rectangle { x: 330; y: 60; width: card.width - 330 - 24; height: 330; radius: 14; color: zr.selC; opacity: 0.35 }
+        Rectangle { x: 330; y: 60; width: card.width - 330 - 24; height: 330; radius: 0; color: zr.selC; opacity: 0.35 }
         Mini { x: 346; y: 76; width: card.width - 330 - 24 - 32; height: 298; zones: card.sel ? card.sel.zones : []; numbers: true }
         Text { x: 330; y: 402; width: card.width - 330 - 24; elide: Text.ElideRight; text: card.sel ? card.sel.name : ""; color: zr.txtC; font.pixelSize: 18; font.bold: true }
         Row {
           x: 330; y: 434; spacing: 8
-          Rectangle { width: 130; height: 36; radius: 10; color: usa.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
+          Rectangle { width: 130; height: 36; radius: 0; color: usa.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
             Text { anchors.centerIn: parent; text: zr.selName === zr.data.active ? "In use ✓" : "Use this layout"; color: usa.containsMouse ? zr.bgC : zr.txtC; font.pixelSize: 13; font.bold: true }
             MouseArea { id: usa; anchors.fill: parent; hoverEnabled: true; onClicked: { var d = zr.data; d.active = zr.selName; zr.persist(d) } } }
-          Rectangle { width: 80; height: 36; radius: 10; color: eda.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
+          Rectangle { width: 80; height: 36; radius: 0; color: eda.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
             Text { anchors.centerIn: parent; text: "Edit"; color: eda.containsMouse ? zr.bgC : zr.txtC; font.pixelSize: 13; font.bold: true }
             MouseArea { id: eda; anchors.fill: parent; hoverEnabled: true; onClicked: { zr.run([zr.launcher, "edit", zr.selName]); Qt.quit() } } }
-          Rectangle { width: 100; height: 36; radius: 10; color: dua.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
+          Rectangle { width: 100; height: 36; radius: 0; color: dua.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
             Text { anchors.centerIn: parent; text: "Duplicate"; color: dua.containsMouse ? zr.bgC : zr.txtC; font.pixelSize: 13; font.bold: true }
             MouseArea { id: dua; anchors.fill: parent; hoverEnabled: true
               onClicked: { if (!card.sel) return; var d = zr.data, c = zr.copyLayout(card.sel); c.name = zr.uniqueName(c.name); d.layouts = d.layouts.concat([c]); zr.persist(d); zr.selName = c.name } } }
-          Rectangle { visible: zr.data.layouts.length > 1; width: 80; height: 36; radius: 10; color: dea.containsMouse ? "#E0705A" : "#3a1f1b"; border.color: "#E0705A"; border.width: 1
+          Rectangle { visible: zr.data.layouts.length > 1; width: 80; height: 36; radius: 0; color: dea.containsMouse ? "#E0705A" : "#3a1f1b"; border.color: "#E0705A"; border.width: 1
             Text { anchors.centerIn: parent; text: "Delete"; color: dea.containsMouse ? "#1a0a08" : "#E0705A"; font.pixelSize: 13; font.bold: true }
             MouseArea { id: dea; anchors.fill: parent; hoverEnabled: true
               onClicked: { var d = zr.data; d.layouts = d.layouts.filter(l => l.name !== zr.selName); if (d.active === zr.selName) d.active = d.layouts[0].name; zr.persist(d); zr.selName = d.active } } }
@@ -155,24 +155,27 @@ ShellRoot {
         // settings
         Rectangle { x: 330; y: 486; width: card.width - 330 - 24; height: 1; color: zr.accC; opacity: 0.3 }
         Text { x: 330; y: 502; text: "Gap  " + Math.round(zr.data.gap) + " px"; color: zr.txtC; font.pixelSize: 13 }
-        Rectangle { x: 440; y: 509; width: 200; height: 6; radius: 3; color: zr.selC
-          Rectangle { width: parent.width * Math.min(1, zr.data.gap / 32); height: parent.height; radius: 3; color: zr.accC }
-          Rectangle { x: parent.width * Math.min(1, zr.data.gap / 32) - 8; y: -5; width: 16; height: 16; radius: 8; color: zr.txtC; border.color: zr.accC; border.width: 2 }
+        Rectangle { x: 440; y: 509; width: 200; height: 6; radius: 0; color: zr.selC
+          Rectangle { width: parent.width * Math.min(1, zr.data.gap / 32); height: parent.height; radius: 0; color: zr.accC }
+          Rectangle { x: parent.width * Math.min(1, zr.data.gap / 32) - 8; y: -5; width: 16; height: 16; radius: 0; color: zr.txtC; border.color: zr.accC; border.width: 2 }
           MouseArea { anchors.fill: parent; anchors.margins: -10
             onPressed: (m) => set(m.x); onPositionChanged: (m) => { if (pressed) set(m.x) }
             function set(x) { var d = zr.data; d.gap = Math.round(Math.max(0, Math.min(1, (x + 10 - 10) / 200)) * 32); zr.persist(d) } } }
-        Rectangle { x: 670; y: 497; width: card.width - 670 - 24; height: 34; radius: 10; color: aua.containsMouse ? zr.selC : "transparent"; border.color: zr.accC; border.width: 1
+        Rectangle { x: 670; y: 497; width: card.width - 670 - 24; height: 34; radius: 0; color: aua.containsMouse ? zr.selC : "transparent"; border.color: zr.accC; border.width: 1
           Text { anchors.centerIn: parent; text: (zr.data.auto ? "☑" : "☐") + "  Auto-snap new windows"; color: zr.txtC; font.pixelSize: 13 }
           MouseArea { id: aua; anchors.fill: parent; hoverEnabled: true; onClicked: { var d = zr.data; d.auto = !d.auto; zr.persist(d); zr.run([zr.launcher, "start"]) } } }
+        Rectangle { x: card.width - 24 - 190; y: 546; width: 190; height: 38; radius: 0; color: fla.containsMouse ? zr.selC : "transparent"; border.color: zr.accC; border.width: 1
+          Text { anchors.centerIn: parent; text: (zr.data.flyout !== false ? "☑" : "☐") + "  Top-edge menu"; color: zr.txtC; font.pixelSize: 13 }
+          MouseArea { id: fla; anchors.fill: parent; hoverEnabled: true; onClicked: { var d = zr.data; d.flyout = (d.flyout === false); zr.persist(d); zr.run([zr.launcher, "start"]) } } }
         Row {
           x: 330; y: 546; spacing: 8
-          Rectangle { width: 210; height: 38; radius: 10; color: sna.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
+          Rectangle { width: 210; height: 38; radius: 0; color: sna.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
             Text { anchors.centerIn: parent; text: "Snap my open windows now"; color: sna.containsMouse ? zr.bgC : zr.txtC; font.pixelSize: 13; font.bold: true }
             MouseArea { id: sna; anchors.fill: parent; hoverEnabled: true; onClicked: { var d = zr.data; d.active = zr.selName; zr.persist(d); zr.run(["bash", "-c", "sleep 0.5; \"$0\" apply", zr.core]); Qt.quit() } } }
-          Text { anchors.verticalCenter: parent.verticalCenter; text: "Super+Shift+Z picks a zone for one window"; color: zr.txtC; opacity: 0.55; font.pixelSize: 12 }
+          Text { anchors.verticalCenter: parent.verticalCenter; text: "Super+Shift+Z picks a zone"; color: zr.txtC; opacity: 0.55; font.pixelSize: 12 }
         }
         // credit
-        Rectangle { z: 8; anchors.right: parent.right; anchors.rightMargin: 24; y: parent.height - 11; height: 22; width: cr.implicitWidth + 34; radius: 11; color: zr.bgC; border.color: zr.accC; border.width: 1
+        Rectangle { z: 8; anchors.right: parent.right; anchors.rightMargin: 24; y: parent.height - 30; height: 22; width: cr.implicitWidth + 34; radius: 0; color: zr.bgC; border.color: zr.accC; border.width: 1
           Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-desk/5ive7.png" }
           Text { id: cr; x: 26; anchors.verticalCenter: parent.verticalCenter; text: "5ive7 Development Labs"; color: zr.txtC; opacity: 0.85; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 } }
       }
@@ -202,13 +205,13 @@ ShellRoot {
             readonly property real g: zr.data.gap / 2
             x: zr.areaArr[0] + modelData[0] * zr.areaArr[2] + g; y: zr.areaArr[1] + modelData[1] * zr.areaArr[3] + g
             width: modelData[2] * zr.areaArr[2] - 2 * g; height: modelData[3] * zr.areaArr[3] - 2 * g
-            radius: 14; color: zma.containsMouse ? Qt.rgba(zr.accC.r, zr.accC.g, zr.accC.b, 0.55) : Qt.rgba(zr.accC.r, zr.accC.g, zr.accC.b, 0.22)
+            radius: 0; color: zma.containsMouse ? Qt.rgba(zr.accC.r, zr.accC.g, zr.accC.b, 0.55) : Qt.rgba(zr.accC.r, zr.accC.g, zr.accC.b, 0.22)
             border.color: zr.accC; border.width: 3
             Text { anchors.centerIn: parent; text: index + 1; color: zr.txtC; font.pixelSize: Math.min(parent.height * 0.4, 140); font.bold: true }
             MouseArea { id: zma; anchors.fill: parent; hoverEnabled: true; onClicked: snapTo(index) }
           }
         }
-        Rectangle { anchors.horizontalCenter: parent.horizontalCenter; y: zr.areaArr[1] + 14; width: hint.implicitWidth + 40; height: 40; radius: 20; color: zr.bgC; border.color: zr.accC; border.width: 1
+        Rectangle { anchors.horizontalCenter: parent.horizontalCenter; y: zr.areaArr[1] + 14; width: hint.implicitWidth + 40; height: 40; radius: 0; color: zr.bgC; border.color: zr.accC; border.width: 1
           Text { id: hint; anchors.centerIn: parent; text: "Click a zone or press its number  ·  Esc to cancel"; color: zr.txtC; font.pixelSize: 15 } }
       }
     }
@@ -229,6 +232,10 @@ ShellRoot {
       property string tool: "select"          // select | splitv | splith
       property int dragAxis: 0                 // 1 vertical divider, 2 horizontal divider
       property real dragPos: 0
+      property bool gridOpen: false
+      property int gcols: 5
+      property int grows: 4
+      property var hoverDv: null               // [axis, position] of the edge under the pointer
       property var dragZ: []                   // [{i, side}] zones touching the divider being dragged
       readonly property real ax: zr.areaArr[0]
       readonly property real ay: zr.areaArr[1]
@@ -251,13 +258,18 @@ ShellRoot {
         selected.forEach(function (i) { var z = zones[i]; x0 = Math.min(x0, z[0]); y0 = Math.min(y0, z[1]); x1 = Math.max(x1, z[0] + z[2]); y1 = Math.max(y1, z[1] + z[3]) })
         var a = zones.filter((z, i) => selected.indexOf(i) < 0); a.push([x0, y0, x1 - x0, y1 - y0]); zones = a; selected = []
       }
+      function makeGrid(c, r) {
+        c = Math.max(1, Math.min(12, c)); r = Math.max(1, Math.min(10, r)); var a = []
+        for (var j = 0; j < r; j++) for (var i = 0; i < c; i++) a.push([i / c, j / r, 1 / c, 1 / r])
+        zones = a; selected = []; gridOpen = false
+      }
       function delSel() { if (!selected.length || selected.length >= zones.length) return; zones = zones.filter((z, i) => selected.indexOf(i) < 0); selected = [] }
       function findDivider(fx, fy) {
-        var tx = 9 / aw, ty = 9 / ah, best = null, bd = 1
+        var tx = 16 / aw, ty = 16 / ah, best = null, bd = 1
         for (var i = 0; i < zones.length; i++) {
           var z = zones[i];
-          [z[0], z[0] + z[2]].forEach(function (ex) { if (ex > 0.004 && ex < 0.996 && Math.abs(fx - ex) < tx && fy >= z[1] - ty && fy <= z[1] + z[3] + ty && Math.abs(fx - ex) < bd) { bd = Math.abs(fx - ex); best = [1, ex] } })
-          ;[z[1], z[1] + z[3]].forEach(function (ey) { if (ey > 0.004 && ey < 0.996 && Math.abs(fy - ey) < ty && fx >= z[0] - tx && fx <= z[0] + z[2] + tx && Math.abs(fy - ey) < bd) { bd = Math.abs(fy - ey); best = [2, ey] } })
+          [z[0], z[0] + z[2]].forEach(function (ex) { if (Math.abs(fx - ex) < tx && fy >= z[1] - ty && fy <= z[1] + z[3] + ty && Math.abs(fx - ex) < bd) { bd = Math.abs(fx - ex); best = [1, ex] } })
+          ;[z[1], z[1] + z[3]].forEach(function (ey) { if (Math.abs(fy - ey) < ty && fx >= z[0] - tx && fx <= z[0] + z[2] + tx && Math.abs(fy - ey) < bd) { bd = Math.abs(fy - ey); best = [2, ey] } })
         }
         return best
       }
@@ -294,9 +306,28 @@ ShellRoot {
             readonly property bool sel: ew.selected.indexOf(index) >= 0
             x: ew.ax + modelData[0] * ew.aw + 3; y: ew.ay + modelData[1] * ew.ah + 3
             width: modelData[2] * ew.aw - 6; height: modelData[3] * ew.ah - 6
-            radius: 10; color: Qt.rgba(zr.accC.r, zr.accC.g, zr.accC.b, sel ? 0.55 : 0.2); border.color: zr.accC; border.width: sel ? 4 : 2
+            radius: 0; color: Qt.rgba(zr.accC.r, zr.accC.g, zr.accC.b, sel ? 0.55 : 0.2); border.color: zr.accC; border.width: sel ? 4 : 2
             Text { anchors.centerIn: parent; text: index + 1; color: zr.txtC; font.pixelSize: Math.min(parent.height * 0.4, 120); font.bold: true; opacity: 0.9 }
           }
+        }
+        // the edge you can grab (shown while hovering or dragging)
+        Rectangle {
+          readonly property var dv: ew.dragAxis !== 0 ? [ew.dragAxis, ew.dragPos] : ew.hoverDv
+          readonly property var ext: {
+            if (!dv) return [0, 1]
+            var lo = 9, hi = -1
+            ew.zones.forEach(function (z) {
+              var a = dv[0] === 1 ? z[0] : z[1], b = dv[0] === 1 ? z[0] + z[2] : z[1] + z[3]
+              if (ew.near(a, dv[1]) || ew.near(b, dv[1])) { var s0 = dv[0] === 1 ? z[1] : z[0], s1 = dv[0] === 1 ? z[1] + z[3] : z[0] + z[2]; lo = Math.min(lo, s0); hi = Math.max(hi, s1) }
+            })
+            return hi < 0 ? [0, 1] : [lo, hi]
+          }
+          visible: dv !== null
+          color: zr.txtC; opacity: 0.95
+          x: dv ? (dv[0] === 1 ? ew.ax + dv[1] * ew.aw - 3 : ew.ax + ext[0] * ew.aw) : 0
+          y: dv ? (dv[0] === 2 ? ew.ay + dv[1] * ew.ah - 3 : ew.ay + ext[0] * ew.ah) : 0
+          width: dv ? (dv[0] === 1 ? 6 : (ext[1] - ext[0]) * ew.aw) : 0
+          height: dv ? (dv[0] === 2 ? 6 : (ext[1] - ext[0]) * ew.ah) : 0
         }
         // split guide
         Rectangle {
@@ -329,39 +360,82 @@ ShellRoot {
               var j = ew.hit(fx, fy); if (j >= 0) ew.split(j, ew.tool === "splitv", ew.tool === "splitv" ? fx : fy)
             }
           }
-          onPositionChanged: (m) => { if (ew.dragAxis !== 0 && pressed) ew.dragTo(Math.max(0.02, Math.min(0.98, ew.dragAxis === 1 ? m.x / ew.aw : m.y / ew.ah))) }
+          onPositionChanged: (m) => { ew.hoverDv = (ew.tool === "select" && !pressed) ? ew.findDivider(m.x / ew.aw, m.y / ew.ah) : ew.hoverDv; if (ew.dragAxis !== 0 && pressed) ew.dragTo(Math.max(0, Math.min(1, ew.dragAxis === 1 ? m.x / ew.aw : m.y / ew.ah))) }
           onReleased: { ew.dragAxis = 0; ew.dragZ = [] }
+          onExited: ew.hoverDv = null
         }
         // toolbar
         Rectangle {
           id: tb
-          anchors.horizontalCenter: parent.horizontalCenter; y: 14; width: tbr.implicitWidth + 28; height: 56; radius: 14; color: zr.bgC; border.color: zr.accC; border.width: 2
+          anchors.horizontalCenter: parent.horizontalCenter; y: 14; width: tbr.implicitWidth + 28; height: 56; radius: 0; color: zr.bgC; border.color: zr.accC; border.width: 2
           Row {
             id: tbr; anchors.centerIn: parent; spacing: 8
-            Rectangle { width: 190; height: 36; radius: 9; color: zr.selC; border.color: zr.accC; border.width: 1
-              TextInput { id: nameIn; anchors.fill: parent; anchors.margins: 8; color: zr.txtC; font.pixelSize: 14; clip: true; selectionColor: zr.accC; text: ew.lname; onTextChanged: if (activeFocus) {} } }
+            Text { anchors.verticalCenter: parent.verticalCenter; text: "Name:"; color: zr.accC; font.pixelSize: 13; font.bold: true }
+            Rectangle { width: 220; height: 36; radius: 0; color: zr.selC; border.color: nameIn.activeFocus ? zr.txtC : zr.accC; border.width: nameIn.activeFocus ? 2 : 1
+              TextInput { id: nameIn; anchors.fill: parent; anchors.margins: 8; color: zr.txtC; font.pixelSize: 14; clip: true; selectionColor: zr.accC; text: ew.lname
+                Timer { running: ew.lname.indexOf("My layout") === 0; interval: 400; onTriggered: { nameIn.forceActiveFocus(); nameIn.selectAll() } }
+                Keys.onReturnPressed: ew.saveAndExit(); Keys.onEnterPressed: ew.saveAndExit() }
+              Text { visible: nameIn.text === ""; anchors.verticalCenter: parent.verticalCenter; x: 8; text: "Type a name for your layout"; color: zr.txtC; opacity: 0.45; font.pixelSize: 14 } }
             Repeater {
               model: [{ t: "Select", k: "select" }, { t: "Split | (click)", k: "splitv" }, { t: "Split ― (click)", k: "splith" }]
-              Rectangle { width: modelData.k === "select" ? 74 : 120; height: 36; radius: 9; color: ew.tool === modelData.k ? zr.accC : (tla.containsMouse ? zr.selC : "transparent"); border.color: zr.accC; border.width: 1
+              Rectangle { width: modelData.k === "select" ? 74 : 120; height: 36; radius: 0; color: ew.tool === modelData.k ? zr.accC : (tla.containsMouse ? zr.selC : "transparent"); border.color: zr.accC; border.width: 1
                 Text { anchors.centerIn: parent; text: modelData.t; color: ew.tool === modelData.k ? zr.bgC : zr.txtC; font.pixelSize: 13; font.bold: ew.tool === modelData.k }
                 MouseArea { id: tla; anchors.fill: parent; hoverEnabled: true; onClicked: ew.tool = modelData.k } }
             }
-            Rectangle { width: 80; height: 36; radius: 9; opacity: ew.selected.length > 1 ? 1 : 0.4; color: mga.containsMouse ? zr.selC : "transparent"; border.color: zr.accC; border.width: 1
+            Rectangle { width: 70; height: 36; radius: 0; color: ew.gridOpen ? zr.accC : (gra.containsMouse ? zr.selC : "transparent"); border.color: zr.accC; border.width: 1
+              Text { anchors.centerIn: parent; text: "Grid…"; color: ew.gridOpen ? zr.bgC : zr.txtC; font.pixelSize: 13; font.bold: ew.gridOpen }
+              MouseArea { id: gra; anchors.fill: parent; hoverEnabled: true; onClicked: ew.gridOpen = !ew.gridOpen } }
+            Rectangle { width: 80; height: 36; radius: 0; opacity: ew.selected.length > 1 ? 1 : 0.4; color: mga.containsMouse ? zr.selC : "transparent"; border.color: zr.accC; border.width: 1
               Text { anchors.centerIn: parent; text: "Merge"; color: zr.txtC; font.pixelSize: 13 }
               MouseArea { id: mga; anchors.fill: parent; hoverEnabled: true; onClicked: ew.mergeSel() } }
-            Rectangle { width: 80; height: 36; radius: 9; opacity: ew.selected.length > 0 && ew.selected.length < ew.zones.length ? 1 : 0.4; color: dla.containsMouse ? "#5a2a24" : "transparent"; border.color: "#E0705A"; border.width: 1
+            Rectangle { width: 80; height: 36; radius: 0; opacity: ew.selected.length > 0 && ew.selected.length < ew.zones.length ? 1 : 0.4; color: dla.containsMouse ? "#5a2a24" : "transparent"; border.color: "#E0705A"; border.width: 1
               Text { anchors.centerIn: parent; text: "Delete"; color: "#E0705A"; font.pixelSize: 13 }
               MouseArea { id: dla; anchors.fill: parent; hoverEnabled: true; onClicked: ew.delSel() } }
-            Rectangle { width: 80; height: 36; radius: 9; color: sva.containsMouse ? zr.txtC : zr.accC
+            Rectangle { width: 80; height: 36; radius: 0; color: sva.containsMouse ? zr.txtC : zr.accC
               Text { anchors.centerIn: parent; text: "Save"; color: zr.bgC; font.pixelSize: 14; font.bold: true }
               MouseArea { id: sva; anchors.fill: parent; hoverEnabled: true; onClicked: ew.saveAndExit() } }
-            Rectangle { width: 80; height: 36; radius: 9; color: cca.containsMouse ? zr.selC : "transparent"; border.color: zr.accC; border.width: 1
+            Rectangle { width: 80; height: 36; radius: 0; color: cca.containsMouse ? zr.selC : "transparent"; border.color: zr.accC; border.width: 1
               Text { anchors.centerIn: parent; text: "Cancel"; color: zr.txtC; font.pixelSize: 13 }
               MouseArea { id: cca; anchors.fill: parent; hoverEnabled: true; onClicked: ew.cancelExit() } }
           }
         }
+        // Grid maker: any columns x rows (up to 12 x 10), so you can lay out 20 small windows in one go
+        Rectangle {
+          visible: ew.gridOpen
+          anchors.horizontalCenter: parent.horizontalCenter; y: 112; width: 640; height: 150; radius: 0; color: zr.bgC; border.color: zr.accC; border.width: 2
+          Text { x: 20; y: 14; text: "Make a grid of windows"; color: zr.txtC; font.pixelSize: 15; font.bold: true }
+          Text { x: 330; y: 15; text: ew.gcols * ew.grows + " windows"; color: zr.accC; font.pixelSize: 15; font.bold: true }
+          Repeater {
+            model: [{ t: "Columns", k: 0 }, { t: "Rows", k: 1 }]
+            Row {
+              required property var modelData
+              x: 20 + modelData.k * 300; y: 52; spacing: 8
+              Text { anchors.verticalCenter: parent.verticalCenter; width: 78; text: modelData.t; color: zr.txtC; font.pixelSize: 14 }
+              Rectangle { width: 34; height: 34; color: mna.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
+                Text { anchors.centerIn: parent; text: "−"; color: mna.containsMouse ? zr.bgC : zr.txtC; font.pixelSize: 20; font.bold: true }
+                MouseArea { id: mna; anchors.fill: parent; hoverEnabled: true; onClicked: { if (modelData.k === 0) ew.gcols = Math.max(1, ew.gcols - 1); else ew.grows = Math.max(1, ew.grows - 1) } } }
+              Text { anchors.verticalCenter: parent.verticalCenter; width: 34; horizontalAlignment: Text.AlignHCenter; text: modelData.k === 0 ? ew.gcols : ew.grows; color: zr.txtC; font.pixelSize: 20; font.bold: true }
+              Rectangle { width: 34; height: 34; color: pla.containsMouse ? zr.accC : zr.selC; border.color: zr.accC; border.width: 1
+                Text { anchors.centerIn: parent; text: "+"; color: pla.containsMouse ? zr.bgC : zr.txtC; font.pixelSize: 20; font.bold: true }
+                MouseArea { id: pla; anchors.fill: parent; hoverEnabled: true; onClicked: { if (modelData.k === 0) ew.gcols = Math.min(12, ew.gcols + 1); else ew.grows = Math.min(10, ew.grows + 1) } } }
+            }
+          }
+          Row {
+            x: 20; y: 100; spacing: 8
+            Repeater {
+              model: [[2, 2], [3, 3], [4, 3], [5, 4], [6, 4], [5, 5]]
+              Rectangle { required property var modelData
+                width: 76; height: 34; color: prs.containsMouse ? zr.selC : "transparent"; border.color: zr.accC; border.width: 1
+                Text { anchors.centerIn: parent; text: modelData[0] + "×" + modelData[1] + (modelData[0] * modelData[1] === 20 ? " (20)" : ""); color: zr.txtC; font.pixelSize: 13 }
+                MouseArea { id: prs; anchors.fill: parent; hoverEnabled: true; onClicked: { ew.gcols = modelData[0]; ew.grows = modelData[1] } } }
+            }
+            Rectangle { width: 120; height: 34; color: mkg.containsMouse ? zr.txtC : zr.accC
+              Text { anchors.centerIn: parent; text: "Make grid"; color: zr.bgC; font.pixelSize: 14; font.bold: true }
+              MouseArea { id: mkg; anchors.fill: parent; hoverEnabled: true; onClicked: ew.makeGrid(ew.gcols, ew.grows) } }
+          }
+        }
         Text { anchors.horizontalCenter: parent.horizontalCenter; y: 78; color: zr.txtC; opacity: 0.8; font.pixelSize: 14
-          text: ew.tool === "select" ? "Click a zone to select it (Shift-click to add more)  ·  drag a divider to resize  ·  Split tools cut a zone where you click" : "Click inside a zone to cut it here  ·  switch back to Select when you are done" }
+          text: ew.tool === "select" ? "Click a zone to select it (Shift-click to add more)  ·  drag ANY edge to move it in or out  ·  Split tools cut a zone where you click" : "Click inside a zone to cut it here  ·  switch back to Select when you are done" }
       }
     }
   }

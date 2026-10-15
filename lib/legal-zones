@@ -1,19 +1,41 @@
 #!/bin/bash
+# (flyout: top-edge menu = share/legalzonesbar, started by "legal-zones start", switch in Legal Zones settings)
 # legal-zones [manage|edit NAME|pick|snap N|dir left|right|up|down|cycle|apply|release|start]
-#   manage   open Desk Zones (layouts, editor, settings)        pick   choose a zone for the window you are using
+#   manage   open Legal Zones (layouts, editor, settings)        pick   choose a zone for the window you are using
 #   edit     open the layout editor                              start  start the auto-snap helper (when switched on)
 # Everything else goes straight to legal-zones-core.
 D="$(dirname "$(readlink -f "$0")")"
 Q="$HOME/.config/legalzones"; [ -d "$Q" ] || Q="/usr/share/legal-desk/legalzones"
+G="$HOME/.config/legalzonesdrag"; [ -d "$G" ] || G="/usr/share/legal-desk/legalzonesdrag"
+B="$HOME/.config/legalzonesbar"; [ -d "$B" ] || B="/usr/share/legal-desk/legalzonesbar"
 area() { hyprctl -j monitors | python3 -c "
 import json,sys
 m=[x for x in json.load(sys.stdin) if x.get('focused')][0]; rl,rt,rr,rb=m['reserved']
 print(int(m['x']+rl), int(m['y']+rt), int(m['width']/m['scale']-rl-rr), int(m['height']/m['scale']-rt-rb))"; }
-launch() { pkill -f '^quickshell.*legalzones' 2>/dev/null; sleep 0.15; ZONES_AREA="$(area)" ZONES_MODE="$1" PICK_ADDR="$2" ZONES_NAME="$3" exec setsid quickshell -n -p "$Q" >/dev/null 2>&1 </dev/null; }
+launch() { pkill -f '^quickshell.*legalzones$' 2>/dev/null; sleep 0.15; ZONES_AREA="$(area)" ZONES_MODE="$1" PICK_ADDR="$2" ZONES_NAME="$3" exec setsid quickshell -n -p "$Q" >/dev/null 2>&1 </dev/null; }
 case "${1:-manage}" in
   manage) launch manage ;;
   edit) launch edit "" "$2" ;;
   pick) a=$(hyprctl -j activewindow | python3 -c "import json,sys;print(json.load(sys.stdin).get('address',''))" 2>/dev/null); launch pick "$a" ;;
-  start) pgrep -f '^(/usr/bin/)?python3 .*legal-zones-core watch' >/dev/null || setsid "$D/legal-zones-core" watch >/dev/null 2>&1 </dev/null & ;;
+  flyout) pkill -f '^quickshell.*legalzonesbar$' 2>/dev/null; sleep 0.15; exec setsid quickshell -n -p "$B" >/dev/null 2>&1 </dev/null ;;
+  binds) cat <<'EOT'
+-- Legal Zones keys: paste into ~/.config/hypr/bindings.lua (or run: legal-desk zones binds >> ~/.config/hypr/bindings.lua)
+o.bind("SUPER + SHIFT + Z", "Zones: pick a zone for this window", "legal-desk zones pick")
+o.bind("SUPER + CTRL + Z", "Zones: open Legal Zones", "legal-desk zones manage")
+o.bind("mouse:272", "Zones: preview where a dragged window will snap (any drag)", "legal-desk zones dragstart", { non_consuming = true })
+o.bind("mouse:272", "Zones: snap the dragged window", "legal-desk zones dragend", { release = true, non_consuming = true })
+o.bind("SUPER + mouse:272", "Zones: preview where a dragged window will snap", "legal-desk zones dragstart", { non_consuming = true })
+o.bind("SUPER + mouse:272", "Zones: snap the dragged window", "legal-desk zones dragend", { release = true, non_consuming = true })
+o.bind("SUPER + ALT + LEFT", "Zones: window to the zone on the left", "legal-desk zones dir left")
+o.bind("SUPER + ALT + RIGHT", "Zones: window to the zone on the right", "legal-desk zones dir right")
+o.bind("SUPER + ALT + UP", "Zones: window to the zone above", "legal-desk zones dir up")
+o.bind("SUPER + ALT + DOWN", "Zones: window to the zone below", "legal-desk zones dir down")
+EOT
+  ;;
+  dragstart) pgrep -f 'legal-zones-core drag$' >/dev/null && exit 0   # already watching this drag
+             rm -f "$HOME/.cache/legal-zones-stop"; setsid "$D/legal-zones-core" drag >/dev/null 2>&1 </dev/null & ;;
+  start) pgrep -f '^quickshell.*legalzonesdrag$' >/dev/null || { setsid quickshell -n -p "$G" >/dev/null 2>&1 </dev/null & }
+         pgrep -f '^quickshell.*legalzonesbar$' >/dev/null || "$0" flyout >/dev/null 2>&1 </dev/null &
+         pgrep -f '^(/usr/bin/)?python3 .*legal-zones-core watch' >/dev/null || setsid "$D/legal-zones-core" watch >/dev/null 2>&1 </dev/null & ;;
   *) exec "$D/legal-zones-core" "$@" ;;
 esac

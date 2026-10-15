@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+"""legal-skins : read share/skins.json (the 10 Legal Desk skins).
+  legal-skins count | default | names | json
+  legal-skins vars N      shell variables for skin N (menu colours, bar style, drawer radius, classic dock CSS parts)"""
+import json, os, shlex, sys
+
+SH = "/usr/share/legal-desk"
+here = os.path.dirname(os.path.realpath(__file__))
+for p in (SH, os.path.join(here, "..", "share")):
+    if os.path.exists(os.path.join(p, "skins.json")):
+        SH = p
+        break
+data = json.load(open(os.path.join(SH, "skins.json")))
+skins = data["skins"]
+names = [s["name"] for s in skins]
+cmd = sys.argv[1] if len(sys.argv) > 1 else "count"
+if cmd == "count":
+    print(len(skins))
+elif cmd == "default":
+    print(names.index(data.get("default", names[0])))
+elif cmd == "names":
+    print("\n".join(names))
+elif cmd == "json":
+    print(json.dumps(data))
+elif cmd == "vars":
+    i = int(sys.argv[2]) % len(skins)
+    s = skins[i]
+    bg, acc, txt, sel = s["menu"]
+    c = s["classic"]
+    out = {"NAME": s["name"], "BG": bg, "ACC": acc, "TXT": txt, "SEL": sel, "BAR": s["bar"], "DR": s["dr"],
+           "C_BG": c["bg"], "C_R": c["r"], "C_BORDER": c["border"], "C_TEXT": c["text"], "C_HOVER": c["hover"],
+           "C_ACTIVE": c["active"], "C_BW": c["bw"], "C_WIN": c.get("win", ""), "C_HOV": c.get("hov", "")}
+    for k, v in out.items():
+        print("%s=%s" % (k, shlex.quote(str(v))))

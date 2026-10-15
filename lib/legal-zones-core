@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-# legal-zones-core : the engine of Legal Desk Zones (a FancyZones for Hyprland).
+# legal-zones-core : the engine of Legal Legal Zones (a FancyZones for Hyprland).
 #   legal-zones-core list                      layouts + active one (JSON)
+#   legal-zones-core new [NAME]                make a new layout of your own (starts as two columns) and print its name
+#   legal-zones-core grid COLSxROWS [NAME]     make a grid layout (5x4 = 20 small windows) and switch to it
 #   legal-zones-core use NAME                  switch layout
 #   legal-zones-core snap [ADDR] N             put a window (default: the active one) into zone N (0-based)
 #   legal-zones-core dir left|right|up|down    move the active window to the neighbouring zone
 #   legal-zones-core cycle [-1|1]              next / previous zone
 #   legal-zones-core apply                     put the open windows of this desktop into the zones (most recent first)
 #   legal-zones-core release [ADDR]            let a window go (back to normal tiling)
+#   legal-zones-core drag | dragend            (while dragging a window to an edge: preview + snap on release)
 #   legal-zones-core watch                     auto-place new windows into free zones (when "auto" is on in the settings)
 # Layouts: ~/.local/share/legal-desk/zones.json - zones are fractions of the screen area that is free of bar and dock.
 import sys, os, json, subprocess, socket, time
@@ -117,6 +120,15 @@ def main(a):
         else:
             w = active()
             if w: snap(w['address'], int(a[1]), d)
+    elif cmd == 'new':
+        base = a[1] if len(a) > 1 else 'My layout'; n, i = base, 2
+        while any(l['name'] == n for l in d['layouts']): n = f'{base} {i}'; i += 1
+        d['layouts'].append({'name': n, 'zones': [[0, 0, .5, 1], [.5, 0, .5, 1]]}); d['active'] = n; save(d); print(n)
+    elif cmd == 'grid':   # grid COLSxROWS [NAME]: make a layout of that many equal zones (20 small windows = 5x4)
+        c, r = [max(1, min(12, int(v))) for v in a[1].lower().split('x')]
+        base = a[2] if len(a) > 2 else f'Grid {c}x{r}'; n, i = base, 2
+        while any(l['name'] == n for l in d['layouts']): n = f'{base} {i}'; i += 1
+        d['layouts'].append({'name': n, 'zones': [[x / c, y / r, 1 / c, 1 / r] for y in range(r) for x in range(c)]}); d['active'] = n; save(d); print(n)
     elif cmd == 'cycle':
         w = active()
         if not w: return
@@ -146,6 +158,67 @@ def main(a):
         addr = a[1] if len(a) > 1 else (active() or {}).get('address')
         if addr: disp(f'hl.dsp.window.float({{ action = "disable", window = "address:{addr}" }})')
     elif cmd == 'watch': watch()
+    elif cmd == 'drag': drag()
+    elif cmd == 'dragend': open(STOP, 'w').close()
+
+DRAG = os.path.expanduser('~/.cache/legal-zones-drag.json')
+STOP = os.path.expanduser('~/.cache/legal-zones-stop')
+
+def hsock(cmd):
+    sig = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE', '')
+    path = f"{os.environ.get('XDG_RUNTIME_DIR', '/run/user/%d' % os.getuid())}/hypr/{sig}/.socket.sock"
+    s = socket.socket(socket.AF_UNIX); s.connect(path); s.sendall(cmd.encode()); buf = b''
+    while True:
+        b = s.recv(65536)
+        if not b: break
+        buf += b
+    s.close(); return json.loads(buf or 'null')
+
+def draw(show, rects=(), hi=-1):
+    json.dump({'show': show, 'rects': list(rects), 'hi': hi}, open(DRAG + '.tmp', 'w')); os.replace(DRAG + '.tmp', DRAG)
+
+def log(msg):
+    try: open(os.path.expanduser('~/.cache/legal-zones-drag.log'), 'a').write(time.strftime('%H:%M:%S ') + msg + '\n')
+    except OSError: pass
+
+def drag():
+    """Runs while a window is being dragged (Super + left button): near a screen edge, show the zones and the one under the pointer."""
+    d = load()
+    if d.get('drag') is False: return
+    time.sleep(0.15)
+    w = hsock('j/activewindow')
+    if not w or not w.get('address'): return
+    addr, at0, sz0 = w['address'], w['at'], w['size']
+    ms = hsock('j/monitors'); m = [x for x in ms if x.get('focused')][0]
+    mx, my, mw, mh = m['x'], m['y'], m['width'] / m['scale'], m['height'] / m['scale']
+    L = layout(d); rects = [rect(z, d['gap']) for z in L['zones']]
+    rel = [[r[0] - mx, r[1] - my, r[2] - r[0], r[3] - r[1]] for r in rects]
+    EDGE = 70; shown, hi, moved, t0 = False, -1, False, time.time(); lastsz, szchg = sz0, 0; lastmv, lastc = time.time(), None; why = 'release'
+    while time.time() - t0 < 180 and not os.path.exists(STOP):
+        c = hsock('j/cursorpos'); cx, cy = c['x'], c['y']
+        w = hsock('j/activewindow')
+        if w and w.get('address') == addr:
+            if w['size'] != lastsz: szchg += 1; lastsz = w['size']   # a window that keeps changing size is being resized, not moved (one change = tiled -> floating)
+            if szchg < 4 and abs(w['at'][0] - at0[0]) + abs(w['at'][1] - at0[1]) > 30: moved = True
+        if not moved and time.time() - t0 > 4: return   # just a click or a text selection
+        if lastc != (cx, cy) or (w and w.get('at') != at0 and False): lastmv = time.time()
+        lastc = (cx, cy)
+        if moved and time.time() - lastmv > 3: why = 'idle (no release seen)'; break   # safety net if the button release never reaches us
+        near = moved and (cx - mx < EDGE or cy - my < EDGE or mx + mw - cx < EDGE or my + mh - cy < EDGE)
+        best, bd = -1, 1e18
+        if near:
+            for i, r in enumerate(rects):
+                dd = 0 if (r[0] <= cx <= r[2] and r[1] <= cy <= r[3]) else ((cx - (r[0] + r[2]) / 2) ** 2 + (cy - (r[1] + r[3]) / 2) ** 2)
+                if dd < bd: best, bd = i, dd
+        if (near, best) != (shown, hi):
+            shown, hi = near, best; draw(near, rel, best)
+        time.sleep(0.03)
+    try: os.remove(STOP)
+    except OSError: pass
+    log(f'drag end: {why} moved={moved} shown={shown} zone={hi}')
+    if shown and moved and hi >= 0:
+        time.sleep(0.15); snap(addr, hi, d)
+    draw(False)
 
 def watch():
     sig = os.environ.get('HYPRLAND_INSTANCE_SIGNATURE', '')

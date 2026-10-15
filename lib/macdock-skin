@@ -1,44 +1,29 @@
 #!/bin/bash
-# macdock-skin next|prev|N|show|apply : choose the skin of the current dock style.
-#   classic: 13 themes (colours, Windows 95/98/11, Polybar, Tint2; written to the nwg-dock style.css)   mac: 19 plates/icon looks   rubik: 9 tile palettes
-# Each style remembers its own skin in ~/.cache/dock-skin-<style>.
-H="$HOME/.cache"; C="$HOME/.config/nwg-dock-hyprland/style.css"
+# macdock-skin next|prev|N|show|apply|palette : choose the skin (Legal Desk 2.0: the same 10 skins in Classic, Mac and Rubik).
+# The skins live in share/skins.json (read with legal-skins). The choice is remembered in ~/.cache/dock-skin-{classic,mac,rubik} (kept in step) and
+# written out as the menu colours (~/.cache/dock-menu-colors), the window title-bar style, the app drawer stylesheet and, on Classic, the nwg-dock CSS.
+H="$HOME/.cache"; C="$HOME/.config/nwg-dock-hyprland/style.css"; B="$(dirname "$(readlink -f "$0")")"
 style=classic
 if [ -e "$H/dock-mac" ]; then [ "$(cat "$H/dock-style" 2>/dev/null)" = rubik ] && style=rubik || style=mac; fi
-case $style in classic) N=15; D=13;; mac) N=21; D=19;; rubik) N=11; D=9;; esac   # D = Nebula, the standard skin
+N=$(python3 -I "$B/legal-skins" count); D=$(python3 -I "$B/legal-skins" default)
 F="$H/dock-skin-$style"
 get() { local v; v=$(cat "$1" 2>/dev/null); [[ $v =~ ^[0-9]+$ ]] && [ "$v" -lt "$2" ] && echo "$v" || echo "${3:-$D}"; }   # no choice yet = Nebula
+vars() { eval "$(python3 -I "$B/legal-skins" vars "$1")"; }
 
-# The "Omarchy" skin (last in every style) uses Omarchy's original colours for the menus.
-OMA="$HOME/.local/state/omarchy/current/theme/colors.toml"
-omac() { local v; v=$(sed -n "s/^$1[[:space:]]*=[[:space:]]*\"\(#[0-9a-fA-F]\{6\}\)\".*/\1/p" "$OMA" 2>/dev/null | head -1); echo "${v:-$2}"; }
-oma_row() { echo "#1a1b26|#7aa2f7|#c0caf5|#292e42"; }   # Omarchy's original colours (Tokyo Night, the theme it installs with)
-
-# Menu colours follow the skin: bg|border/accent|text|selected. Written to ~/.cache/dock-menu-colors for the dock menus.
-MAC=("#111c18|#C1C497|#C1C497|#2a3a30" "#1b1f2a|#cfd8ff|#ffffff|#333a52" "#0b1230|#7a8cff|#cfd6ff|#1c2a66" "#06080c|#39ff14|#b8ffa8|#123a0c" "#e4e5ea|#6b7080|#20232a|#c4c8d2" "#0f3d7a|#8fd0ff|#eaf6ff|#1f5fb0" "#4a0c2c|#ff9a3d|#ffe3c8|#7a1a48" "#0a0a0a|#ffffff|#eeeeee|#2a2a2a" "#f4f1e8|#8a8570|#2b2b2b|#dcd8c8" "#020a02|#33ff33|#33ff33|#0c3a0c" "#0e0700|#ffb000|#ffb000|#3a2600" "#0a3a80|#ffffff|#d6ecff|#1558b0" "#0b1020|#4cc9f0|#eaf0ff|#1c2a50" "#15181f|#d8d8d8|#f2f2f2|#2c313c" "#c0c0c0|#000080|#000000|#a0a0a0" "#d8d8d8|#000080|#000000|#b8b8b8" "#202020|#60cdff|#ffffff|#333333" "#1d2021|#fabd2f|#ebdbb2|#3c3836" "#202020|#aaaaaa|#ffffff|#444444" "#0B0818|#8B5CF6|#E6E1FA|#2A1B52" "OMA")
-RUBIK=("#0d0d0d|#ffd500|#f4f4f4|#2a2a2a" "#f4eef7|#b58acb|#3a2a45|#e0d0ea" "#000000|#ffffff|#eeeeee|#2a2a2a" "#06080c|#39ff14|#b8ffa8|#123a0c" "#3a0a2a|#ffd9b0|#ffe9d0|#6a1a4a" "#04202e|#0096c7|#caf0f8|#0a4a66" "#2b0a3d|#ff4d9d|#ffe0f0|#5a1a6a" "#0a1f0a|#52b788|#d8f3dc|#1b4332" "#0d0d0d|#ffd500|#f4f4f4|#2a2a2a" "#0B0818|#8B5CF6|#E6E1FA|#2A1B52" "OMA")
-MACN=(Emerald Glass Midnight Neon Aluminum Aqua Sunset Mono Paper Terminal Amber Blueprint Bubbles Pearls "Windows 95" "Windows 98" "Windows 11" Polybar Tint2 Nebula Omarchy)
-CLASSICN=(Emerald Midnight Glass Mono Neon Aluminum Sunset Paper "Windows 95" "Windows 98" "Windows 11" Polybar Tint2 Nebula Omarchy)
-CLASSIC=(0 2 1 7 3 4 5 6 8 9 10 11 12 19 20)   # classic skin -> the Mac palette of the same name
 write_palette() {
-  local i row; i=$(get "$F" $N)
-  case $style in mac) row=${MAC[$i]};; rubik) row=${RUBIK[$i]};; *) row=${MAC[${CLASSIC[$i]}]};; esac
-  [ "$row" = OMA ] && row=$(oma_row)
-  IFS='|' read -r b a t sel <<< "$row"
-  printf 'bg=%s\nacc=%s\ntxt=%s\nsel=%s\n' "$b" "$a" "$t" "$sel" > "$H/dock-menu-colors.tmp" && mv "$H/dock-menu-colors.tmp" "$H/dock-menu-colors"
-  # Window title-bar button style per skin (read by looknfeel.lua): apple | nebula | win95 | win | terminal | gnome
-  local nm bs=apple; case $style in mac) nm=${MACN[$i]};; rubik) nm="";; *) nm=${CLASSICN[$i]};; esac
-  case $nm in "Windows 95"|"Windows 98") bs=win95;; "Windows 11"|Tint2|Polybar) bs=win;; Terminal|Amber|Neon|Blueprint) bs=terminal;; Midnight|Omarchy|Glass) bs=gnome;; Nebula) bs=nebula;; esac
-  write_drawer "$b" "$a" "$t" "$sel" "$nm"
-  printf '%s\n' "$bs" > "$H/dock-bar-style"
+  local i; i=$(get "$F" $N)
+  vars "$i"
+  printf 'bg=%s\nacc=%s\ntxt=%s\nsel=%s\n' "$BG" "$ACC" "$TXT" "$SEL" > "$H/dock-menu-colors.tmp" && mv "$H/dock-menu-colors.tmp" "$H/dock-menu-colors"
+  write_drawer "$BG" "$ACC" "$TXT" "$SEL" "$NAME" "$DR"
+  printf '%s\n' "$BAR" > "$H/dock-bar-style"
   [ "$(cat "$H/dock-menu-colors" "$H/dock-bar-style" 2>/dev/null)" != "$(cat "$H/.bar-colors" 2>/dev/null)" ] && { cat "$H/dock-menu-colors" "$H/dock-bar-style" > "$H/.bar-colors"; ( hyprctl reload >/dev/null 2>&1 & ); }   # window title bars follow the skin
-  [ "$(cat "$H/dock-pointer" 2>/dev/null)" = 1 ] || [ "$(cat "$H/dock-pointer" 2>/dev/null)" = 2 ] && ( "$(dirname "$(readlink -f "$0")")/dock-pointer" apply >/dev/null 2>&1 & )   # keep the pointer matching the skin
+  [ "$(cat "$H/dock-pointer" 2>/dev/null)" = 1 ] || [ "$(cat "$H/dock-pointer" 2>/dev/null)" = 2 ] && ( "$B/dock-pointer" apply >/dev/null 2>&1 & )   # keep the pointer matching the skin
+  [ -x "$B/legal-icons" ] && ( "$B/legal-icons" refresh >/dev/null 2>&1 & )                                                                           # the icon sets are drawn in the skin's colours
 }
 
 # The app drawer ("All apps") wears the skin's colours too. nwg-drawer reads its stylesheet at start, so restart it when the colours change.
 write_drawer() {
-  local D="$HOME/.config/nwg-drawer" new rad=12 th
-  case $5 in "Windows 95"|"Windows 98"|Polybar|Tint2) rad=0;; "Windows 11") rad=6;; Bubbles|Pearls) rad=22;; Terminal|Amber|Blueprint) rad=2;; esac
+  local D="$HOME/.config/nwg-drawer" new rad=${6:-12} th
   # Icon theme: the Yaru colour closest to the skin's accent colour (dark variant on dark skins).
   th=$(python3 - "$1" "$2" <<'PY'
 import sys,colorsys
@@ -79,39 +64,22 @@ label { color: $3 }
   fi
 }
 
-# apply_classic : write the nwg-dock stylesheet for the chosen classic skin (keeps solid/transparent as it is).
+# apply_classic : write the nwg-dock stylesheet for the chosen skin (keeps solid/transparent as it is).
 apply_classic() {
-  local i; i=$(get "$H/dock-skin-classic" 15)
+  local i; i=$(get "$H/dock-skin-classic" $N)
+  vars "$i"
   mkdir -p "$(dirname "$C")"
   [ -e "$C" ] && [ ! -e "$C.orig" ] && cp "$C" "$C.orig"
   [ -e "$H/dock-transparent" ] || { [ -e "$C" ] && grep -q "background: transparent" "$C" && touch "$H/dock-transparent"; }
-  #        bg                 radius border-colour(s)         text      hover bg                  active-underline   border-width  extra-window-css  extra-hover-css
-  case $i in
-    0) t=("#111c18" 10 "transparent"            "#C1C497" "rgba(255,255,255,0.15)" "rgba(255,255,255,0.3)" 1 "" "");;
-    1) t=("#0a1030" 14 "rgba(122,106,255,0.5)"  "#aab4ff" "rgba(122,140,255,0.28)" "#5b7cff" 1 "" "");;
-    2) t=("rgba(255,255,255,0.18)" 16 "rgba(255,255,255,0.65)" "#ffffff" "rgba(255,255,255,0.3)" "#ffffff" 1 "" "");;
-    3) t=("#000000" 4  "#ffffff"               "#ffffff" "rgba(255,255,255,0.22)" "#ffffff" 1 "" "");;
-    4) t=("#06080c" 8  "#39ff14"               "#39ff14" "rgba(57,255,20,0.2)"    "#39ff14" 1 "" "");;
-    5) t=("#d8dadf" 8  "#ffffff"               "#2a2d33" "rgba(0,0,0,0.12)"       "#2a2d33" 1 "" "");;
-    6) t=("#a8124a" 16 "#ffd9b0"               "#fff1d6" "rgba(255,217,176,0.28)" "#ffd500" 1 "" "");;
-    7) t=("#f6f3ea" 12 "#c9c3b0"               "#2b2b2b" "rgba(0,0,0,0.08)"       "#2b2b2b" 1 "" "");;
-    8) t=("#c0c0c0" 0  "#ffffff #404040 #404040 #ffffff" "#000000" "#c0c0c0" "#000080" 2 "" "border: 1px solid; border-color: #ffffff #404040 #404040 #ffffff; border-radius: 0px;");;
-    9) t=("linear-gradient(to bottom, #dcdcdc, #bababa)" 0 "#ffffff #404040 #404040 #ffffff" "#000000" "rgba(0,0,0,0.0)" "#0a246a" 2 "" "border: 1px solid; border-color: #ffffff #404040 #404040 #ffffff; border-radius: 0px;");;
-    10) t=("rgba(32,32,32,0.92)" 10 "rgba(255,255,255,0.16)" "#ffffff" "rgba(255,255,255,0.12)" "#60cdff" 1 "" "border-radius: 6px;");;
-    11) t=("#1d2021" 0 "#fabd2f" "#ebdbb2" "rgba(250,189,47,0.2)" "#fabd2f" 1 "" "border-radius: 0px;");;
-    14) IFS='|' read -r ob oa ot os <<< "$(oma_row)"; t=("$ob" 10 "$oa" "$ot" "${os}" "$oa" 1 "" "border-radius: 6px;");;
-    12) t=("linear-gradient(to bottom, rgba(80,80,80,0.88), rgba(14,14,14,0.88))" 6 "rgba(255,255,255,0.4)" "#ffffff" "rgba(255,255,255,0.22)" "#ffffff" 1 "" "border-radius: 4px;");;
-    13) t=("linear-gradient(to bottom, rgba(42,20,102,0.92), rgba(7,5,15,0.92))" 14 "#8B5CF6" "#E6E1FA" "rgba(139,92,246,0.3)" "#B061FF" 1 "" "border-radius: 6px;");;
-  esac
-  local bg="${t[0]}"; [ -e "$H/dock-transparent" ] && bg="transparent"
+  local bg="$C_BG"; [ -e "$H/dock-transparent" ] && bg="transparent"
   cat > "$C" <<CSS
 window {
   background: $bg;
-	border-radius: ${t[1]}px;
+	border-radius: ${C_R}px;
 	border-style: solid;
-	border-width: ${t[6]}px;
-	border-color: ${t[2]};
-	${t[7]}
+	border-width: ${C_BW}px;
+	border-color: $C_BORDER;
+	$C_WIN
 }
 
 #box {
@@ -120,28 +88,28 @@ window {
 
 #active {
 	border-bottom: solid 1px;
-	border-color: ${t[5]}
+	border-color: $C_ACTIVE
 }
 
 button, image {
 	background: none;
 	border-style: none;
 	box-shadow: none;
-	color: ${t[3]}
+	color: $C_TEXT
 }
 
 button {
 	padding: 4px;
 	margin-left: 4px;
 	margin-right: 4px;
-	color: ${t[3]};
+	color: $C_TEXT;
   font-size: 12px
 }
 
 button:hover {
-	background-color: ${t[4]};
+	background-color: $C_HOVER;
 	border-radius: 4px;
-	${t[8]}
+	$C_HOV
 }
 
 button:focus {
@@ -160,8 +128,7 @@ case "$1" in
   palette) write_palette; exit 0 ;;
   *) write_palette; echo "$cur"; exit 0 ;;
 esac
-rm -f "$H/dock-icon-style"   # choosing a skin: the icons follow it again
-echo "$cur" > "$F"
+for s in classic mac rubik; do echo "$cur" > "$H/dock-skin-$s"; done   # one skin list: every style wears the same skin
 write_palette
 [ "$style" = classic ] && apply_classic
 exit 0

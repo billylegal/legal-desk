@@ -3,6 +3,8 @@
 # Legal Desk is the default dock: only an explicit "classic" choice keeps the stock nwg-dock.
 [ "$(cat "$HOME/.cache/dock-style" 2>/dev/null)" = classic ] || touch "$HOME/.cache/dock-mac"
 [ -e "$HOME/.cache/dock-mac" ] || exit 0
+B="$(dirname "$(readlink -f "$0")")"
+"$B/legal-icons" refresh >/dev/null 2>&1     # draw the chosen icon set in the skin's colours before the dock starts
 pkill -x nwg-dock-hyprla 2>/dev/null   # Legal Desk replaces the stock dock
 pgrep -f "quickshell -n -p /usr/share/legal-desk/macdock" >/dev/null && exit 0
 exec quickshell -n -p "/usr/share/legal-desk/macdock"

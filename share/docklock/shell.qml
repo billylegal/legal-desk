@@ -60,9 +60,9 @@ ShellRoot {
   property string skinTxt: "auto"
   property bool dragging: false
   readonly property real zoomEff: zoomRaw >= 1 ? zoomRaw : (sizePx >= 56 ? 2.3 : (sizePx <= 36 ? 2.8 : 2.5))
-  readonly property var skinNames: rubik ? ["Cube", "Pastel", "Mono", "Neon", "Sunset", "Ocean", "Candy", "Jungle", "Circles", "Nebula", "Nebula 2", "Omarchy"]
-    : (mac ? ["Emerald", "Glass", "Midnight", "Neon", "Aluminum", "Aqua", "Sunset", "Mono", "Paper", "Terminal", "Amber", "Blueprint", "Bubbles", "Pearls", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"]
-           : ["Emerald", "Midnight", "Glass", "Mono", "Neon", "Aluminum", "Sunset", "Paper", "Windows 95", "Windows 98", "Windows 11", "Polybar", "Tint2", "Nebula", "Omarchy"])
+  // The 10 skins (same in Classic, Mac and Rubik) come from skins.json.
+  FileView { id: skinsFile; path: "/usr/share/legal-desk/skins.json"; blockLoading: true; printErrors: false }
+  readonly property var skinNames: { try { return JSON.parse(skinsFile.text()).skins.map(function (x) { return x.name }) } catch (e) { return ["Nebula"] } }
   readonly property int skinIdx: { var n = parseInt(skinTxt); return (isNaN(n) || n < 0 || n >= skinNames.length) ? skinNames.indexOf("Nebula") : n }
   readonly property int menuH: 282
   function presetOn(k) { return Math.round(sizePx) === (k === "small" ? 34 : (k === "large" ? 58 : 46)) }
@@ -88,7 +88,7 @@ ShellRoot {
   Process { id: zoomW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-zoom\"", String(zoomRaw)] }
   Process { id: runner2; property var cmd: []; command: cmd }
   property int iconIdx: 0
-  readonly property var iconNames: ["Original", "Match skin", "Nebula", "Omarchy", "Emerald", "Sunset", "Ocean", "Neon", "Amber", "Rose", "Gold", "Mono", "Pearls", "Bubbles", "Blocks", "Cube"]
+  readonly property var iconNames: ["Tile", "Outline", "Glyph", "Duotone", "Glass", "Neon", "Flat", "Pixel", "Sticker", "Cube"]
   FileView {
     id: icoFile
     path: Quickshell.env("HOME") + "/.cache/dock-icon-style"
@@ -97,6 +97,17 @@ ShellRoot {
     onLoadFailed: ldr.iconIdx = 0
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: icoFile.reload() }
+  property int launchIdx: 0
+  readonly property var launchNames: ["Cube", "Desk tile", "Zones", "Desk", "3D Cube", "3D Layers", "3D Flip", "Hop", "Orbit", "Pulse", "Spark"]
+  FileView {
+    id: launchFile
+    path: Quickshell.env("HOME") + "/.cache/dock-launcher-icon"
+    printErrors: false
+    onLoaded: { var n = parseInt(text()); ldr.launchIdx = (isNaN(n) || n < 0 || n >= ldr.launchNames.length) ? 0 : n }
+    onLoadFailed: ldr.launchIdx = 0
+  }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: launchFile.reload() }
+  Process { id: launchProc; property string a: "next"; command: ["/usr/lib/legal-desk/dock-launcher-icon", a]; onExited: launchFile.reload() }
   Process { id: iconProc; property string a: "next"; command: ["/usr/lib/legal-desk/dock-icon-style", a]; onExited: icoFile.reload() }
   Process { id: resetProc; command: ["/usr/lib/legal-desk/dock-reset"]; onExited: icoFile.reload() }
   property int ptrIdx: 0
@@ -631,7 +642,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           Row {
             width: parent.width; height: 34; spacing: 4
             CycleButton {
-              width: (parent.width - 8) / 3
+              width: (parent.width - 12) / 4
               enabled: !locked; opacity: locked ? 0.35 : 1
               caption: "SKIN"
               label: skinNames[skinIdx]
@@ -639,17 +650,24 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             }
             CycleButton {
               enabled: wallTxt !== "" && wallTxt.indexOf("0/0") !== 0; opacity: enabled ? 1 : 0.35
-              width: (parent.width - 8) / 3
+              width: (parent.width - 12) / 4
               caption: "WALLPAPER"
               label: (wallTxt.split(" ")[0] || "...").replace("/", " / ")
               onStep: (d) => { menuT.restart(); wallProc.a = d > 0 ? "next" : "prev"; wallProc.running = false; wallProc.running = true }
             }
             CycleButton {
-              width: (parent.width - 8) / 3
+              width: (parent.width - 12) / 4
               enabled: !locked && mac; opacity: (locked || !mac) ? 0.35 : 1
               caption: "ICONS"
               label: iconNames[iconIdx]
               onStep: (d) => { menuT.restart(); iconProc.a = d > 0 ? "next" : "prev"; iconProc.running = false; iconProc.running = true }
+            }
+            CycleButton {
+              width: (parent.width - 12) / 4
+              enabled: !locked && mac; opacity: (locked || !mac) ? 0.35 : 1
+              caption: "LAUNCHER"
+              label: launchNames[launchIdx]
+              onStep: (d) => { menuT.restart(); launchProc.a = d > 0 ? "next" : "prev"; launchProc.running = false; launchProc.running = true }
             }
           }
           Row {
