@@ -234,6 +234,14 @@ ShellRoot {
     return cls === "__calendar__" ? "calendar" : cls === "__notes__" ? "notes" : cls === "__tasks__" ? "tasks" : cls === "__disks__" ? "disks" : cls === "__zones__" ? "zones"
          : cls === "__snap__" ? "camera" : cls === "__radio__" ? "radio" : cls === "__folder__" ? "folder-download" : cls === "__trash__" ? (trashFull ? "trash-full" : "trash") : ""
   }
+  // 1UP Radio: is it playing? (the dock icon's meters move while it plays and drop to nothing when it is off)
+  property bool radioOn: false
+  Process {
+    id: radioPoll
+    command: ["/usr/lib/legal-desk/legal-radio-info"]
+    stdout: StdioCollector { onStreamFinished: { try { var r = JSON.parse(text); root.radioOn = !!r.playing && !r.paused } catch (e) { } } }
+  }
+  Timer { interval: 1500; running: root.ownTokens.indexOf("__radio__") >= 0; repeat: true; triggeredOnStart: true; onTriggered: { if (!radioPoll.running) radioPoll.running = true } }
   property int artDay: -1
   Process { id: artProc; command: ["/usr/lib/legal-desk/legal-icons", "refresh"] }   // a new day: the Calendar icon shows the new date
   Connections { target: root; function onNowDChanged() { var d = root.nowD.getDate(); if (root.artDay >= 0 && d !== root.artDay) { artProc.running = false; artProc.running = true } root.artDay = d } }
@@ -931,7 +939,7 @@ print(json.dumps(out))
           }
           // Legal Desk's own icons (Calendar, Notes, Tasks, Disks, Zones, Screenshot, Downloads, Trash): the art of the chosen icon set, in the skin's colours.
           Image {
-            visible: cell.ownIcon && root.artName(cell.modelData.cls) !== "" && root.artDir !== ""
+            visible: cell.ownIcon && cell.modelData.cls !== "__radio__" && root.artName(cell.modelData.cls) !== "" && root.artDir !== ""
             anchors.centerIn: parent
             width: parent.width * root.ownK; height: width
             source: visible ? root.artDir + "/" + root.artName(cell.modelData.cls) + ".svg" : ""
@@ -939,6 +947,51 @@ print(json.dumps(out))
             fillMode: Image.PreserveAspectFit
             smooth: true; mipmap: true
             rotation: cell.twist
+          }
+          // 1UP Radio: the 1UP logo with live level meters. They dance while the radio plays and fall to nothing when it is off.
+          Item {
+            id: rad
+            visible: cell.modelData.cls === "__radio__"
+            anchors.centerIn: parent
+            width: parent.width * root.ownK; height: width
+            readonly property bool live: root.radioOn
+            Rectangle { anchors.fill: parent; radius: width * 0.2; color: "#0b0b10"; border.color: "#44ffffff"; border.width: 1 }
+            Row {
+              x: parent.width * 0.12; y: parent.height * 0.1; width: parent.width * 0.76; height: parent.height * 0.4
+              spacing: width * 0.035
+              Repeater {
+                model: 9
+                Item {
+                  id: meter
+                  required property int index
+                  width: (parent.width - 8 * parent.spacing) / 9; height: parent.height
+                  property real lvl: 0
+                  Behavior on lvl { NumberAnimation { duration: rad.live ? 170 : 420; easing.type: Easing.OutCubic } }
+                  Timer {
+                    interval: 130 + meter.index * 9; repeat: true; running: rad.live && rad.visible
+                    onTriggered: meter.lvl = 0.2 + Math.random() * 0.8 * (0.55 + 0.45 * Math.sin(meter.index * 0.7 + Date.now() / 900))
+                  }
+                  Connections { target: rad; function onLiveChanged() { if (!rad.live) meter.lvl = 0 } }
+                  Column {
+                    anchors.bottom: parent.bottom; width: parent.width; spacing: height > 0 ? 1 : 0
+                    Repeater {
+                      model: 8
+                      Rectangle {
+                        required property int index
+                        readonly property int seg: 7 - index            // 0 = bottom
+                        width: meter.width; height: Math.max(1, (meter.height - 7) / 8); radius: 1
+                        color: seg >= 6 ? "#ff4b4b" : (seg >= 4 ? "#ffd23f" : "#38e060")
+                        opacity: seg < Math.round(meter.lvl * 8) ? 1 : 0.13
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            Text { x: 0; width: parent.width; y: parent.height * 0.5; horizontalAlignment: Text.AlignHCenter; text: "1UP"; color: "white"
+              font.bold: true; font.pixelSize: parent.height * 0.27; font.letterSpacing: -parent.height * 0.01 }
+            Text { x: 0; width: parent.width; y: parent.height * 0.78; horizontalAlignment: Text.AlignHCenter; text: "RADIO"; color: "#f2f2f2"
+              font.bold: true; font.pixelSize: parent.height * 0.13; font.letterSpacing: parent.height * 0.025 }
           }
           // A View From Space (Radio Globe): the app's bullseye + speaker, drawn once (no animation, no CPU) in the skin's colours
           Canvas {
