@@ -40,10 +40,10 @@ ShellRoot {
     stdout: StdioCollector { onStreamFinished: { try { zr.data = JSON.parse(text); if (zr.selName === "" || !zr.byName(zr.selName)) zr.selName = zr.data.active } catch (e) { } } }
   }
   Component.onCompleted: loader.running = true
-  Process { id: writer; stdinEnabled: true; command: ["bash", "-c", "mkdir -p \"$(dirname \"$1\")\" && cat > \"$1.tmp\" && mv \"$1.tmp\" \"$1\"", "x", zr.home + "/.local/share/legal-desk/zones.json"] }
-  function persist(d) { zr.data = d; writer.running = false; writer.running = true; writer.write(JSON.stringify(d)); writer.stdinEnabled = false; writer.stdinEnabled = true }
-  Process { id: runner; property var cmd: []; command: cmd }
-  function run(a) { runner.cmd = a; runner.running = false; runner.running = true }
+  // Saving and launching are detached (execDetached) so they finish even when this window quits right after.
+  property string pendingJson: ""
+  function persist(d) { zr.data = d; zr.pendingJson = JSON.stringify(d); Quickshell.execDetached([zr.core, "setdata", zr.pendingJson]) }
+  function run(a) { Quickshell.execDetached(["bash", "-c", "[ -n \"$2\" ] && \"$1\" setdata \"$2\"; shift 2; exec \"$@\"", "x", zr.core, zr.pendingJson].concat(a)); zr.pendingJson = "" }
   function byName(n) { for (var i = 0; i < data.layouts.length; i++) if (data.layouts[i].name === n) return data.layouts[i]; return null }
   function copyLayout(l) { return { name: l.name, zones: l.zones.map(z => z.slice()) } }
   readonly property var templates: [

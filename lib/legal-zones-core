@@ -113,6 +113,9 @@ def main(a):
     cmd = a[0] if a else 'list'
     d = load()
     if cmd == 'list': print(json.dumps(d))
+    elif cmd == 'setdata':   # setdata JSON: replace the whole settings + layouts file (used by the editor)
+        nd = json.loads(a[1])
+        if nd.get('layouts'): save(nd)
     elif cmd == 'use':
         d['active'] = a[1]; save(d)
     elif cmd == 'snap':
@@ -184,10 +187,11 @@ def log(msg):
 def drag():
     """Runs while a window is being dragged (Super + left button): near a screen edge, show the zones and the one under the pointer."""
     d = load()
-    if d.get('drag') is False: return
+    if d.get('drag') is False: log('drag off'); return
     time.sleep(0.15)
     w = hsock('j/activewindow')
-    if not w or not w.get('address'): return
+    if not w or not w.get('address'): log('no active window'); return
+    log(f"drag start {w.get('class')} floating={w.get('floating')} at={w['at']}")
     addr, at0, sz0 = w['address'], w['at'], w['size']
     ms = hsock('j/monitors'); m = [x for x in ms if x.get('focused')][0]
     mx, my, mw, mh = m['x'], m['y'], m['width'] / m['scale'], m['height'] / m['scale']
@@ -200,7 +204,7 @@ def drag():
         if w and w.get('address') == addr:
             if w['size'] != lastsz: szchg += 1; lastsz = w['size']   # a window that keeps changing size is being resized, not moved (one change = tiled -> floating)
             if szchg < 4 and abs(w['at'][0] - at0[0]) + abs(w['at'][1] - at0[1]) > 30: moved = True
-        if not moved and time.time() - t0 > 4: return   # just a click or a text selection
+        if not moved and time.time() - t0 > 4: log('no move in 4s (click/selection)'); return   # just a click or a text selection
         if lastc != (cx, cy) or (w and w.get('at') != at0 and False): lastmv = time.time()
         lastc = (cx, cy)
         if moved and time.time() - lastmv > 3: why = 'idle (no release seen)'; break   # safety net if the button release never reaches us
