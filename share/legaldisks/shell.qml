@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-// Legal Dock Disks: every drive and partition with its size and usage; Mount / Unmount / Eject and Format (or Erase a whole drive).
+// Legal Desk Disks: every drive and partition with its size and usage; Mount / Unmount / Eject and Format (or Erase a whole drive).
 // Safety: the drive the system runs from can never be formatted or unmounted here, and a format needs the device name typed in.
 ShellRoot {
   id: dk
@@ -21,7 +21,7 @@ ShellRoot {
       if (c.sel) dk.selC = c.sel
     }
   }
-  readonly property string bin: "/usr/lib/legal-dock/"
+  readonly property string bin: "/usr/lib/legal-desk/"
   property var disks: []
   property var fstypes: ["ext4", "exFAT", "FAT32"]
   property string status: ""
@@ -167,7 +167,7 @@ ShellRoot {
       Rectangle {
         z: 8; anchors.right: parent.right; anchors.rightMargin: 24; y: parent.height - 11
         height: 22; width: credit.implicitWidth + 34; radius: 10; color: dk.bgC; border.color: dk.accC; border.width: 1
-        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-dock/5ive7.png" }
+        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-desk/5ive7.png" }
         Text { id: credit; x: 26; anchors.verticalCenter: parent.verticalCenter; text: "5ive7 Development Labs"; color: dk.txtC; opacity: 0.85; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 }
       }
     }

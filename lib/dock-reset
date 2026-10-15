@@ -5,7 +5,7 @@ rm -f "$H/dock-pointer-size" "$H/dock-icon-style"                               
 echo 19 > "$H/dock-skin-mac"; echo 9 > "$H/dock-skin-rubik"; echo 13 > "$H/dock-skin-classic"
 if command -v omarchy-theme-set >/dev/null; then              # desktop theme + its first wallpaper (Omarchy only)
   T="$HOME/.config/omarchy/themes/nebula"
-  [ -d "$T" ] || { [ -d /usr/share/legal-dock/themes/nebula ] && mkdir -p "$HOME/.config/omarchy/themes" && cp -r /usr/share/legal-dock/themes/nebula "$T"; }
+  [ -d "$T" ] || { [ -d /usr/share/legal-desk/themes/nebula ] && mkdir -p "$HOME/.config/omarchy/themes" && cp -r /usr/share/legal-desk/themes/nebula "$T"; }
   [ -d "$T" ] && omarchy-theme-set nebula >/dev/null 2>&1
 fi
 [ -x "$B/dock-pointer" ] && "$B/dock-pointer" 0 >/dev/null 2>&1   # pointer back to the original look

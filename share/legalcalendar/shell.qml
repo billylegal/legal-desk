@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-// Legal Dock Calendar: month view with today highlighted, click a day to see / add its events. Saved to ~/.local/share/legal-dock/calendar.json. Skin-coloured.
+// Legal Desk Calendar: month view with today highlighted, click a day to see / add its events. Saved to ~/.local/share/legal-desk/calendar.json. Skin-coloured.
 ShellRoot {
   id: cal
   property color bgC: "#0B0818"
@@ -20,7 +20,7 @@ ShellRoot {
       if (c.sel) cal.selC = c.sel
     }
   }
-  readonly property string file: Quickshell.env("HOME") + "/.local/share/legal-dock/calendar.json"
+  readonly property string file: Quickshell.env("HOME") + "/.local/share/legal-desk/calendar.json"
   property var events: []          // [{id, date: "YYYY-MM-DD", time: "HH:MM" or "", title}]
   FileView {
     path: cal.file; printErrors: false
@@ -173,7 +173,7 @@ ShellRoot {
       Rectangle {
         z: 8; anchors.right: parent.right; anchors.rightMargin: 24; y: parent.height - 11
         height: 22; width: credit.implicitWidth + 34; radius: 10; color: cal.bgC; border.color: cal.accC; border.width: 1
-        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-dock/5ive7.png" }
+        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-desk/5ive7.png" }
         Text { id: credit; x: 26; anchors.verticalCenter: parent.verticalCenter; text: "5ive7 Development Labs"; color: cal.txtC; opacity: 0.85; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 }
       }
     }

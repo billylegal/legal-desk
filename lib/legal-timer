@@ -1,5 +1,5 @@
 #!/bin/bash
-# legal-timer start SECONDS | pause | resume | reset : the Legal Dock timer. State in ~/.cache/legal-timer ("run END_EPOCH SECONDS", "pause REMAINING SECONDS", "done").
+# legal-timer start SECONDS | pause | resume | reset : the Legal Desk timer. State in ~/.cache/legal-timer ("run END_EPOCH SECONDS", "pause REMAINING SECONDS", "done").
 F="$HOME/.cache/legal-timer"; D="$(dirname "$(readlink -f "$0")")"
 now=$(date +%s)
 case "$1" in

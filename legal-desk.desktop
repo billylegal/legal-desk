@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=Legal Dock
-GenericName=Dock Settings
-Comment=Classic or Mac-style dock for Hyprland, with size, lock, hide and transparency controls
-Exec=legal-dock menu
-Icon=legal-dock
+Name=Legal Desk
+GenericName=Desktop Suite
+Comment=Dock, app launcher, calendar, notes, clock, task manager and disk management
+Exec=legal-desk menu
+Icon=legal-desk
 Terminal=false
 Categories=Settings;Utility;
 Keywords=dock;taskbar;panel;hyprland;omarchy;
@@ -12,24 +12,24 @@ Actions=classic;mac;small;medium;large;restart;
 
 [Desktop Action classic]
 Name=Classic style
-Exec=legal-dock classic
+Exec=legal-desk classic
 
 [Desktop Action mac]
 Name=Mac style
-Exec=legal-dock mac
+Exec=legal-desk mac
 
 [Desktop Action small]
 Name=Small
-Exec=legal-dock small
+Exec=legal-desk small
 
 [Desktop Action medium]
 Name=Medium
-Exec=legal-dock medium
+Exec=legal-desk medium
 
 [Desktop Action large]
 Name=Large
-Exec=legal-dock large
+Exec=legal-desk large
 
 [Desktop Action restart]
 Name=Restart dock
-Exec=legal-dock restart
+Exec=legal-desk restart

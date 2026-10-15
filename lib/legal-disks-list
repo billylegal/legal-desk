@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# legal-disks-list : drives and partitions as JSON for Legal Dock Disks. Marks the drives the system runs from ("system": true) - those can never be formatted here.
+# legal-disks-list : drives and partitions as JSON for Legal Desk Disks. Marks the drives the system runs from ("system": true) - those can never be formatted here.
 import json, subprocess, shutil
 cols = 'NAME,PATH,SIZE,TYPE,FSTYPE,LABEL,MOUNTPOINTS,RM,HOTPLUG,MODEL,PKNAME,FSUSED,RO,TRAN'
 d = json.loads(subprocess.run(['lsblk', '-J', '-b', '-o', cols], capture_output=True, text=True).stdout or '{}').get('blockdevices', [])

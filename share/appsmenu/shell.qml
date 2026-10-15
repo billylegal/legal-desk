@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-// Legal Dock "Apps": a tidy launcher window - categories on the left, search on top, an even grid of app icons on skin-coloured plates.
+// Legal Desk "Apps": a tidy launcher window - categories on the left, search on top, an even grid of app icons on skin-coloured plates.
 // Colours and plate shape follow the dock skin (~/.cache/dock-menu-colors, ~/.cache/drawer-shape). Esc, the ✕ or a click outside closes it.
 ShellRoot {
   id: ap
@@ -27,7 +27,7 @@ ShellRoot {
     onLoaded: { var v = parseInt(text().trim()); if (!isNaN(v)) ap.plateR = v }
   }
 
-  readonly property var cats: ["All", "Legal Dock", "Recent", "Accessories", "Games", "Graphics", "Internet", "Office", "Programming", "Sound & Video", "System", "Other"]
+  readonly property var cats: ["All", "Legal Desk", "Recent", "Accessories", "Games", "Graphics", "Internet", "Office", "Programming", "Sound & Video", "System", "Other"]
   // Apps kept in the dock (same list the docks use) and the last apps opened from here.
   property var dockList: []
   FileView {
@@ -71,14 +71,14 @@ ShellRoot {
     if (has("Utility") || has("Accessories")) return "Accessories"
     return "Other"
   }
-  // Legal Dock's own apps: Calendar and Notes are built in; Mail opens your Outlook in an app window.
+  // Legal Desk's own apps: Calendar and Notes are built in; Mail opens your Outlook in an app window.
   readonly property var own: [
-    { name: "Mail", glyph: "\u2709", own: true, cmd: ["/usr/lib/legal-dock/legal-mail"] },
-    { name: "Calendar", glyph: "\u25A6", own: true, token: "__calendar__", cmd: ["/usr/lib/legal-dock/legal-calendar"] },
-    { name: "Disk Management", glyph: "\u26C1", own: true, token: "__disks__", cmd: ["/usr/lib/legal-dock/legal-disks"] },
-    { name: "Clock", glyph: "\u25F7", own: true, cmd: ["/usr/lib/legal-dock/legal-clock"] },
-    { name: "Task Manager", glyph: "\u25A4", own: true, token: "__tasks__", cmd: ["/usr/lib/legal-dock/legal-tasks"] },
-    { name: "Notes", glyph: "\u270E", own: true, token: "__notes__", cmd: ["/usr/lib/legal-dock/legal-notes"] }
+    { name: "Mail", glyph: "\u2709", own: true, cmd: ["/usr/lib/legal-desk/legal-mail"] },
+    { name: "Calendar", glyph: "\u25A6", own: true, token: "__calendar__", cmd: ["/usr/lib/legal-desk/legal-calendar"] },
+    { name: "Disk Management", glyph: "\u26C1", own: true, token: "__disks__", cmd: ["/usr/lib/legal-desk/legal-disks"] },
+    { name: "Clock", glyph: "\u25F7", own: true, cmd: ["/usr/lib/legal-desk/legal-clock"] },
+    { name: "Task Manager", glyph: "\u25A4", own: true, token: "__tasks__", cmd: ["/usr/lib/legal-desk/legal-tasks"] },
+    { name: "Notes", glyph: "\u270E", own: true, token: "__notes__", cmd: ["/usr/lib/legal-desk/legal-notes"] }
   ]
   readonly property var all: {
     var a = DesktopEntries.applications.values.filter(e => !e.noDisplay)
@@ -89,8 +89,8 @@ ShellRoot {
     var q = query.trim().toLowerCase()
     return all.filter(function (e) {
       if (!q && cat === "Recent") return recent.indexOf(e.name) >= 0
-      if (!q && e.own) return cat === "All" || cat === "Legal Dock"
-      if (!q && cat === "Legal Dock") return false
+      if (!q && e.own) return cat === "All" || cat === "Legal Desk"
+      if (!q && cat === "Legal Desk") return false
       if (q) return e.name.toLowerCase().indexOf(q) >= 0 || (e.genericName || "").toLowerCase().indexOf(q) >= 0 || (e.comment || "").toLowerCase().indexOf(q) >= 0
       return cat === "All" || groupOf(e) === cat
     })
@@ -104,7 +104,7 @@ ShellRoot {
   }
   Process { id: ownPin; property var cmd: []; command: cmd }
   Process { id: pinProc; property var cmd: []; command: cmd }
-  function togglePin(e) { var k = dockKey(e); if (!k) return; pinProc.cmd = ["/usr/lib/legal-dock/dock-pin-toggle", k]; pinProc.running = false; pinProc.running = true; ctxE = null }
+  function togglePin(e) { var k = dockKey(e); if (!k) return; pinProc.cmd = ["/usr/lib/legal-desk/dock-pin-toggle", k]; pinProc.running = false; pinProc.running = true; ctxE = null }
   function run(e) {
     noteRecent(e)
     if (e.own) { ownProc.cmd = ["setsid", "-f"].concat(e.cmd); ownProc.running = true; Qt.quit(); return }
@@ -229,7 +229,7 @@ ShellRoot {
         readonly property var items: {
           var e = ap.ctxE; if (!e) return []
           var a = [{ t: "Open", f: function () { ap.run(e) } }]
-          if (e.own && e.token) a.push({ t: ap.inDock(e) ? "Remove from Dock" : "Keep in Dock", f: function () { ownPin.cmd = ["/usr/lib/legal-dock/dock-own-toggle", e.token]; ownPin.running = false; ownPin.running = true; ap.ctxE = null }, sep: true })
+          if (e.own && e.token) a.push({ t: ap.inDock(e) ? "Remove from Dock" : "Keep in Dock", f: function () { ownPin.cmd = ["/usr/lib/legal-desk/dock-own-toggle", e.token]; ownPin.running = false; ownPin.running = true; ap.ctxE = null }, sep: true })
           if (!e.own) {
             (e.actions || []).forEach(function (act) { a.push({ t: act.name, f: function () { ap.noteRecent(e); act.execute(); Qt.quit() } }) })
             a.push({ t: ap.inDock(e) ? "Remove from Dock" : "Keep in Dock", f: function () { ap.togglePin(e) }, sep: true })
@@ -257,7 +257,7 @@ ShellRoot {
       Rectangle {
         z: 8; anchors.right: parent.right; anchors.rightMargin: 24; y: parent.height - 11
         height: 22; width: credit.implicitWidth + 34; radius: 10; color: ap.bgC; border.color: ap.accC; border.width: 1
-        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-dock/5ive7.png" }
+        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-desk/5ive7.png" }
         Text { id: credit; x: 26; anchors.verticalCenter: parent.verticalCenter; text: "5ive7 Development Labs"; color: ap.txtC; opacity: 0.85; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 }
       }
     }

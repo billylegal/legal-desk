@@ -69,7 +69,7 @@ ShellRoot {
   // The menu is placed once when it opens and then stays put, so resizing the dock with the sliders can't push it around.
   property real frozenLeft: 0
   property real frozenTop: 0
-  onMenuOpenChanged: if (menuOpen) { runner2.cmd = ["/usr/lib/legal-dock/dock-menu-close", "ctx"]; runner2.running = false; runner2.running = true; placeMenu(); wallProc.a = "name"; wallProc.running = false; wallProc.running = true }
+  onMenuOpenChanged: if (menuOpen) { runner2.cmd = ["/usr/lib/legal-desk/dock-menu-close", "ctx"]; runner2.running = false; runner2.running = true; placeMenu(); wallProc.a = "name"; wallProc.running = false; wallProc.running = true }
   function screenH(mon) { var sc = Quickshell.screens.find(s => s.name === mon); return sc ? sc.height : 1080 }
   function placeMenu() {
     if (!lastDock) return
@@ -97,8 +97,8 @@ ShellRoot {
     onLoadFailed: ldr.iconIdx = 0
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: icoFile.reload() }
-  Process { id: iconProc; property string a: "next"; command: ["/usr/lib/legal-dock/dock-icon-style", a]; onExited: icoFile.reload() }
-  Process { id: resetProc; command: ["/usr/lib/legal-dock/dock-reset"]; onExited: icoFile.reload() }
+  Process { id: iconProc; property string a: "next"; command: ["/usr/lib/legal-desk/dock-icon-style", a]; onExited: icoFile.reload() }
+  Process { id: resetProc; command: ["/usr/lib/legal-desk/dock-reset"]; onExited: icoFile.reload() }
   property int ptrIdx: 0
   property real ptrSize: 24
   readonly property var ptrNames: ["Original", "Solid", "Outlined"]
@@ -116,12 +116,12 @@ ShellRoot {
     onLoaded: { var n = parseInt(text()); if (!isNaN(n)) ldr.ptrSize = n }
   }
   Timer { id: ptrSzT; interval: 150; onTriggered: { ptrSzProc.running = false; ptrSzProc.running = true } }
-  Process { id: ptrSzProc; command: ["/usr/lib/legal-dock/dock-pointer", "size", String(Math.round(ldr.ptrSize))] }
-  Process { id: ptrProc; property string a: "next"; command: ["/usr/lib/legal-dock/dock-pointer", a]; onExited: ptrFile.reload() }
+  Process { id: ptrSzProc; command: ["/usr/lib/legal-desk/dock-pointer", "size", String(Math.round(ldr.ptrSize))] }
+  Process { id: ptrProc; property string a: "next"; command: ["/usr/lib/legal-desk/dock-pointer", a]; onExited: ptrFile.reload() }
   property string wallTxt: ""
-  Process { id: wallProc; property string a: "name"; command: ["/usr/lib/legal-dock/dock-wallpaper", a]
+  Process { id: wallProc; property string a: "name"; command: ["/usr/lib/legal-desk/dock-wallpaper", a]
     stdout: StdioCollector { onStreamFinished: wallTxt = text.trim() } }
-  Process { id: skinProc; property string a: "next"; command: ["/usr/lib/legal-dock/macdock-skin", a]; onExited: poll.running = true }
+  Process { id: skinProc; property string a: "next"; command: ["/usr/lib/legal-desk/macdock-skin", a]; onExited: poll.running = true }
   component CycleButton: Rectangle {
     id: cb
     property string label: ""
@@ -218,8 +218,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   }
   Timer { interval: 3000; running: true; repeat: true; triggeredOnStart: true; onTriggered: if (!poll.running) poll.running = true }
   Process { id: mover; property int a: 0; property int b: 0
-    command: ["/usr/lib/legal-dock/dock-move-pin", String(a), String(b)] }
-  Process { id: toggle; command: ["/usr/lib/legal-dock/dock-lock-toggle"]; onExited: poll.running = true }
+    command: ["/usr/lib/legal-desk/dock-move-pin", String(a), String(b)] }
+  Process { id: toggle; command: ["/usr/lib/legal-desk/dock-lock-toggle"]; onExited: poll.running = true }
 
   // ---- Clock beside the dock (menu: CLOCK / FORMAT): off, left or right of the dock, any style ----
   property string clockPos: "off"
@@ -241,7 +241,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
     onLoadFailed: ldr.clock24 = false
   }
   Process { id: snapProc; command: ["omarchy-capture-screenshot"] }
-  Process { id: ckProc; property var a: ["pos", "next"]; command: ["/usr/lib/legal-dock/dock-clock"].concat(a); onExited: { ckPosFile.reload(); ckFmtFile.reload() } }
+  Process { id: ckProc; property var a: ["pos", "next"]; command: ["/usr/lib/legal-desk/dock-clock"].concat(a); onExited: { ckPosFile.reload(); ckFmtFile.reload() } }
   Timer {
     interval: 1000; running: true; repeat: true; triggeredOnStart: true
     onTriggered: {
@@ -261,8 +261,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
     onLoaded: { var p = text().trim().split(/\s+/); ldr.tState = p[0] || ""; if (p[0] === "run") ldr.tEnd = parseInt(p[1]) * 1000; if (p[0] === "pause") ldr.tRemain = parseInt(p[1]) }
     onLoadFailed: ldr.tState = ""
   }
-  Process { id: openCal; command: ["/usr/lib/legal-dock/legal-calendar"] }
-  Process { id: openClk; property var env: []; command: ["bash", "-c", "CLOCK_TAB=$0 /usr/lib/legal-dock/legal-clock", String(ldr.tState === "run" || ldr.tState === "pause" || ldr.tState === "done" ? 1 : 0)] }
+  Process { id: openCal; command: ["/usr/lib/legal-desk/legal-calendar"] }
+  Process { id: openClk; property var env: []; command: ["bash", "-c", "CLOCK_TAB=$0 /usr/lib/legal-desk/legal-clock", String(ldr.tState === "run" || ldr.tState === "pause" || ldr.tState === "done" ? 1 : 0)] }
   property real nowMs: Date.now()
   Timer { interval: 1000; running: ldr.tState !== ""; repeat: true; onTriggered: { ldr.nowMs = Date.now(); tmFile.reload() } }
   Timer { interval: 4000; running: true; repeat: true; onTriggered: tmFile.reload() }
@@ -367,12 +367,12 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   Timer { id: mouseT; interval: 20000; onTriggered: mouseOpen = false }
   Process {
     id: mouseProc
-    command: ["/usr/lib/legal-dock/dock-mouse", "show"]
+    command: ["/usr/lib/legal-desk/dock-mouse", "show"]
     stdout: StdioCollector { onStreamFinished: { try { var r = JSON.parse(text); mSpeed = r.speed; mScroll = (r.scroll !== undefined ? r.scroll : 1); mNatural = r.natural; mLeft = r.left; mFlat = r.flat } catch (e) { } } }
   }
-  Process { id: mouseSet; property var a: []; command: ["/usr/lib/legal-dock/dock-mouse"].concat(a) }
+  Process { id: mouseSet; property var a: []; command: ["/usr/lib/legal-desk/dock-mouse"].concat(a) }
   function mset(args) { mouseT.restart(); mouseSet.running = false; mouseSet.a = args; mouseSet.running = true }
-  Process { id: mouseBoot; command: ["/usr/lib/legal-dock/dock-mouse", "apply"]; running: true }
+  Process { id: mouseBoot; command: ["/usr/lib/legal-desk/dock-mouse", "apply"]; running: true }
   Variants {
     model: lastDock && mouseOpen ? [lastDock.mon] : []
     PanelWindow {
@@ -468,15 +468,15 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   function endMove() { if (!moving) return; moving = false; if (wasLocked) toggle.running = true; if (mac) moveIpc("false") }
   function moveIpc(v) { mvProc.running = false; mvProc.v = v; mvProc.running = true }
   Process { id: mvProc; property string v: "true"; command: ["quickshell", "-p", Quickshell.env("HOME") + "/.config/macdock", "ipc", "call", "macdock", "moveMode", v] }
-  Process { id: hideToggle; command: ["/usr/lib/legal-dock/dock-hide-toggle"]; onExited: poll.running = true }
-  Process { id: sizer; property string which: "medium"; command: ["/usr/lib/legal-dock/dock-size-set", which]; onExited: poll.running = true }
-  Process { id: styler; property string which: "off"; command: ["/usr/lib/legal-dock/macdock-toggle", which]; onExited: poll.running = true }
-  Process { id: appsProc; command: ["/usr/lib/legal-dock/drawer-only"] }
-  Process { id: fullToggle; command: ["/usr/lib/legal-dock/dock-full-toggle"]; onExited: poll.running = true }
+  Process { id: hideToggle; command: ["/usr/lib/legal-desk/dock-hide-toggle"]; onExited: poll.running = true }
+  Process { id: sizer; property string which: "medium"; command: ["/usr/lib/legal-desk/dock-size-set", which]; onExited: poll.running = true }
+  Process { id: styler; property string which: "off"; command: ["/usr/lib/legal-desk/macdock-toggle", which]; onExited: poll.running = true }
+  Process { id: appsProc; command: ["/usr/lib/legal-desk/drawer-only"] }
+  Process { id: fullToggle; command: ["/usr/lib/legal-desk/dock-full-toggle"]; onExited: poll.running = true }
   // Restart / Shut down always ask first ("Do you really want to ...?"), popup centered on screen.
-  Process { id: rebootProc; command: ["/usr/lib/legal-dock/reboot-confirm", "reboot", "center"] }
-  Process { id: tasksProc; command: ["/usr/lib/legal-dock/legal-tasks"] }
-  Process { id: shutdownProc; command: ["/usr/lib/legal-dock/reboot-confirm", "shutdown", "center"] }
+  Process { id: rebootProc; command: ["/usr/lib/legal-desk/reboot-confirm", "reboot", "center"] }
+  Process { id: tasksProc; command: ["/usr/lib/legal-desk/legal-tasks"] }
+  Process { id: shutdownProc; command: ["/usr/lib/legal-desk/reboot-confirm", "shutdown", "center"] }
   property bool blocksOn: false
   FileView {
     id: blocksFile
@@ -488,8 +488,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
     onLoadFailed: ldr.blocksOn = false
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: blocksFile.reload() }
-  Process { id: lookProc; property string a: "solid"; command: ["/usr/lib/legal-dock/dock-look", a]; onExited: { poll.running = true; blocksFile.reload() } }
-  Process { id: transToggle; command: ["/usr/lib/legal-dock/dock-transparent-toggle"]; onExited: poll.running = true }
+  Process { id: lookProc; property string a: "solid"; command: ["/usr/lib/legal-desk/dock-look", a]; onExited: { poll.running = true; blocksFile.reload() } }
+  Process { id: transToggle; command: ["/usr/lib/legal-desk/dock-transparent-toggle"]; onExited: poll.running = true }
 
   // One gear button at the right end of the dock; opens a small menu above it.
   Variants {
@@ -681,7 +681,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           Row {
             width: parent.width; height: 12; spacing: 4
             readonly property real bw: (width - 16) / 5
-            Text { width: parent.bw; height: 12; text: "LEGAL DOCK"; color: accC; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.2; horizontalAlignment: Text.AlignLeft; verticalAlignment: Text.AlignVCenter; wrapMode: Text.NoWrap; clip: false }
+            Text { width: parent.bw; height: 12; text: "LEGAL DESK"; color: accC; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.2; horizontalAlignment: Text.AlignLeft; verticalAlignment: Text.AlignVCenter; wrapMode: Text.NoWrap; clip: false }
             Text { width: parent.bw; height: 12; text: "BAR"; color: txtC; opacity: 0.85; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.4; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             Text { width: parent.bw; height: 12; text: "LOCK BAR"; color: txtC; opacity: 0.85; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.4; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
             Text { width: parent.bw; height: 12; text: "REBOOT"; color: txtC; opacity: 0.85; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.4; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }

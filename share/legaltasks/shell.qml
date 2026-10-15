@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-// Legal Dock Task Manager: live CPU / memory, every running process (yours by default), sort, search, End task / Force quit. Skin-coloured.
+// Legal Desk Task Manager: live CPU / memory, every running process (yours by default), sort, search, End task / Force quit. Skin-coloured.
 ShellRoot {
   id: tm
   property color bgC: "#0B0818"
@@ -29,7 +29,7 @@ ShellRoot {
 
   Process {
     id: sampler
-    command: ["/usr/lib/legal-dock/legal-tasks-sample"]
+    command: ["/usr/lib/legal-desk/legal-tasks-sample"]
     stdout: StdioCollector { onStreamFinished: { try { tm.data = JSON.parse(text) } catch (e) { } } }
   }
   Timer { interval: 2200; running: true; repeat: true; triggeredOnStart: true; onTriggered: if (!sampler.running) sampler.running = true }
@@ -140,7 +140,7 @@ ShellRoot {
       Rectangle {
         z: 8; anchors.right: parent.right; anchors.rightMargin: 24; y: parent.height - 11
         height: 22; width: credit.implicitWidth + 34; radius: 10; color: tm.bgC; border.color: tm.accC; border.width: 1
-        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-dock/5ive7.png" }
+        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-desk/5ive7.png" }
         Text { id: credit; x: 26; anchors.verticalCenter: parent.verticalCenter; text: "5ive7 Development Labs"; color: tm.txtC; opacity: 0.85; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 }
       }
     }

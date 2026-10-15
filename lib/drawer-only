@@ -2,5 +2,5 @@
 # Dock "Apps" buttons: first press opens the Apps window, the next closes it. Esc, the ✕ or a click outside also close it.
 # The window is ~/.config/appsmenu (skin-coloured frame; third-party app icons stay original).
 if pgrep -f '^quickshell.*appsmenu' >/dev/null; then pkill -f '^quickshell.*appsmenu'; exit 0; fi
-# Apps keep their normal icons; only Legal Dock's own apps (Mail, Calendar, Notes) wear the skin.
-exec setsid quickshell -n -p "/usr/share/legal-dock/appsmenu" >/dev/null 2>&1
+# Apps keep their normal icons; only Legal Desk's own apps (Mail, Calendar, Notes) wear the skin.
+exec setsid quickshell -n -p "/usr/share/legal-desk/appsmenu" >/dev/null 2>&1

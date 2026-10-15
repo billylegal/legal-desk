@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-// Legal Dock Notes: a small notes window (list on the left, editor on the right), saved to ~/.local/share/legal-dock/notes.json. Skin-coloured.
+// Legal Desk Notes: a small notes window (list on the left, editor on the right), saved to ~/.local/share/legal-desk/notes.json. Skin-coloured.
 ShellRoot {
   id: nt
   property color bgC: "#0B0818"
@@ -20,7 +20,7 @@ ShellRoot {
       if (c.sel) nt.selC = c.sel
     }
   }
-  readonly property string file: Quickshell.env("HOME") + "/.local/share/legal-dock/notes.json"
+  readonly property string file: Quickshell.env("HOME") + "/.local/share/legal-desk/notes.json"
   property var notes: []      // [{id, text, t}]
   property int cur: 0
   property bool ready: false
@@ -100,7 +100,7 @@ ShellRoot {
       Rectangle {
         z: 8; anchors.right: parent.right; anchors.rightMargin: 24; y: parent.height - 11
         height: 22; width: credit.implicitWidth + 34; radius: 10; color: nt.bgC; border.color: nt.accC; border.width: 1
-        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-dock/5ive7.png" }
+        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-desk/5ive7.png" }
         Text { id: credit; x: 26; anchors.verticalCenter: parent.verticalCenter; text: "5ive7 Development Labs"; color: nt.txtC; opacity: 0.85; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 }
       }
     }

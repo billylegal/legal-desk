@@ -14,4 +14,4 @@ a=[x for x in m if x.get('focused')] or m
 x=a[0]; print(int(x['width']/x['scale']+x['x']), int(x['height']/x['scale']+x['y']))")
 [ -n "$DP_ADDR" ] || exit 0
 export DP_ADDR DP_WS DP_X DP_Y DP_W DP_H
-exec setsid quickshell -n -p "/usr/share/legal-dock/deskpick" >/dev/null 2>&1
+exec setsid quickshell -n -p "/usr/share/legal-desk/deskpick" >/dev/null 2>&1

@@ -1,6 +1,6 @@
 #!/bin/bash
 # dock-wallpaper next|prev|name : cycle through ALL wallpapers on this system (Omarchy's stock themes, your own themes,
-# per-theme user backgrounds, ~/Pictures/Wallpapers). Used by the Legal Dock menu. Only the wallpaper changes, not the theme.
+# per-theme user backgrounds, ~/Pictures/Wallpapers). Used by the Legal Desk menu. Only the wallpaper changes, not the theme.
 CUR="$HOME/.local/state/omarchy/current"
 command -v omarchy-theme-bg-set >/dev/null || { echo "0/0 none"; exit 0; }   # not on Omarchy: the dock hides the Wallpaper row
 # The Omarchy skin only offers wallpapers that match its colours: Omarchy's original theme (Tokyo Night).

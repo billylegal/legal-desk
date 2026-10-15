@@ -1,8 +1,8 @@
 #!/bin/bash
 # Called at login: start the magnifying dock unless the classic dock was chosen explicitly.
-# Legal Dock is the default dock: only an explicit "classic" choice keeps the stock nwg-dock.
+# Legal Desk is the default dock: only an explicit "classic" choice keeps the stock nwg-dock.
 [ "$(cat "$HOME/.cache/dock-style" 2>/dev/null)" = classic ] || touch "$HOME/.cache/dock-mac"
 [ -e "$HOME/.cache/dock-mac" ] || exit 0
-pkill -x nwg-dock-hyprla 2>/dev/null   # Legal Dock replaces the stock dock
-pgrep -f "quickshell -n -p /usr/share/legal-dock/macdock" >/dev/null && exit 0
-exec quickshell -n -p "/usr/share/legal-dock/macdock"
+pkill -x nwg-dock-hyprla 2>/dev/null   # Legal Desk replaces the stock dock
+pgrep -f "quickshell -n -p /usr/share/legal-desk/macdock" >/dev/null && exit 0
+exec quickshell -n -p "/usr/share/legal-desk/macdock"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# legal-tasks-sample : one live sample of the machine for the Legal Dock Task Manager (JSON on stdout).
+# legal-tasks-sample : one live sample of the machine for the Legal Desk Task Manager (JSON on stdout).
 import subprocess, json, re
 out = subprocess.run(['top', '-b', '-n', '2', '-d', '0.6', '-w', '512', '-o', '%CPU'], capture_output=True, text=True).stdout
 blocks = out.split('\ntop - ')

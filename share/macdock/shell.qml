@@ -100,7 +100,7 @@ ShellRoot {
   function isPinned(c) { return pinned.some(p => p.toLowerCase() === c.toLowerCase()) }
   // Dock order: apps, dividers (__sep__N), launcher/Downloads/trash. ~/.cache/macdock-layout remembers a custom order (drag in Move Icons); no file = the default order.
   property var layoutTokens: []
-  property var ownTokens: []          // Legal Dock's own apps kept in the dock (~/.cache/macdock-own): __calendar__, __notes__
+  property var ownTokens: []          // Legal Desk's own apps kept in the dock (~/.cache/macdock-own): __calendar__, __notes__
   FileView {
     path: Quickshell.env("HOME") + "/.cache/macdock-own"; watchChanges: true; printErrors: false
     onFileChanged: reload()
@@ -140,7 +140,7 @@ ShellRoot {
   function saveLayout(order) {
     layoutTokens = order
     pinned = order.filter(c => pinned.some(p => p.toLowerCase() === c.toLowerCase()))
-    sh(["/usr/lib/legal-dock/dock-layout-save"].concat(order))
+    sh(["/usr/lib/legal-desk/dock-layout-save"].concat(order))
   }
   function curOrder() { return items.map(i => i.cls).filter(c => !fixedCls(c) && (isSep(c) || c.indexOf("__") === 0 || isPinned(c))) }
   function addDivider() { var o = curOrder(), at = o.indexOf("__launcher__"); if (at < 0) at = o.length; o.splice(at, 0, "__sep__" + Date.now()); saveLayout(o) }
@@ -379,7 +379,7 @@ def favicon(c):
     if os.path.exists(os.path.join(d, host + '.none')): return None
     import urllib.request, urllib.parse
     def get(u):
-        rq = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) LegalDock'})
+        rq = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) LegalDesk'})
         with urllib.request.urlopen(rq, timeout=5) as r: return r.read(), r.geturl()
     cands = []
     try:
@@ -427,14 +427,14 @@ print(json.dumps(out))
   function activate(cls) {
     if (cls === "__trash__") { launch(["gio", "open", "trash:///"]); return }
     if (cls === "__folder__") { launch(["xdg-open", Quickshell.env("HOME") + "/Downloads"]); return }
-    if (cls === "__launcher__") { sh(["/usr/lib/legal-dock/drawer-toggle"]); return }
-    if (cls === "__calendar__") { sh(["/usr/lib/legal-dock/legal-calendar"]); return }
-    if (cls === "__notes__") { sh(["/usr/lib/legal-dock/legal-notes"]); return }
-    if (cls === "__disks__") { sh(["/usr/lib/legal-dock/legal-disks"]); return }
+    if (cls === "__launcher__") { sh(["/usr/lib/legal-desk/drawer-toggle"]); return }
+    if (cls === "__calendar__") { sh(["/usr/lib/legal-desk/legal-calendar"]); return }
+    if (cls === "__notes__") { sh(["/usr/lib/legal-desk/legal-notes"]); return }
+    if (cls === "__disks__") { sh(["/usr/lib/legal-desk/legal-disks"]); return }
     if (cls === "__snap__") { sh(["omarchy-capture-screenshot"]); return }
-    if (cls === "__tasks__") { sh(["/usr/lib/legal-dock/legal-tasks"]); return }
-    if (cls === "reboot") { sh(["/usr/lib/legal-dock/reboot-confirm"]); return }
-    if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-dock/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
+    if (cls === "__tasks__") { sh(["/usr/lib/legal-desk/legal-tasks"]); return }
+    if (cls === "reboot") { sh(["/usr/lib/legal-desk/reboot-confirm"]); return }
+    if (running[cls.toLowerCase()]) { sh(["bash", "-c", "/usr/lib/legal-desk/win-minimize restore-class \"$1\"; a=$(hyprctl clients -j | python3 -c \"import json,sys;c=sys.argv[1].lower();print(next((w['address'] for w in json.load(sys.stdin) if w['class'].lower()==c),''))\" \"$1\"); [ -n \"$a\" ] && hyprctl dispatch \"hl.dsp.focus({window='address:$a'})\"", "x", cls]); return }
     markLaunch(cls)
     var r = appmap[cls]
     if (r) launch(["gtk-launch", r.id + ".desktop"])
@@ -469,7 +469,7 @@ print(json.dumps(out))
     var k = ps.join("|")
     if (k === iconKey) return
     iconKey = k
-    measurer.cmd = ["/usr/lib/legal-dock/dock-icon-scale"].concat(ps)
+    measurer.cmd = ["/usr/lib/legal-desk/dock-icon-scale"].concat(ps)
     measurer.running = false; measurer.running = true
   }
   Process {
@@ -619,7 +619,7 @@ print(json.dumps(out))
       Text { anchors.centerIn: parent; text: "Drag To Move  ·  Done \u2713"; color: "#C1C497"; font.pixelSize: 12 }
       MouseArea {
         id: dma; anchors.fill: parent; hoverEnabled: true
-        onClicked: { root.moveMode = false; root.sh(["/usr/lib/legal-dock/dock-move-done"]) }
+        onClicked: { root.moveMode = false; root.sh(["/usr/lib/legal-desk/dock-move-done"]) }
       }
     }
     Rectangle {
@@ -971,7 +971,7 @@ print(json.dumps(out))
                 var over = ti >= 0 && fc !== "__trash__" && root.dragX > tx - tw * 0.2 && root.dragX < tx + tw * 1.2
                 root.dragIdx = -1
                 if (over && root.isSep(fc)) { root.removeAt(f); return }
-                if (over && root.isPinned(fc)) { root.sh(["/usr/lib/legal-dock/dock-pin-toggle", fc]); return }
+                if (over && root.isPinned(fc)) { root.sh(["/usr/lib/legal-desk/dock-pin-toggle", fc]); return }
                 root.moveTo(f, t)
                 root.mag = (hover.hovered && !root.moveMode) ? 1 : 0
                 root.pointer(hover.point.position.x)
@@ -982,7 +982,7 @@ print(json.dumps(out))
               if (cell.isSep) { if (root.moveMode && !root.fixedCls(cell.modelData.cls)) root.removeAt(cell.index); return }
               if (cell.modelData.cls === "__launcher__") { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate("__launcher__"); return }
               if (m.button === Qt.LeftButton) { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.closeMain(); root.activate(cell.modelData.cls) }
-              else if (m.button === Qt.MiddleButton) { root.sh(["/usr/lib/legal-dock/dock-pin-toggle", cell.modelData.cls]) }
+              else if (m.button === Qt.MiddleButton) { root.sh(["/usr/lib/legal-desk/dock-pin-toggle", cell.modelData.cls]) }
               else { root.ctxX = cell.mapToItem(null, cell.width / 2, 0).x; root.ctx = cell.modelData.cls }
             }
           }
@@ -996,7 +996,7 @@ print(json.dumps(out))
   IpcHandler { target: "macdock"; function closeMenu(): void { root.ctx = "" } function menu(cls: string): void { root.ctxX = 800; root.ctx = cls } function moveMode(on: bool): void { root.moveMode = on; root.ctx = ""; root.mag = 0 } }
   property string ctx: ""
   // Opening a right-click menu, or clicking any icon, closes the grid-button menu if it is open.
-  function closeMain() { sh(["/usr/lib/legal-dock/dock-menu-close", "main"]) }
+  function closeMain() { sh(["/usr/lib/legal-desk/dock-menu-close", "main"]) }
   property real ctxX: 0
   property var ctxWins: []
   onCtxChanged: { ctxWins = []; if (ctx !== "") { closeMain(); winsProc.cls = ctx; winsProc.running = false; winsProc.running = true } }
@@ -1064,13 +1064,13 @@ print(json.dumps(out))
                   var c = root.ctx, act = modelData.a, addr = modelData.addr
                   if (act === "hdr") return
                   if (act === "open") root.activate(c)
-                  else if (act === "tasks") root.sh(["/usr/lib/legal-dock/legal-tasks"])
-                  else if (act === "unown") root.sh(["/usr/lib/legal-dock/dock-own-toggle", c])
+                  else if (act === "tasks") root.sh(["/usr/lib/legal-desk/legal-tasks"])
+                  else if (act === "unown") root.sh(["/usr/lib/legal-desk/dock-own-toggle", c])
                   else if (act === "empty") root.sh(["gio", "trash", "--empty"])
-                  else if (act === "pin") root.sh(["/usr/lib/legal-dock/dock-pin-toggle", c])
-                  else if (act === "close") root.sh(["/usr/lib/legal-dock/dock-close-app", c])
+                  else if (act === "pin") root.sh(["/usr/lib/legal-desk/dock-pin-toggle", c])
+                  else if (act === "close") root.sh(["/usr/lib/legal-desk/dock-close-app", c])
                   else if (act === "focus") root.sh(["hyprctl", "dispatch", "hl.dsp.focus({window='address:" + addr + "'})"])
-                  else if (act === "incog") root.launch(["/usr/lib/legal-dock/browser-incognito", c])
+                  else if (act === "incog") root.launch(["/usr/lib/legal-desk/browser-incognito", c])
                   else if (act === "new") { var r = root.appmap[c]; if (r) root.launch(["gtk-launch", r.id + ".desktop"]) }
                   root.ctx = ""
                 }

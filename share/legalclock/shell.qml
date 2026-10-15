@@ -3,7 +3,7 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 
-// Legal Dock Clock: World Clock (your cities, live) and Timer (keeps running when this window is closed; the clock in the corner shows what is left). Skin-coloured.
+// Legal Desk Clock: World Clock (your cities, live) and Timer (keeps running when this window is closed; the clock in the corner shows what is left). Skin-coloured.
 ShellRoot {
   id: ck
   property color bgC: "#0B0818"
@@ -38,11 +38,11 @@ ShellRoot {
   property var offs: ({})
   property bool picking: false
   FileView {
-    path: ck.home + "/.local/share/legal-dock/worldclock.json"; printErrors: false
+    path: ck.home + "/.local/share/legal-desk/worldclock.json"; printErrors: false
     onLoaded: { try { var a = JSON.parse(text()); if (a.length) ck.chosen = a } catch (e) { } offProc.running = true }
     onLoadFailed: offProc.running = true
   }
-  Process { id: wr; stdinEnabled: true; command: ["bash", "-c", "mkdir -p \"$(dirname \"$1\")\" && cat > \"$1\"", "x", ck.home + "/.local/share/legal-dock/worldclock.json"] }
+  Process { id: wr; stdinEnabled: true; command: ["bash", "-c", "mkdir -p \"$(dirname \"$1\")\" && cat > \"$1\"", "x", ck.home + "/.local/share/legal-desk/worldclock.json"] }
   function saveCities() { wr.running = false; wr.running = true; wr.write(JSON.stringify(ck.chosen)); wr.stdinEnabled = false; wr.stdinEnabled = true; offProc.running = false; offProc.running = true }
   Process {
     id: offProc
@@ -203,7 +203,7 @@ ShellRoot {
       Rectangle {
         z: 8; anchors.right: parent.right; anchors.rightMargin: 24; y: parent.height - 11
         height: 22; width: credit.implicitWidth + 34; radius: 10; color: ck.bgC; border.color: ck.accC; border.width: 1
-        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-dock/5ive7.png" }
+        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-desk/5ive7.png" }
         Text { id: credit; x: 26; anchors.verticalCenter: parent.verticalCenter; text: "5ive7 Development Labs"; color: ck.txtC; opacity: 0.85; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 }
       }
     }

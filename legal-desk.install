@@ -1,8 +1,8 @@
-# When Legal Dock is removed the classic nwg-dock comes back.
+# When Legal Desk is removed the classic nwg-dock comes back.
 post_remove() {
-  pkill -f 'quickshell -n -p /usr/share/legal-dock/' 2>/dev/null
-  pkill -f '/usr/lib/legal-dock/dock-keepalive' 2>/dev/null
-  pkill -f '/usr/lib/legal-dock/dock-lock-guard' 2>/dev/null
+  pkill -f 'quickshell -n -p /usr/share/legal-desk/' 2>/dev/null
+  pkill -f '/usr/lib/legal-desk/dock-keepalive' 2>/dev/null
+  pkill -f '/usr/lib/legal-desk/dock-lock-guard' 2>/dev/null
   pkill -x nwg-dock-hyprla 2>/dev/null
   # start the classic dock again inside every running Hyprland session
   for rt in /run/user/*; do
@@ -11,5 +11,5 @@ post_remove() {
     runuser -u "$user" -- env XDG_RUNTIME_DIR="$rt" HYPRLAND_INSTANCE_SIGNATURE="$sig" WAYLAND_DISPLAY=wayland-1 \
       setsid nwg-dock-hyprland -r -x -i 56 >/dev/null 2>&1 </dev/null &
   done
-  echo "Legal Dock removed - the classic dock was restarted. Autostart line 'legal-dock start || nwg-dock-hyprland' falls back to it at next login."
+  echo "Legal Desk removed - the classic dock was restarted. Autostart line 'legal-desk start || nwg-dock-hyprland' falls back to it at next login."
 }

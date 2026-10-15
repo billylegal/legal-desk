@@ -1,4 +1,4 @@
--- Mac-style window animations (Legal Dock): windows spring open with a slight overshoot, shrink-and-fade when closed,
+-- Mac-style window animations (Legal Desk): windows spring open with a slight overshoot, shrink-and-fade when closed,
 -- and minimized windows slide down toward the dock. Delete this block to go back to Omarchy's defaults.
 hl.curve("macSpring", { type = "bezier", points = { { 0.34, 1.45 }, { 0.64, 1 } } })
 hl.curve("macEase", { type = "bezier", points = { { 0.25, 0.1 }, { 0.25, 1 } } })
