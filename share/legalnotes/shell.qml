@@ -96,6 +96,13 @@ ShellRoot {
           Keys.onEscapePressed: Qt.quit()
         }
       }
+      // Credit: the maker's logo and name sit on the bottom edge of the window
+      Rectangle {
+        z: 8; anchors.right: parent.right; anchors.rightMargin: 24; y: parent.height - 11
+        height: 22; width: credit.implicitWidth + 34; radius: 10; color: nt.bgC; border.color: nt.accC; border.width: 1
+        Image { x: 4; anchors.verticalCenter: parent.verticalCenter; width: 16; height: 16; sourceSize.width: 48; sourceSize.height: 48; smooth: true; source: "file:///usr/share/legal-dock/5ive7.png" }
+        Text { id: credit; x: 26; anchors.verticalCenter: parent.verticalCenter; text: "5ive7 Development Labs"; color: nt.txtC; opacity: 0.85; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.4 }
+      }
     }
   }
 }
