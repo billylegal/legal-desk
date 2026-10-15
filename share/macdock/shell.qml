@@ -430,6 +430,7 @@ print(json.dumps(out))
     if (cls === "__launcher__") { sh(["/usr/lib/legal-dock/drawer-toggle"]); return }
     if (cls === "__calendar__") { sh(["/usr/lib/legal-dock/legal-calendar"]); return }
     if (cls === "__notes__") { sh(["/usr/lib/legal-dock/legal-notes"]); return }
+    if (cls === "__disks__") { sh(["/usr/lib/legal-dock/legal-disks"]); return }
     if (cls === "__snap__") { sh(["omarchy-capture-screenshot"]); return }
     if (cls === "__tasks__") { sh(["/usr/lib/legal-dock/legal-tasks"]); return }
     if (cls === "reboot") { sh(["/usr/lib/legal-dock/reboot-confirm"]); return }
@@ -648,7 +649,7 @@ print(json.dumps(out))
           required property int index
           readonly property bool dragged: root.dragIdx === index
           readonly property bool isSep: root.isSep(modelData.cls)
-          readonly property bool ownIcon: modelData.cls === "__calendar__" || modelData.cls === "__notes__" || modelData.cls === "__tasks__" || modelData.cls === "__snap__"   // draw their own tile
+          readonly property bool ownIcon: modelData.cls === "__calendar__" || modelData.cls === "__notes__" || modelData.cls === "__tasks__" || modelData.cls === "__disks__" || modelData.cls === "__snap__"   // draw their own tile
           readonly property real lift: dragged ? 1.18 : 1
           width: (root.lay.ws[index] || root.base) * lift
           height: isSep ? root.base : width
@@ -829,6 +830,18 @@ print(json.dumps(out))
             width: parent.width * 0.74; height: width
             Text { anchors.centerIn: parent; text: "\uf030"; color: root.accC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: parent.height * 0.62 }
           }
+          // Disk Management: a drive
+          Item {
+            visible: cell.modelData.cls === "__disks__"
+            anchors.centerIn: parent
+            width: parent.width * 0.74; height: width
+            Rectangle {
+              anchors.fill: parent; radius: width * 0.2; color: root.skin.n === "Nebula" ? "#1d1238" : "#2b2b30"; border.color: root.skin.n === "Nebula" ? "#8B5CF6" : "#666"; border.width: 1; clip: true
+              Rectangle { x: parent.width * 0.14; y: parent.height * 0.3; width: parent.width * 0.72; height: parent.height * 0.4; radius: parent.height * 0.08; color: root.skin.n === "Nebula" ? "#C9BAFF" : "#c8c8cc"
+                Rectangle { x: parent.width * 0.1; y: parent.height * 0.62; width: parent.width * 0.5; height: Math.max(2, parent.height * 0.12); radius: 1; color: root.skin.n === "Nebula" ? "#5b3fb5" : "#777" }
+                Rectangle { x: parent.width * 0.78; y: parent.height * 0.62; width: Math.max(4, parent.height * 0.14); height: width; radius: width / 2; color: "#4cd964" } }
+            }
+          }
           // Task Manager: three activity bars
           Item {
             visible: cell.modelData.cls === "__tasks__"
@@ -917,7 +930,7 @@ print(json.dumps(out))
             width: lbl.width + 16; height: lbl.height + 8; radius: 7
             color: Qt.rgba(root.bgC.r, root.bgC.g, root.bgC.b, 0.92); border.color: root.accC; border.width: 1
             Text { id: lbl; anchors.centerIn: parent; color: root.txtC; font.pixelSize: 12
-              text: cell.modelData.cls === "__launcher__" ? "Legal Control" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__snap__" ? "Screenshot" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
+              text: cell.modelData.cls === "__launcher__" ? "Legal Control" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__snap__" ? "Screenshot" : cell.modelData.cls === "__disks__" ? "Disk Management" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
           }
           // ring around the icon whose menu is open
           Rectangle { visible: root.ctx !== "" && root.ctx === cell.modelData.cls; anchors.fill: parent; anchors.margins: -2; radius: width * 0.24; color: "transparent"; border.color: root.accC; border.width: 2 }
@@ -999,7 +1012,7 @@ print(json.dumps(out))
     var rows = []
     if (ctx === "__trash__") return [{ l: "Trash", a: "hdr" }, { l: "Open trash", a: "open" }, { l: "Empty trash", a: "empty" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__folder__") return [{ l: "Downloads", a: "hdr" }, { l: "Open folder", a: "open" }, { l: "Cancel", a: "cancel" }]
-    if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__") return [{ l: ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__" || ctx === "__disks__") return [{ l: ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : ctx === "__disks__" ? "Disk Management" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "settings") return [{ l: "Settings", a: "hdr" }, { l: "Open settings", a: "open" }, { l: "Task manager", a: "tasks" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__snap__") return [{ l: "Screenshot", a: "hdr" }, { l: "Take screenshot", a: "open" }, { l: "Cancel", a: "cancel" }]
     var w = ctxWins
