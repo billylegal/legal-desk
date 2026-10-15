@@ -292,7 +292,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       required property var modelData
       screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
       anchors { bottom: true; left: clockPos === "left"; right: clockPos === "right" }
-      margins { bottom: 6; left: 6; right: 6 }
+      // centred on the dock's icons: they sit 12 px above the screen bottom and are sizePx tall, this box is 46 tall
+      margins { bottom: mac ? Math.max(4, Math.round(12 + sizePx / 2 - 23)) : 6; left: 6; right: 6 }
       implicitWidth: Math.max(112, ctxt.implicitWidth + 28) + (tLeft !== "" ? tpill.width + 8 : 0) + (mac ? 0 : 34); implicitHeight: 46
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
