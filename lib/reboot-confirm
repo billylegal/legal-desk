@@ -1,4 +1,5 @@
 #!/bin/bash
+find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }   # your own copy in ~/.config wins, else the installed one
 "$(dirname "$(readlink -f "$0")")/macdock-skin" palette >/dev/null 2>&1
 # reboot-confirm [reboot|shutdown] [center]
 # Ask before restarting / shutting down. "center" (used by the dock menu) puts the popup mid-screen;
@@ -6,8 +7,8 @@
 pkill -f '^quickshell.*rebootconfirm' 2>/dev/null
 act="${1:-reboot}"
 if [ "${2:-}" = "center" ]; then
-  RC_ACTION=$act exec setsid quickshell -n -p "$HOME/.config/rebootconfirm" >/dev/null 2>&1
+  RC_ACTION=$act exec setsid quickshell -n -p "$(find_dir rebootconfirm)" >/dev/null 2>&1
 fi
 read -r x _ < <(hyprctl cursorpos | tr -d ',')
 B=72; [ -e "$HOME/.cache/dock-mac" ] && B=150
-RC_ACTION=$act RC_X=$x RC_B=$B exec setsid quickshell -n -p "$HOME/.config/rebootconfirm" >/dev/null 2>&1
+RC_ACTION=$act RC_X=$x RC_B=$B exec setsid quickshell -n -p "$(find_dir rebootconfirm)" >/dev/null 2>&1

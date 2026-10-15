@@ -1,8 +1,9 @@
 #!/bin/bash
+find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }   # your own copy in ~/.config wins, else the installed one
 # macdock-toggle on|rubik|off|status — switch between the magnifying macOS-style dock and the classic nwg-dock.
 F="$HOME/.cache/dock-mac"
-start_mac() { pgrep -f "quickshell -n -p $HOME/.config/macdock" >/dev/null || setsid quickshell -n -p "$HOME/.config/macdock" >/dev/null 2>&1 & }
-stop_mac() { for p in $(pgrep -f "quickshell -n -p $HOME/.config/macdock"); do kill "$p"; done; }
+start_mac() { pgrep -f "quickshell -n -p .*/macdock$" >/dev/null || setsid quickshell -n -p "$(find_dir macdock)" >/dev/null 2>&1 & }
+stop_mac() { for p in $(pgrep -f "quickshell -n -p .*/macdock$"); do kill "$p"; done; }
 case "$1" in
   on)  echo mac > "$HOME/.cache/dock-style"; touch "$F"; pkill -x nwg-dock-hyprla; start_mac ;;   # keepalive no longer restarts nwg-dock while the flag exists
   rubik) echo rubik > "$HOME/.cache/dock-style"; touch "$F"; pkill -x nwg-dock-hyprla; start_mac ;;

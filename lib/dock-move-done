@@ -1,3 +1,4 @@
 #!/bin/bash
+find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }   # your own copy in ~/.config wins, else the installed one
 # Called by the dock's Done button: ends Move Icons mode (menu process puts the lock back).
-exec quickshell -p "$HOME/.config/docklock" ipc call dockmenu moveDone
+exec quickshell -p "$(find_dir docklock)" ipc call dockmenu moveDone

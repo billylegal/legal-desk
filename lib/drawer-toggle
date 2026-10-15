@@ -1,7 +1,8 @@
 #!/bin/bash
+find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }   # your own copy in ~/.config wins, else the installed one
 # Rubik's-cube button: if the app drawer is open, close it right away; otherwise toggle the dock menu.
 if pgrep -f '^quickshell.*appsmenu' >/dev/null; then
   pkill -f '^quickshell.*appsmenu'
 else
-  quickshell -p "$HOME/.config/docklock" ipc call dockmenu toggle >/dev/null 2>&1
+  quickshell -p "$(find_dir docklock)" ipc call dockmenu toggle >/dev/null 2>&1
 fi
