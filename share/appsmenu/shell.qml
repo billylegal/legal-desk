@@ -112,6 +112,12 @@ ShellRoot {
   }
   Process { id: ownPin; property var cmd: []; command: cmd }
   Process { id: pinProc; property var cmd: []; command: cmd }
+  // Taking an icon off the dock asks twice in the dock itself; without the Mac/Rubik dock running it is done at once.
+  Process { id: rmProc; property var cmd: []; command: cmd }
+  function askRemove(kind, cls, fallback) {
+    rmProc.cmd = ["bash", "-c", "D=\"$HOME/.config/macdock\"; [ -d \"$D\" ] || D=/usr/share/legal-desk/macdock; quickshell ipc -p \"$D\" call macdock askRemove \"$1\" \"$2\" >/dev/null 2>&1 || exec \"${@:3}\"", "x", kind, cls].concat(fallback)
+    rmProc.running = false; rmProc.running = true
+  }
   function togglePin(e) { var k = dockKey(e); if (!k) return; pinProc.cmd = ["/usr/lib/legal-desk/dock-pin-toggle", k]; pinProc.running = false; pinProc.running = true; ctxE = null }
   function run(e) {
     noteRecent(e)
@@ -227,10 +233,10 @@ ShellRoot {
         readonly property var items: {
           var e = ap.ctxE; if (!e) return []
           var a = [{ t: "Open", f: function () { ap.run(e) } }]
-          if (e.own && e.token) a.push({ t: ap.inDock(e) ? "Remove from Dock" : "Keep in Dock", f: function () { ownPin.cmd = ["/usr/lib/legal-desk/dock-own-toggle", e.token]; ownPin.running = false; ownPin.running = true; ap.ctxE = null }, sep: true })
+          if (e.own && e.token) a.push({ t: ap.inDock(e) ? "Remove from Dock" : "Keep in Dock", f: function () { if (ap.inDock(e)) ap.askRemove("unown", e.token, ["/usr/lib/legal-desk/dock-own-toggle", e.token]); else { ownPin.cmd = ["/usr/lib/legal-desk/dock-own-toggle", e.token]; ownPin.running = false; ownPin.running = true }; ap.ctxE = null }, sep: true })
           if (!e.own) {
             (e.actions || []).forEach(function (act) { a.push({ t: act.name, f: function () { ap.noteRecent(e); act.execute(); Qt.quit() } }) })
-            a.push({ t: ap.inDock(e) ? "Remove from Dock" : "Keep in Dock", f: function () { ap.togglePin(e) }, sep: true })
+            a.push({ t: ap.inDock(e) ? "Remove from Dock" : "Keep in Dock", f: function () { if (ap.inDock(e)) { var k = ap.dockKey(e); if (k) ap.askRemove("pin", k, ["/usr/lib/legal-desk/dock-pin-toggle", k]); ap.ctxE = null } else ap.togglePin(e) }, sep: true })
           }
           return a
         }

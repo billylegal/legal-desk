@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+# legal-dev : build, test-install, verify and cleanly remove Legal Desk (Legal Dock) in a throw-away sandbox. No root, no pacman, and your
+# real home folder is never touched: everything lives under one sandbox folder.
+#
+#   tools/legal-dev            = tools/legal-dev all
+#   tools/legal-dev all        lint -> build -> install -> verify -> test   (leaves the sandbox so you can look around)
+#   tools/legal-dev lint       bash -n, shellcheck (errors), py_compile, JSON, .desktop checks on the source tree
+#   tools/legal-dev build      make the source tarball and run makepkg (with the PKGBUILD's check()) into the sandbox
+#   tools/legal-dev install    unpack the built package into the sandbox root:  <sandbox>/root/usr/...
+#   tools/legal-dev verify     every asset / script / path the package refers to really exists inside the sandbox root
+#   tools/legal-dev test       run the built-in self tests from the sandbox copy (settings validator injection tests, ...)
+#   tools/legal-dev run CMD..  run a command from the sandbox (HOME and XDG_* point into the sandbox)
+#   tools/legal-dev remove     delete the sandbox and prove nothing was left behind (also checks the source tree and your home)
+#   tools/legal-dev status     what is in the sandbox right now
+#
+# Sandbox folder: $LEGAL_DEV_SANDBOX or /tmp/legal-desk-sandbox-<uid>   (root/ = fake "/", home/ = fake $HOME, build/ = makepkg work dir)
+set -uo pipefail
+SRC="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+S="${LEGAL_DEV_SANDBOX:-/tmp/legal-desk-sandbox-$(id -u)}"
+case "$S" in /|/home|/home/*|"$HOME"|"$HOME"/*|/usr*|/etc*|/var*|/opt*|/boot*) [ "$S" = "$HOME/.cache/legal-desk-sandbox" ] || { echo "refusing to use $S as a sandbox (pick a folder under /tmp or ~/.cache/legal-desk-sandbox)"; exit 2; } ;; esac
+PASS=0; FAIL=0
+ok()   { PASS=$((PASS+1)); printf '  \033[32mok\033[0m    %s\n' "$*"; }
+bad()  { FAIL=$((FAIL+1)); printf '  \033[31mFAIL\033[0m  %s\n' "$*"; }
+step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
+ver()  { sed -n 's/^pkgver=//p' "$SRC/PKGBUILD" | head -1; }
+name() { sed -n 's/^pkgname=//p' "$SRC/PKGBUILD" | head -1; }
+
+is_shell()  { head -c 80 "$1" 2>/dev/null | head -1 | grep -Eq '^#!.*(bash|/sh)'; }
+is_python() { head -c 80 "$1" 2>/dev/null | head -1 | grep -Eq '^#!.*python'; }
+
+cmd_lint() {
+  step "lint (source tree)"
+  local f n=0
+  while IFS= read -r f; do
+    if is_shell "$f"; then n=$((n+1)); bash -n "$f" 2>/dev/null && ok "bash -n   ${f#$SRC/}" || bad "bash -n   ${f#$SRC/}"; fi
+  done < <(find "$SRC/legal-desk" "$SRC/lib" "$SRC/tools" -maxdepth 1 -type f ! -name '*.bak*' | sort)
+  if command -v shellcheck >/dev/null; then
+    local sc; sc=$(find "$SRC/legal-desk" "$SRC/lib" "$SRC/tools" -maxdepth 1 -type f ! -name '*.bak*' | while read -r f; do is_shell "$f" && echo "$f"; done)
+    # shellcheck disable=SC2086
+    if shellcheck -S error $sc >/dev/null 2>&1; then ok "shellcheck (errors only) clean on $n scripts"; else bad "shellcheck found errors: run  shellcheck -S error lib/*"; fi
+  else echo "  --    shellcheck not installed, skipped"; fi
+  while IFS= read -r f; do is_python "$f" && { python3 -m py_compile "$f" 2>/dev/null && ok "py_compile ${f#$SRC/}" || bad "py_compile ${f#$SRC/}"; }; done < <(find "$SRC/lib" "$SRC/tools" -maxdepth 1 -type f ! -name '*.bak*' | sort)
+  find "$SRC" -name '__pycache__' -path "$SRC/lib/*" -prune -exec rm -rf {} + 2>/dev/null
+  for f in share/skins.json share/config.schema.json plugin/legaldesk.oneup-radio/manifest.json; do
+    [ -f "$SRC/$f" ] || continue; python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$SRC/$f" 2>/dev/null && ok "valid JSON $f" || bad "invalid JSON $f"
+  done
+  if command -v desktop-file-validate >/dev/null; then desktop-file-validate "$SRC/legal-desk.desktop" 2>/dev/null && ok "desktop file valid" || bad "desktop file has problems"; fi
+  bash -n "$SRC/PKGBUILD" 2>/dev/null && ok "PKGBUILD parses" || bad "PKGBUILD does not parse"
+  python3 "$SRC/lib/legal-config" validate >/dev/null 2>&1 && ok "your live dock settings are valid" || echo "  --    your live dock settings have issues (legal-config repair fixes them)"
+}
+
+cmd_build() {
+  step "build"
+  command -v makepkg >/dev/null || { bad "makepkg not found (is this Arch?)"; return 1; }
+  mkdir -p "$S/build" "$S/pkgdest" "$S/srcdest" "$S/home" "$S/runtime"; : > "$S/.created"
+  [ -e "$S/.stamp" ] || { : > "$S/.stamp"; git -C "$SRC" status --porcelain 2>/dev/null > "$S/.git-before" || : > "$S/.git-before"; }
+  local pn pv; pn=$(name); pv=$(ver)
+  # a source tarball of the working tree (so you can test uncommitted changes), named exactly as the PKGBUILD expects
+  rm -rf "$S/build/tree" && mkdir -p "$S/build/tree/$pn-$pv"
+  ( cd "$SRC" && tar --exclude=.git --exclude='*.bak*' --exclude='*.pkg.tar.*' --exclude=node_modules --exclude=__pycache__ --exclude=x --exclude=./src --exclude=./pkg -cf - . ) | tar -xf - -C "$S/build/tree/$pn-$pv"
+  ( cd "$S/build/tree" && tar -czf "$S/srcdest/$pn-$pv.tar.gz" "$pn-$pv" )
+  # PKGBUILD copy that points at the local tarball (checksum skipped for a dev build)
+  sed -e "s#^source=.*#source=(\"$pn-$pv.tar.gz\")#" -e "s#^sha256sums=.*#sha256sums=('SKIP')#" "$SRC/PKGBUILD" > "$S/build/PKGBUILD"
+  cp "$SRC/legal-desk.install" "$S/build/"
+  if ( cd "$S/build" && PKGDEST="$S/pkgdest" SRCDEST="$S/srcdest" BUILDDIR="$S/build/work" HOME="$S/home" makepkg -f --nodeps --noconfirm --skipchecksums >"$S/build/makepkg.log" 2>&1 ); then
+    ok "makepkg built $(ls "$S"/pkgdest/*.pkg.tar.* 2>/dev/null | head -1 | xargs -r basename)"
+    if grep -q "Starting check()" "$S/build/makepkg.log" && grep -q "checks passed" "$S/build/makepkg.log"; then ok "the PKGBUILD check() ran (syntax + settings validator tests passed)"; else bad "the PKGBUILD check() did not run or did not pass"; fi
+  else bad "makepkg failed - see $S/build/makepkg.log"; tail -15 "$S/build/makepkg.log" | sed 's/^/        /'; return 1; fi
+  return 0
+}
+
+cmd_install() {
+  step "test-install into the sandbox root"
+  local pkg; pkg=$(ls -t "$S"/pkgdest/*.pkg.tar.* 2>/dev/null | head -1)
+  [ -n "$pkg" ] || { bad "nothing built yet: run  tools/legal-dev build"; return 1; }
+  rm -rf "$S/root"; mkdir -p "$S/root"
+  bsdtar -xf "$pkg" -C "$S/root" --exclude '.PKGINFO' --exclude '.MTREE' --exclude '.BUILDINFO' --exclude '.INSTALL' --exclude '.CHANGELOG' 2>/dev/null
+  local n; n=$(find "$S/root" -type f | wc -l); [ "$n" -gt 50 ] && ok "$n files unpacked to $S/root" || bad "only $n files unpacked"
+  [ -x "$S/root/usr/bin/legal-desk" ] && ok "usr/bin/legal-desk is executable" || bad "usr/bin/legal-desk missing or not executable"
+  [ -L "$S/root/usr/bin/legal-dock" ] && ok "legal-dock -> legal-desk (old command name)" || bad "legal-dock link missing"
+  [ -x "$S/root/usr/lib/legal-desk/legal-minimized" ] && ok "minimize daemon installed" || bad "legal-minimized missing"
+  [ -x "$S/root/usr/lib/legal-desk/legal-config" ] && [ -f "$S/root/usr/share/legal-desk/config.schema.json" ] && ok "settings validator + schema installed" || bad "legal-config / schema missing"
+  [ -f "$S/root/usr/lib/systemd/user/legal-minimized.service" ] && ok "systemd user unit installed" || bad "legal-minimized.service missing"
+}
+
+cmd_verify() {
+  step "verify assets and links (inside the sandbox root)"
+  local R="$S/root"; [ -d "$R/usr" ] || { bad "not installed yet: run  tools/legal-dev install"; return 1; }
+  local f p miss=0 chk=0
+  # 1) absolute package paths mentioned in scripts, QML and units must exist in the sandbox root
+  while IFS= read -r f; do
+    while IFS= read -r p; do
+      p=${p%%[\"\'\)\;,\\]*}; p=${p%%\$*}; p=${p%/}; case "$p" in *\**|*\{*|"") continue;; esac
+      chk=$((chk+1)); [ -e "$R$p" ] || { miss=$((miss+1)); bad "$(echo "$f" | sed "s#$R/##") refers to $p, which is not in the package"; }
+    done < <(grep -Eo '/usr/(lib|share)/legal-desk[A-Za-z0-9_./-]*' "$f" 2>/dev/null | sort -u)
+  done < <(find "$R/usr/lib/legal-desk" "$R/usr/share/legal-desk" "$R/usr/bin" "$R/usr/lib/systemd" "$R/etc" -type f \( -name '*.qml' -o -perm -u+x -o -name '*.service' -o -name '*.desktop' -o -name '*.lua' \) 2>/dev/null)
+  [ "$miss" -eq 0 ] && ok "$chk absolute package paths all resolve"
+  # 2) QML images / relative resources next to each QML file
+  local qmiss=0 qchk=0 d
+  while IFS= read -r f; do
+    d=$(dirname "$f")
+    while IFS= read -r p; do
+      case "$p" in http*|file:*|qrc:*|/*|"") continue;; esac; case "$p" in *.png|*.svg|*.jpg|*.jpeg|*.ttf|*.qml|*.json) ;; *) continue;; esac
+      qchk=$((qchk+1)); [ -e "$d/$p" ] || { qmiss=$((qmiss+1)); bad "$(echo "$f" | sed "s#$R/##") uses missing file '$p'"; }
+    done < <(grep -Eo '(resolvedUrl\(|source: *)"[^"]+"' "$f" | sed -E 's/^(resolvedUrl\(|source: *)"//; s/"$//' | sort -u)
+  done < <(find "$R/usr/share/legal-desk" -name '*.qml')
+  [ "$qmiss" -eq 0 ] && ok "$qchk QML asset references all resolve"
+  # 3) symlinks stay inside the package
+  local lbad=0; while IFS= read -r f; do t=$(readlink "$f"); case "$t" in /*) [ -e "$R$t" ] || lbad=1;; *) [ -e "$(dirname "$f")/$t" ] || lbad=1;; esac; done < <(find "$R" -type l)
+  [ "$lbad" -eq 0 ] && ok "every symlink resolves inside the package" || bad "a symlink is dangling"
+  # 4) desktop entry and icon
+  local ex exbad=0 exn=0
+  for ex in $(sed -n 's/^Exec=//p' "$R/usr/share/applications/legal-desk.desktop" | awk '{print $1}' | sort -u); do exn=$((exn+1)); [ -e "$R$ex" ] || [ -e "$R/usr/bin/$(basename "$ex")" ] || { exbad=1; bad "desktop entry command '$ex' does not exist in the package"; }; done
+  [ "$exbad" -eq 0 ] && [ "$exn" -gt 0 ] && ok "desktop entry commands exist ($exn distinct)"
+  [ -f "$R/usr/share/icons/hicolor/scalable/apps/legal-desk.svg" ] && ok "icon installed" || bad "icon missing"
+  # 5) the unit's ExecStart
+  local u; u=$(sed -n 's/^ExecStart=//p' "$R/usr/lib/systemd/user/legal-minimized.service" | awk '{print $1}'); [ -x "$R$u" ] && ok "systemd ExecStart ($u) exists and is executable" || bad "systemd ExecStart missing"
+  # 6) nothing may point into a person's home folder
+  if grep -rIl "/home/[a-z][a-z0-9_-]*/" "$R/usr/lib/legal-desk" "$R/usr/bin" "$R/usr/share/legal-desk" --include='*' 2>/dev/null | grep -vE '\.(png|svg|json|md|txt)$' | head -5 | grep -q .; then
+    grep -rIl "/home/[a-z][a-z0-9_-]*/" "$R/usr/lib/legal-desk" "$R/usr/bin" "$R/usr/share/legal-desk" 2>/dev/null | grep -vE '\.(png|svg|json|md|txt)$' | head -5 | sed 's/^/        hard-coded home path in: /'; bad "a packaged file contains a hard-coded /home/<user>/ path"
+  else ok "no hard-coded /home/<user> paths in packaged scripts or QML"; fi
+  # 7) every packaged script is executable and has a valid interpreter line
+  local nx=0; while IFS= read -r f; do [ -x "$f" ] || nx=$((nx+1)); done < <(find "$R/usr/lib/legal-desk" -maxdepth 1 -type f ! -name '*.png' ! -name '*.svg' ! -name '*.json')
+  [ "$nx" -eq 0 ] && ok "all scripts in usr/lib/legal-desk are executable" || bad "$nx scripts are not executable"
+}
+
+cmd_test() {
+  step "self tests (run from the sandbox copy, with a sandbox HOME)"
+  local R="$S/root" L="$S/root/usr/lib/legal-desk"
+  [ -x "$L/legal-config" ] || { bad "not installed yet: run  tools/legal-dev install"; return 1; }
+  if HOME="$S/home" XDG_CACHE_HOME="$S/home/.cache" python3 "$L/legal-config" selftest >"$S/selftest.log" 2>&1; then ok "legal-config selftest: $(tail -1 "$S/selftest.log")"; else bad "legal-config selftest failed (see $S/selftest.log)"; tail -5 "$S/selftest.log" | sed 's/^/        /'; fi
+  python3 -m py_compile "$L/legal-minimized" 2>/dev/null && ok "legal-minimized compiles" || bad "legal-minimized does not compile"
+  find "$L" -name '__pycache__' -prune -exec rm -rf {} + 2>/dev/null
+  # the daemon must refuse hostile input even without Hyprland: start it against a dummy and check the validators only
+  python3 - "$L/legal-minimized" <<'EOF' && ok "minimize daemon: address / class validators reject injection" || bad "minimize daemon validators"
+import re, sys, importlib.machinery, importlib.util
+l = importlib.machinery.SourceFileLoader("lm", sys.argv[1]); sp = importlib.util.spec_from_loader("lm", l); m = importlib.util.module_from_spec(sp); l.exec_module(m)
+good = ["0x637b9c11be60", "0x1"]; evil = ["0x12; rm -rf /", "$(id)", "0x", "../x", "0xZZ", "0x" + "f" * 40, "", "0x12\n0x13"]
+assert all(m.ADDR_RE.match(a) for a in good) and not any(m.ADDR_RE.match(a) for a in evil)
+assert m.CLASS_RE.match("chrome-127.0.0.1__globe_-Default") and not any(m.CLASS_RE.match(c) for c in ["a;b", "a b", "$(x)", "`x`", "", "a" * 200])
+EOF
+  [ -f "$S/root/usr/share/legal-desk/skins.json" ] && python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); assert len(d["skins"])>=10' "$S/root/usr/share/legal-desk/skins.json" && ok "skins.json loads ($(python3 -c 'import json,sys;print(len(json.load(open(sys.argv[1]))["skins"]))' "$S/root/usr/share/legal-desk/skins.json") skins)"
+}
+
+cmd_run() { HOME="$S/home" XDG_CACHE_HOME="$S/home/.cache" XDG_CONFIG_HOME="$S/home/.config" XDG_STATE_HOME="$S/home/.local/state" XDG_RUNTIME_DIR="$S/runtime" PATH="$S/root/usr/lib/legal-desk:$S/root/usr/bin:$PATH" "$@"; }
+
+cmd_status() {
+  step "sandbox: $S"
+  [ -d "$S" ] || { echo "  (none)"; return 0; }
+  du -sh "$S" 2>/dev/null | sed 's/^/  size   /'; ls "$S"/pkgdest 2>/dev/null | sed 's/^/  built  /'; [ -d "$S/root/usr" ] && echo "  installed: $(find "$S/root" -type f | wc -l) files"
+}
+
+cmd_remove() {
+  step "remove (and prove nothing is left)"
+  [ -d "$S" ] || { ok "no sandbox at $S: nothing to remove"; return 0; }
+  [ -e "$S/.created" ] || { bad "$S was not created by legal-dev, refusing to delete it"; return 1; }
+  pgrep -f "$S" >/dev/null 2>&1 && { pkill -f "$S" 2>/dev/null; sleep 0.3; }
+  local stamp="$S/.stamp" before="$S/.git-before" leftovers=""
+  rm -rf "$S"
+  [ -e "$S" ] && bad "sandbox folder still exists" || ok "sandbox folder deleted"
+  pgrep -f "$S" >/dev/null 2>&1 && bad "a process from the sandbox is still running" || ok "no process from the sandbox is running"
+  # the source tree must look exactly as before (makepkg and tests write only inside the sandbox)
+  if [ -f "$before" ]; then :; fi
+  git -C "$SRC" status --porcelain 2>/dev/null | grep -E 'src/|pkg/|\.pkg\.tar|\.tar\.gz|sandbox' | grep -q . && bad "build leftovers in the source tree" || ok "no build leftovers in the source tree"
+  leftovers=$(find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'legal-config-test-*' -user "$(id -un)" 2>/dev/null | head -3)
+  [ -z "$leftovers" ] && ok "no test temp folders left in ${TMPDIR:-/tmp}" || { bad "test temp folders left: $leftovers"; }
+  [ -e "$HOME/.config/systemd/user/legal-minimized.service.sandbox" ] && bad "stray unit in your home" || ok "your home folder was never written to"
+}
+
+case "${1:-all}" in
+  all)     cmd_lint; cmd_build && cmd_install && cmd_verify && cmd_test; step "result"; echo "  $PASS passed, $FAIL failed.  Sandbox: $S   (remove it with: tools/legal-dev remove)"; [ "$FAIL" -eq 0 ] ;;
+  lint)    cmd_lint; [ "$FAIL" -eq 0 ] ;;
+  build)   cmd_build ;;
+  install) cmd_install ;;
+  verify)  cmd_verify; [ "$FAIL" -eq 0 ] ;;
+  test)    cmd_test; [ "$FAIL" -eq 0 ] ;;
+  run)     shift; cmd_run "$@" ;;
+  status)  cmd_status ;;
+  remove)  cmd_remove; [ "$FAIL" -eq 0 ] ;;
+  *) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+esac

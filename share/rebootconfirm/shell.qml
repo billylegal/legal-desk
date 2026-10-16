@@ -21,6 +21,12 @@ ShellRoot {
       if (c.sel) rc.selC = c.sel
     }
   }
+  // Corner radius of the skin (~/.cache/drawer-shape, written by macdock-skin), the same shape the app drawer uses.
+  property int shapeR: 14
+  FileView {
+    path: Quickshell.env("HOME") + "/.cache/drawer-shape"; printErrors: false
+    onLoaded: { var v = parseInt(text().trim()); if (!isNaN(v)) rc.shapeR = Math.max(0, Math.min(v, 24)) }
+  }
   readonly property string action: Quickshell.env("RC_ACTION") === "shutdown" ? "shutdown" : "reboot"
   readonly property bool nearIcon: (Quickshell.env("RC_X") || "") !== ""
   property int cx: parseInt(Quickshell.env("RC_X") || "960")
@@ -40,7 +46,7 @@ ShellRoot {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
     Rectangle {
-      anchors.fill: parent; radius: 14
+      anchors.fill: parent; radius: rc.shapeR
       color: rc.bgC; border.color: rc.accC; border.width: 1
       focus: true
       Keys.onEscapePressed: Qt.quit()
@@ -53,15 +59,15 @@ ShellRoot {
       Row {
         y: 56; anchors.horizontalCenter: parent.horizontalCenter; spacing: 14
         Rectangle {
-          width: 110; height: 34; radius: 8
+          width: 110; height: 34; radius: Math.min(rc.shapeR, 10)
           color: cma.containsMouse ? rc.selC : Qt.darker(rc.selC, 1.4); border.color: rc.accC; border.width: 1
           Text { anchors.centerIn: parent; text: "Cancel"; color: rc.txtC; font.pixelSize: 14 }
           MouseArea { id: cma; anchors.fill: parent; hoverEnabled: true; onClicked: Qt.quit() }
         }
         Rectangle {
-          width: 110; height: 34; radius: 8
-          color: rma.containsMouse ? "#5a2a24" : "#3a1f1b"; border.color: "#E0705A"; border.width: 1
-          Text { anchors.centerIn: parent; text: verb; color: "#E0705A"; font.pixelSize: 14 }
+          width: 110; height: 34; radius: Math.min(rc.shapeR, 10)
+          color: rma.containsMouse ? rc.accC : rc.selC; border.color: rc.accC; border.width: 1
+          Text { anchors.centerIn: parent; text: verb; color: rma.containsMouse ? rc.bgC : rc.accC; font.pixelSize: 14; font.bold: true }
           MouseArea { id: rma; anchors.fill: parent; hoverEnabled: true; onClicked: power.running = true }
         }
       }

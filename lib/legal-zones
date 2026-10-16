@@ -35,7 +35,9 @@ EOT
   dragstart) pgrep -f 'legal-zones-core drag$' >/dev/null && exit 0   # already watching this drag
              rm -f "$HOME/.cache/legal-zones-stop"; setsid "$D/legal-zones-core" drag >/dev/null 2>&1 </dev/null & ;;
   start) pgrep -f '^quickshell.*legalzonesdrag$' >/dev/null || { setsid quickshell -n -p "$G" >/dev/null 2>&1 </dev/null & }
-         pgrep -f '^quickshell.*legalzonesbar$' >/dev/null || "$0" flyout >/dev/null 2>&1 </dev/null &
+         # the top-edge menu sits over the top bar, so it only runs when it is switched on (Legal Zones settings)
+         if "$D/legal-zones-core" list | grep -q '"flyout": true'; then pgrep -f '^quickshell.*legalzonesbar$' >/dev/null || "$0" flyout >/dev/null 2>&1 </dev/null &
+         else pkill -f '^quickshell.*legalzonesbar$' 2>/dev/null; fi
          pgrep -f '^(/usr/bin/)?python3 .*legal-zones-core watch' >/dev/null || setsid "$D/legal-zones-core" watch >/dev/null 2>&1 </dev/null & ;;
   *) exec "$D/legal-zones-core" "$@" ;;
 esac

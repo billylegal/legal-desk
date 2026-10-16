@@ -7,13 +7,17 @@ in one of the 10 icon sets, in the colours of the current skin (~/.cache/dock-me
   legal-icons preview OUT    write a PNG contact sheet of all 10 sets (for checking)
   legal-icons install        also copy the set to ~/.local/share/icons/hicolor/scalable/apps/legal-desk-*.svg (launchers, drawer)
 
-Sets: 0 Tile, 1 Outline, 2 Glyph, 3 Duotone, 4 Glass, 5 Neon, 6 Flat, 7 Pixel, 8 Sticker, 9 Cube."""
+Sets: 0 Tile, 1 Outline, 2 Glyph, 3 Duotone, 4 Glass, 5 Neon, 6 Flat, 7 Pixel, 8 Sticker, 9 Cube
+      and the free-standing ones (no tile; Phosphor Icons, MIT): 10 Thin, 11 Light, 12 Regular, 13 Bold, 14 Fill, 15 Two-tone, 16 Type, 17 Shadow, 18 Gradient, 19 Colour;
+      20 Apple = the real macOS-style icons of the WhiteSur theme (vinceliuice, GPL-3), in share/apple."""
 import datetime, os, re, shutil, subprocess, sys, tempfile, time
 
 HOME = os.path.expanduser("~")
 CACHE = os.path.join(HOME, ".cache")
 OUT = os.path.join(CACHE, "legal-desk", "icons")
-SETS = ["Tile", "Outline", "Glyph", "Duotone", "Glass", "Neon", "Flat", "Pixel", "Sticker", "Cube"]
+SETS = ["Tile", "Outline", "Glyph", "Duotone", "Glass", "Neon", "Flat", "Pixel", "Sticker", "Cube",
+        "Thin", "Light", "Regular", "Bold", "Fill", "Two-tone", "Type", "Shadow", "Gradient", "Colour", "Apple", "Mono Accent", "Mono Silver", "3D Tilt", "3D Cover", "Dance", "Groove", "Coin", "Flip",
+        "Silver", "Gold", "Bronze", "Tela", "MacTahoe", "Colloid", "McMojave", "Qogir", "Fluent", "Papirus", "Nebula", "Purple Chrome"]   # 0-9 sit on tiles, 10-19 are free-standing (no tile)
 CUBE = ["#ffd500", "#0b57d0", "#c41e3a", "#00a152", "#ff5a00", "#f4f4f4"]
 
 
@@ -143,6 +147,7 @@ def G(name, now=None):
     return s.replace("{S}", S).replace("{I}", I)
 
 
+FREE_SETS = SETS[10:20]
 NAMES = ["calendar", "notes", "tasks", "disks", "zones", "clock", "camera", "desk", "apps", "mail", "trash", "trash-full", "folder", "folder-download", "power", "radio", "launcher"]
 STICKER_OF = {"calendar": 1, "notes": 0, "tasks": 3, "disks": 5, "zones": 2, "clock": 1, "camera": 5, "desk": 0, "apps": 4, "mail": 1, "trash": 5, "trash-full": 5,
               "folder": 0, "folder-download": 0, "power": 2, "radio": 4, "launcher": 0}
@@ -231,6 +236,84 @@ def render(setname, name, p, now=None):
     raise ValueError(setname)
 
 
+
+# ---------- free-standing sets (10-19): Phosphor Icons glyphs (MIT, https://phosphoricons.com) or words, no tile ----------
+SH = "/usr/share/legal-desk"
+for _d in (SH, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "share")):
+    if os.path.isdir(os.path.join(_d, "phosphor")):
+        PHDIR = os.path.join(_d, "phosphor")
+        break
+else:
+    PHDIR = None
+PH = {"calendar": "calendar-blank", "notes": "note-pencil", "tasks": "chart-bar", "disks": "hard-drives", "zones": "layout", "clock": "clock", "camera": "camera",
+      "desk": "squares-four", "apps": "dots-nine", "mail": "envelope-simple", "trash": "trash-simple", "trash-full": "trash", "folder": "folder-simple",
+      "folder-download": "download-simple", "power": "power"}
+WEIGHT = {"Thin": "thin", "Light": "light", "Regular": "regular", "Bold": "bold", "Fill": "fill", "Two-tone": "duotone", "Shadow": "fill", "Gradient": "fill", "Colour": "duotone"}
+WORD = {"notes": "NOTES", "tasks": "TASKS", "disks": "DISKS", "zones": "ZONES", "clock": "CLOCK", "camera": "SCREENSHOT", "desk": "DESK", "apps": "APPS", "mail": "MAIL",
+        "trash": "TRASH", "trash-full": "TRASH", "folder": "FILES", "folder-download": "LOADS", "power": "POWER"}
+HUE = {"calendar": "#ff5a4d", "notes": "#ffc83d", "tasks": "#38d26b", "disks": "#8e9bb5", "zones": "#a66bff", "clock": "#32c5ff", "camera": "#ff6fae", "desk": "#ff9a3d",
+       "apps": "#ff9a3d", "mail": "#4d8bff", "trash": "#9aa3b2", "trash-full": "#9aa3b2", "folder": "#ffb02e", "folder-download": "#ffb02e", "power": "#ff4b5c"}
+
+
+def ph_body(weight, name):
+    t = open(os.path.join(PHDIR, weight, PH[name] + ".svg")).read()
+    return re.sub(r"^.*?<svg[^>]*>|</svg>\s*$", "", t, flags=re.S)
+
+
+def free(setname, name, p, now=None):
+    now = now or datetime.datetime.now()
+    bg, acc, txt = p["bg"], p["acc"], p["txt"]
+    if setname == "Type":
+        if name == "calendar":
+            return svg(f'<text x="48" y="32" text-anchor="middle" font-family="Bebas Neue, DejaVu Sans" font-size="22" letter-spacing="4" fill="{acc}">{now.strftime("%a").upper()}</text>'
+                       f'<text x="48" y="80" text-anchor="middle" font-family="Bebas Neue, DejaVu Sans" font-size="60" fill="{txt}">{now.day}</text>')
+        w = WORD[name]
+        size = min(54, 74 / (0.45 * len(w) + 0.05 * len(w)))
+        return svg(f'<text x="48" y="{48 + size * 0.36:.1f}" text-anchor="middle" font-family="Bebas Neue, DejaVu Sans" font-size="{size:.1f}" letter-spacing="2" fill="{acc}">{w}</text>'
+                   '')
+    if setname == "Regular" and name == "disks":   # a different disk for Regular: the macOS external drive
+        for _d in (SH, os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "share")):
+            if os.path.isfile(os.path.join(_d, "regular", "disks.svg")):
+                return open(os.path.join(_d, "regular", "disks.svg")).read()
+    if setname == "Regular" and APPLE and name in ("tasks", "notes", "disks", "zones", "folder", "folder-download", "trash", "trash-full") and os.path.exists(os.path.join(APPLE, name + ".svg")):
+        return apple(name, now)   # macOS-style art for these, like the date below
+    if setname == "Regular" and name == "calendar":   # Apple-style date: white page, red weekday band, big day number
+        return svg('<rect x="7" y="9" width="84" height="84" rx="18" fill="#000" opacity="0.25"/>'
+                   '<clipPath id="cp"><rect x="5" y="5" width="86" height="86" rx="18"/></clipPath>'
+                   '<g clip-path="url(#cp)"><rect x="5" y="5" width="86" height="86" fill="#ffffff"/><rect x="5" y="5" width="86" height="27" fill="#ff3b30"/></g>'
+                   '<rect x="5" y="5" width="86" height="86" rx="18" fill="none" stroke="#000" stroke-opacity="0.12" stroke-width="1.5"/>'
+                   f'<text x="48" y="25" text-anchor="middle" font-family="Helvetica, Arial, Liberation Sans, DejaVu Sans, sans-serif" font-weight="700" font-size="14" letter-spacing="1.5" fill="#ffffff">{now.strftime("%a").upper()}</text>'
+                   f'<text x="48" y="77" text-anchor="middle" font-family="Helvetica, Arial, Liberation Sans, DejaVu Sans, sans-serif" font-weight="300" font-size="46" fill="#1c1c1e">{now.day}</text>')
+    if setname == "Regular" and name == "notes":   # Regular is mono, but its date and note are coloured like the Colour set
+        setname = "Colour"
+    wt = WEIGHT[setname]
+    body = ph_body(wt, name)
+    hue = HUE[name]
+    # colours: main glyph, the soft second tone of duotone, ink for the calendar's day number
+    main = {"Thin": txt, "Light": acc, "Regular": txt, "Bold": acc, "Fill": acc, "Two-tone": acc, "Shadow": acc, "Gradient": acc, "Colour": hue}[setname]
+    soft = mix(main, "#ffffff", 0.45)
+    if wt == "duotone":
+        body = body.replace('opacity="0.2"', f'fill="{soft}" opacity="0.55"')
+    fillc = main
+    defs = ""
+    if setname == "Gradient":
+        defs = f'<linearGradient id="gg" gradientUnits="userSpaceOnUse" x1="40" y1="20" x2="216" y2="236"><stop offset="0" stop-color="{mix(acc, "#ffffff", 0.55)}"/><stop offset="1" stop-color="{mix(acc, "#000000", 0.25)}"/></linearGradient>'
+        fillc = "url(#gg)"
+    glyph = f'<g fill="{fillc}">{body}</g>'
+    inner = glyph
+    if setname == "Shadow":
+        sh = mix(acc, bg, 0.6)
+        inner = "".join(f'<g fill="{sh}" transform="translate({i * 2.6:.1f} {i * 2.6:.1f})">{body}</g>' for i in range(16, 0, -1)) + glyph
+    # the calendar's day number sits in the page
+    if name == "calendar":
+        numc = {"Fill": on(acc), "Shadow": on(acc), "Gradient": on(acc)}.get(setname, main)
+        wgt = {"Thin": 300, "Light": 400}.get(setname, 700)
+        inner += f'<text x="128" y="186" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-weight="{wgt}" font-size="92" fill="{numc}">{now.day}</text>'
+    k = 0.34 if setname == "Shadow" else 0.4
+    t = (96 - 256 * k) / 2 - (3.5 if setname == "Shadow" else 0)
+    return svg(f'<g transform="translate({t:.2f} {t:.2f}) scale({k})">{inner}</g>', defs)
+
+
 def pixelate(svgtext, cells=32):
     """Rasterise at cells x cells and rebuild as crisp square pixels (the Pixel set)."""
     with tempfile.TemporaryDirectory() as d:
@@ -251,11 +334,67 @@ def pixelate(svgtext, cells=32):
     return svg("".join(rects)).replace("<svg ", '<svg shape-rendering="crispEdges" ')
 
 
+APPLE = None
+for _d in ("/usr/share/legal-desk", os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "share")):
+    if os.path.isdir(os.path.join(_d, "apple")):
+        APPLE = os.path.join(_d, "apple")
+        break
+
+
+def apple(name, now=None):
+    """Apple set: the macOS-style WhiteSur icons as they are (the Calendar shows today's day number)."""
+    now = now or datetime.datetime.now()
+    t = open(os.path.join(APPLE, name + ".svg")).read()
+    if name == "calendar":
+        t = t.replace("</svg>", f'<rect x="3.2" y="5.4" width="10.6" height="7.6" fill="#fff"/>'
+                      f'<text x="8.47" y="12.35" text-anchor="middle" font-family="Helvetica, Arial, Liberation Sans, sans-serif" font-size="7.4" fill="#f24236">{now.day}</text></svg>')
+    return t
+
+
 def draw(setname, name, p, now=None):
+    if setname == "Apple" and APPLE and name not in ("launcher", "radio") and os.path.exists(os.path.join(APPLE, name + ".svg")):
+        return apple(name, now)
+    if setname == "Apple":   # the Legal Desk launcher and the 1UP Radio logo keep their own look; anything WhiteSur lacks falls back to Tile
+        return render("Tile", name, p, now)
+    if setname in FREE_SETS:
+        if name in ("launcher", "radio"):   # the Legal Desk launcher and the 1UP Radio logo keep their look in every set
+            return render("Tile", name, p, now)
+        return free(setname, name, p, now)
     if setname == "Pixel":
         inner = render("Flat", name, dict(p), now)
         return pixelate(inner)
     return render(setname, name, p, now)
+
+
+THEME_DIR = os.path.join(HOME, ".local", "share", "legal-desk", "icon-themes")
+# the same app in another icon theme: (folder in the theme, names to try)
+THEME_OWN = {"notes": ("apps", ["accessories-text-editor", "org.gnome.TextEditor", "gnome-notes"]), "tasks": ("apps", ["utilities-system-monitor", "org.gnome.SystemMonitor"]),
+             "disks": ("devices", ["drive-harddisk"]), "zones": ("apps", ["preferences-system-windows"]), "clock": ("apps", ["clock", "org.gnome.clocks", "preferences-system-time"]),
+             "camera": ("apps", ["accessories-screenshot", "applets-screenshooter", "org.gnome.Screenshot"]), "folder": ("places", ["folder"]),
+             "folder-download": ("places", ["folder-download", "folder-downloads"]), "trash": ("places", ["user-trash"]), "trash-full": ("places", ["user-trash-full"])}
+
+
+def restyle(raw, name, art, d):
+    """sets 29-31: Regular's art turned to silver / gold / bronze; 32-38: the same app drawn by another icon theme (Calendar keeps today's date)."""
+    if raw <= 31 or raw >= 39:
+        kind = ("silver", "gold", "bronze")[raw - 29] if raw <= 31 else ("nebula", "chrome")[raw - 39]
+        with tempfile.TemporaryDirectory() as t:
+            a, b = os.path.join(t, "a.svg"), os.path.join(t, "b.png")
+            open(a, "w").write(art)
+            try:
+                subprocess.run([os.path.join(os.path.dirname(os.path.realpath(__file__)), "legal-metal"), kind, a, b], check=True, capture_output=True)
+            except Exception:
+                return art
+            import base64
+            return ('<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 256 256" width="256" height="256">'
+                    '<image width="256" height="256" xlink:href="data:image/png;base64,%s"/></svg>' % base64.b64encode(open(b, "rb").read()).decode())
+    key = ("tela", "mactahoe", "colloid", "mcmojave", "qogir", "fluent", "papirus")[raw - 32]
+    ctx, names = THEME_OWN.get(name, (None, []))
+    for nm in names:
+        f = os.path.join(THEME_DIR, key, ctx, nm + ".svg")
+        if os.path.isfile(f):
+            return open(f).read()
+    return art
 
 
 def refresh(idx=None, now=None):
@@ -264,6 +403,9 @@ def refresh(idx=None, now=None):
             idx = int(open(os.path.join(CACHE, "dock-icon-style")).read().strip())
         except (OSError, ValueError):
             idx = 0
+    raw = idx
+    if idx >= 21:   # 21-28 = Regular's icons with an effect (mono / 3D / dance / spin, done by the dock); 29-31 metal, 32-38 other icon themes: Regular drawn first
+        idx = 12
     # dock-icon-style numbers its entries 0..9; anything else = the default set
     setname = SETS[idx] if 0 <= idx < len(SETS) else SETS[0]
     p = palette()
@@ -271,7 +413,10 @@ def refresh(idx=None, now=None):
     d = os.path.join(OUT, stamp)
     os.makedirs(d, exist_ok=True)
     for n in NAMES:
-        open(os.path.join(d, n + ".svg"), "w").write(draw(setname, n, p, now))
+        art = draw(setname, n, p, now)
+        if raw >= 29 and n not in ("launcher", "radio"):
+            art = restyle(raw, n, art, d)
+        open(os.path.join(d, n + ".svg"), "w").write(art)
     for src in ("/usr/lib/snapdock/icons3d/radio-1up.svg",):   # 1UP Radio keeps its own logo in every set
         if os.path.exists(src):
             shutil.copy(src, os.path.join(d, "radio.svg"))
@@ -297,7 +442,7 @@ def preview(out):
     with tempfile.TemporaryDirectory() as d:
         shown = ["calendar", "notes", "tasks", "disks", "zones", "clock", "camera", "desk", "apps", "mail", "trash", "folder", "power"]
         rows = []
-        for s in SETS:
+        for s in SETS[:21]:
             row = []
             for n in shown:
                 f = os.path.join(d, f"{s}-{n}.png")
@@ -308,7 +453,7 @@ def preview(out):
             rows.append(row)
             subprocess.run(["magick"] + row + ["-background", p["bg"], "-gravity", "center", "-extent", "80x80", "+append", os.path.join(d, f"row-{s}.png")]
                            if False else ["magick", "-background", p["bg"]] + ["(", *row, "-background", p["bg"], "+append", ")"] + [os.path.join(d, f"row-{s}.png")], check=True)
-        subprocess.run(["magick", "-background", p["bg"]] + [os.path.join(d, f"row-{s}.png") for s in SETS] + ["-append", out], check=True)
+        subprocess.run(["magick", "-background", p["bg"]] + [os.path.join(d, f"row-{s}.png") for s in SETS[:21]] + ["-append", out], check=True)
 
 
 if __name__ == "__main__":

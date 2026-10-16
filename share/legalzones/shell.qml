@@ -14,7 +14,9 @@ ShellRoot {
   property color accC: "#8B5CF6"
   property color txtC: "#E6E1FA"
   property color selC: "#2A1B52"
+  // Colours follow the dock skin; re-read every second so a skin change shows up at once.
   FileView {
+    id: colorsFile
     path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
     onLoaded: {
       var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
@@ -24,6 +26,7 @@ ShellRoot {
       if (c.sel) zr.selC = c.sel
     }
   }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: colorsFile.reload() }
   readonly property string home: Quickshell.env("HOME")
   readonly property string mode: Quickshell.env("ZONES_MODE") || "manage"
   readonly property string core: "/usr/lib/legal-desk/legal-zones-core"
@@ -42,7 +45,7 @@ ShellRoot {
   Component.onCompleted: loader.running = true
   // Saving and launching are detached (execDetached) so they finish even when this window quits right after.
   property string pendingJson: ""
-  function persist(d) { zr.data = d; zr.pendingJson = JSON.stringify(d); Quickshell.execDetached([zr.core, "setdata", zr.pendingJson]) }
+  function persist(d) { d = JSON.parse(JSON.stringify(d)); zr.data = d; zr.pendingJson = JSON.stringify(d); Quickshell.execDetached([zr.core, "setdata", zr.pendingJson]) }
   function run(a) { Quickshell.execDetached(["bash", "-c", "[ -n \"$2\" ] && \"$1\" setdata \"$2\"; shift 2; exec \"$@\"", "x", zr.core, zr.pendingJson].concat(a)); zr.pendingJson = "" }
   function byName(n) { for (var i = 0; i < data.layouts.length; i++) if (data.layouts[i].name === n) return data.layouts[i]; return null }
   function copyLayout(l) { return { name: l.name, zones: l.zones.map(z => z.slice()) } }
@@ -54,6 +57,13 @@ ShellRoot {
     { name: "Priority grid", zones: [[0, 0, .6, 1], [.6, 0, .4, .5], [.6, .5, .4, .5]] },
     { name: "Focus", zones: [[.15, .08, .7, .84], [0, 0, .15, 1], [.85, 0, .15, 1]] }
   ]
+  readonly property var autoGrids: [[2, 2], [3, 2], [3, 3], [4, 3], [5, 4]]
+  function autoGrid(c, r) {
+    var d = JSON.parse(JSON.stringify(zr.data)), n = uniqueName("Auto grid " + c + "x" + r), a = []
+    for (var j = 0; j < r; j++) for (var i = 0; i < c; i++) a.push([i / c, j / r, 1 / c, 1 / r])
+    d.layouts.push({ name: n, zones: a }); d.active = n; d.auto = true; zr.persist(d); zr.selName = n
+    zr.run(["bash", "-c", "\"$1\" start; sleep 0.5; \"$0\" apply", zr.core, zr.launcher])
+  }
   function uniqueName(base) { var n = base, i = 2; while (byName(n)) { n = base + " " + i; i++ } return n }
 
   // A small drawing of a layout (used in lists and the big preview).
@@ -121,8 +131,12 @@ ShellRoot {
           Text { anchors.centerIn: parent; text: "+ New layout"; color: nwa.containsMouse ? zr.bgC : zr.txtC; font.pixelSize: 14; font.bold: true }
           MouseArea { id: nwa; anchors.fill: parent; hoverEnabled: true; onClicked: tplMenu.visible = !tplMenu.visible } }
         Rectangle {
-          id: tplMenu; visible: false; z: 10; x: 20; y: card.height - 60 - 8 - height; width: 290; height: zr.templates.length * 34 + 12; radius: 0; color: zr.bgC; border.color: zr.accC; border.width: 1
+          id: tplMenu; visible: false; z: 10; x: 20; y: card.height - 60 - 8 - height; width: 290; height: (zr.templates.length + zr.autoGrids.length) * 34 + 12; radius: 0; color: zr.bgC; border.color: zr.accC; border.width: 1
           Column { x: 6; y: 6; width: parent.width - 12
+            Repeater { model: zr.autoGrids
+              Rectangle { width: parent.width; height: 34; radius: 0; color: aga.containsMouse ? zr.selC : "transparent"
+                Text { x: 12; anchors.verticalCenter: parent.verticalCenter; text: "Auto-snap grid " + modelData[0] + " × " + modelData[1]; color: zr.accC; font.pixelSize: 14; font.bold: true }
+                MouseArea { id: aga; anchors.fill: parent; hoverEnabled: true; onClicked: { zr.autoGrid(modelData[0], modelData[1]); tplMenu.visible = false; Qt.quit() } } } }
             Repeater { model: zr.templates
               Rectangle { width: parent.width; height: 34; radius: 0; color: tma.containsMouse ? zr.selC : "transparent"
                 Text { x: 12; anchors.verticalCenter: parent.verticalCenter; text: "Start from: " + modelData.name; color: zr.txtC; font.pixelSize: 14 }

@@ -291,88 +291,6 @@
       }
     },
     {
-      "name": "Aluminum",
-      "bar": "apple",
-      "dr": 12,
-      "menu": [
-        "#e4e5ea",
-        "#6b7080",
-        "#20232a",
-        "#c4c8d2"
-      ],
-      "mac": {
-        "c1": "#f0f0f2",
-        "c2": "#a4a8b0",
-        "b": "#ffffff",
-        "r": 10
-      },
-      "rubik": {
-        "c1": "#e8e9ee",
-        "c2": "#c8cad2",
-        "b": "#ffffff",
-        "r": 12,
-        "t": [
-          "#6b7080",
-          "#8a90a0",
-          "#4a5060",
-          "#a8adbb",
-          "#2f3440",
-          "#c4c8d2"
-        ]
-      },
-      "classic": {
-        "bg": "#d8dadf",
-        "r": 8,
-        "border": "#ffffff",
-        "text": "#2a2d33",
-        "hover": "rgba(0,0,0,0.12)",
-        "active": "#2a2d33",
-        "bw": 1,
-        "hov": ""
-      }
-    },
-    {
-      "name": "Amber",
-      "bar": "terminal",
-      "dr": 2,
-      "menu": [
-        "#0e0700",
-        "#ffb000",
-        "#ffb000",
-        "#3a2600"
-      ],
-      "mac": {
-        "c1": "#0e0700",
-        "c2": "#0e0700",
-        "b": "#ffb000",
-        "r": 6
-      },
-      "rubik": {
-        "c1": "#0e0700",
-        "c2": "#0e0700",
-        "b": "#ffb000",
-        "r": 8,
-        "t": [
-          "#ffb000",
-          "#ff8c00",
-          "#ffd36b",
-          "#b36b00",
-          "#ffe3a3",
-          "#7a4a00"
-        ]
-      },
-      "classic": {
-        "bg": "#0e0700",
-        "r": 4,
-        "border": "#ffb000",
-        "text": "#ffb000",
-        "hover": "rgba(255,176,0,0.2)",
-        "active": "#ffb000",
-        "bw": 1,
-        "hov": "border-radius: 0px;"
-      }
-    },
-    {
       "name": "Windows 11",
       "bar": "win",
       "dr": 6,
@@ -415,6 +333,554 @@
         "active": "#60cdff",
         "bw": 1,
         "hov": "border-radius: 6px;"
+      }
+    },
+    {
+      "name": "Aqua",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#0f3d7a",
+        "#8fd0ff",
+        "#eaf6ff",
+        "#1f5fb0"
+      ],
+      "mac": {
+        "c1": "#8fd0ff",
+        "c2": "#1565d0",
+        "b": "#d8eeff",
+        "r": 20
+      },
+      "rubik": {
+        "c1": "#8fd0ff",
+        "c2": "#1565d0",
+        "b": "#d8eeff",
+        "r": 14,
+        "t": [
+          "#ffd500",
+          "#0b57d0",
+          "#c41e3a",
+          "#00a152",
+          "#ff5a00",
+          "#f4f4f4"
+        ]
+      },
+      "classic": {
+        "bg": "#8fd0ff",
+        "r": 20,
+        "border": "#8fd0ff",
+        "text": "#eaf6ff",
+        "hover": "rgba(143,208,255,0.2)",
+        "active": "#8fd0ff",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Mono",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#0a0a0a",
+        "#ffffff",
+        "#eeeeee",
+        "#2a2a2a"
+      ],
+      "mac": {
+        "c1": "#000000",
+        "c2": "#1c1c1c",
+        "b": "#ffffff",
+        "r": 14,
+        "ic": "gray"
+      },
+      "rubik": {
+        "c1": "#000000",
+        "c2": "#000000",
+        "b": "#ffffff",
+        "r": 12,
+        "ic": "gray",
+        "t": [
+          "#ffffff",
+          "#bdbdbd",
+          "#7d7d7d",
+          "#3d3d3d",
+          "#e8e8e8",
+          "#9a9a9a"
+        ]
+      },
+      "classic": {
+        "bg": "#000000",
+        "r": 4,
+        "border": "#ffffff",
+        "text": "#ffffff",
+        "hover": "rgba(255,255,255,0.22)",
+        "active": "#ffffff",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Paper",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#f4f1e8",
+        "#8a8570",
+        "#2b2b2b",
+        "#dcd8c8"
+      ],
+      "mac": {
+        "c1": "#fbfaf6",
+        "c2": "#e2dfd5",
+        "b": "#bdb8a8",
+        "r": 12,
+        "ic": "gray"
+      },
+      "rubik": {
+        "c1": "#fbfaf6",
+        "c2": "#e2dfd5",
+        "b": "#bdb8a8",
+        "r": 12,
+        "t": [
+          "#ffd500",
+          "#0b57d0",
+          "#c41e3a",
+          "#00a152",
+          "#ff5a00",
+          "#f4f4f4"
+        ]
+      },
+      "classic": {
+        "bg": "#f6f3ea",
+        "r": 12,
+        "border": "#c9c3b0",
+        "text": "#2b2b2b",
+        "hover": "rgba(0,0,0,0.08)",
+        "active": "#2b2b2b",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Terminal",
+      "bar": "terminal",
+      "dr": 2,
+      "menu": [
+        "#020a02",
+        "#33ff33",
+        "#33ff33",
+        "#0c3a0c"
+      ],
+      "mac": {
+        "c1": "#020a02",
+        "c2": "#020a02",
+        "b": "#33ff33",
+        "r": 6,
+        "ic": "#33ff33"
+      },
+      "rubik": {
+        "c1": "#020a02",
+        "c2": "#020a02",
+        "b": "#33ff33",
+        "r": 6,
+        "t": [
+          "#ffd500",
+          "#0b57d0",
+          "#c41e3a",
+          "#00a152",
+          "#ff5a00",
+          "#f4f4f4"
+        ]
+      },
+      "classic": {
+        "bg": "#020a02",
+        "r": 6,
+        "border": "#33ff33",
+        "text": "#33ff33",
+        "hover": "rgba(51,255,51,0.2)",
+        "active": "#33ff33",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Blueprint",
+      "bar": "terminal",
+      "dr": 2,
+      "menu": [
+        "#0a3a80",
+        "#ffffff",
+        "#d6ecff",
+        "#1558b0"
+      ],
+      "mac": {
+        "c1": "#0d4a9a",
+        "c2": "#082a5a",
+        "b": "#ffffff",
+        "r": 4,
+        "ic": "#d6ecff"
+      },
+      "rubik": {
+        "c1": "#0d4a9a",
+        "c2": "#082a5a",
+        "b": "#ffffff",
+        "r": 4,
+        "t": [
+          "#ffd500",
+          "#0b57d0",
+          "#c41e3a",
+          "#00a152",
+          "#ff5a00",
+          "#f4f4f4"
+        ]
+      },
+      "classic": {
+        "bg": "#0d4a9a",
+        "r": 4,
+        "border": "#ffffff",
+        "text": "#d6ecff",
+        "hover": "rgba(255,255,255,0.2)",
+        "active": "#ffffff",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Polybar",
+      "bar": "win",
+      "dr": 0,
+      "menu": [
+        "#1d2021",
+        "#fabd2f",
+        "#ebdbb2",
+        "#3c3836"
+      ],
+      "mac": {
+        "c1": "#1d2021",
+        "c2": "#1d2021",
+        "b": "#fabd2f",
+        "r": 0,
+        "plate": true,
+        "nz": true,
+        "tile": "hpill",
+        "ik": 0.9
+      },
+      "rubik": {
+        "c1": "#1d2021",
+        "c2": "#1d2021",
+        "b": "#fabd2f",
+        "r": 0,
+        "t": [
+          "#ffd500",
+          "#0b57d0",
+          "#c41e3a",
+          "#00a152",
+          "#ff5a00",
+          "#f4f4f4"
+        ]
+      },
+      "classic": {
+        "bg": "#1d2021",
+        "r": 0,
+        "border": "#fabd2f",
+        "text": "#ebdbb2",
+        "hover": "rgba(250,189,47,0.2)",
+        "active": "#fabd2f",
+        "bw": 1,
+        "hov": "border-radius: 0px;"
+      }
+    },
+    {
+      "name": "Tint2",
+      "bar": "win",
+      "dr": 0,
+      "menu": [
+        "#202020",
+        "#aaaaaa",
+        "#ffffff",
+        "#444444"
+      ],
+      "mac": {
+        "c1": "#e0505050",
+        "c2": "#e0101010",
+        "b": "#66ffffff",
+        "r": 6,
+        "plate": true,
+        "nz": true,
+        "tile": "hpill",
+        "ik": 0.88
+      },
+      "rubik": {
+        "c1": "#e0505050",
+        "c2": "#e0101010",
+        "b": "#66ffffff",
+        "r": 6,
+        "t": [
+          "#ffd500",
+          "#0b57d0",
+          "#c41e3a",
+          "#00a152",
+          "#ff5a00",
+          "#f4f4f4"
+        ]
+      },
+      "classic": {
+        "bg": "linear-gradient(to bottom, rgba(80,80,80,0.88), rgba(14,14,14,0.88))",
+        "r": 6,
+        "border": "rgba(255,255,255,0.4)",
+        "text": "#ffffff",
+        "hover": "rgba(255,255,255,0.22)",
+        "active": "#ffffff",
+        "bw": 1,
+        "hov": "border-radius: 4px;"
+      }
+    },
+    {
+      "name": "Cube",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#0d0d0d",
+        "#ffd500",
+        "#f4f4f4",
+        "#2a2a2a"
+      ],
+      "mac": {
+        "c1": "#0d0d0d",
+        "c2": "#0d0d0d",
+        "b": "#2a2a2a",
+        "r": 12
+      },
+      "rubik": {
+        "c1": "#0d0d0d",
+        "c2": "#0d0d0d",
+        "b": "#2a2a2a",
+        "r": 12,
+        "t": [
+          "#ffd500",
+          "#0b57d0",
+          "#c41e3a",
+          "#00a152",
+          "#ff5a00",
+          "#f4f4f4"
+        ]
+      },
+      "classic": {
+        "bg": "#0d0d0d",
+        "r": 12,
+        "border": "#ffd500",
+        "text": "#f4f4f4",
+        "hover": "rgba(255,213,0,0.2)",
+        "active": "#ffd500",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Pastel",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#f4eef7",
+        "#b58acb",
+        "#3a2a45",
+        "#e0d0ea"
+      ],
+      "mac": {
+        "c1": "#f4eef7",
+        "c2": "#e4d8ea",
+        "b": "#d2c3da",
+        "r": 14
+      },
+      "rubik": {
+        "c1": "#f4eef7",
+        "c2": "#e4d8ea",
+        "b": "#d2c3da",
+        "r": 14,
+        "t": [
+          "#ffb3c1",
+          "#b5ead7",
+          "#c7ceea",
+          "#ffdac1",
+          "#e2f0cb",
+          "#fff1a8"
+        ]
+      },
+      "classic": {
+        "bg": "#f4eef7",
+        "r": 14,
+        "border": "#b58acb",
+        "text": "#3a2a45",
+        "hover": "rgba(181,138,203,0.2)",
+        "active": "#b58acb",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Ocean",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#04202e",
+        "#0096c7",
+        "#caf0f8",
+        "#0a4a66"
+      ],
+      "mac": {
+        "c1": "#04202e",
+        "c2": "#021520",
+        "b": "#0096c7",
+        "r": 12
+      },
+      "rubik": {
+        "c1": "#04202e",
+        "c2": "#021520",
+        "b": "#0096c7",
+        "r": 12,
+        "t": [
+          "#00b4d8",
+          "#0077b6",
+          "#90e0ef",
+          "#023e8a",
+          "#48cae4",
+          "#caf0f8"
+        ]
+      },
+      "classic": {
+        "bg": "#04202e",
+        "r": 12,
+        "border": "#0096c7",
+        "text": "#caf0f8",
+        "hover": "rgba(0,150,199,0.2)",
+        "active": "#0096c7",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Candy",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#2b0a3d",
+        "#ff4d9d",
+        "#ffe0f0",
+        "#5a1a6a"
+      ],
+      "mac": {
+        "c1": "#2b0a3d",
+        "c2": "#1a0626",
+        "b": "#ff4d9d",
+        "r": 12
+      },
+      "rubik": {
+        "c1": "#2b0a3d",
+        "c2": "#1a0626",
+        "b": "#ff4d9d",
+        "r": 12,
+        "t": [
+          "#ff4d9d",
+          "#ffd166",
+          "#06d6a0",
+          "#8338ec",
+          "#ff6b6b",
+          "#4cc9f0"
+        ]
+      },
+      "classic": {
+        "bg": "#2b0a3d",
+        "r": 12,
+        "border": "#ff4d9d",
+        "text": "#ffe0f0",
+        "hover": "rgba(255,77,157,0.2)",
+        "active": "#ff4d9d",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Jungle",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#0a1f0a",
+        "#52b788",
+        "#d8f3dc",
+        "#1b4332"
+      ],
+      "mac": {
+        "c1": "#0a1f0a",
+        "c2": "#061106",
+        "b": "#52b788",
+        "r": 12
+      },
+      "rubik": {
+        "c1": "#0a1f0a",
+        "c2": "#061106",
+        "b": "#52b788",
+        "r": 12,
+        "t": [
+          "#2d6a4f",
+          "#52b788",
+          "#95d5b2",
+          "#d8f3dc",
+          "#1b4332",
+          "#b7e4c7"
+        ]
+      },
+      "classic": {
+        "bg": "#0a1f0a",
+        "r": 12,
+        "border": "#52b788",
+        "text": "#d8f3dc",
+        "hover": "rgba(82,183,136,0.2)",
+        "active": "#52b788",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Circles",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#0d0d0d",
+        "#ffd500",
+        "#f4f4f4",
+        "#2a2a2a"
+      ],
+      "mac": {
+        "c1": "#0d0d0d",
+        "c2": "#0d0d0d",
+        "b": "#2a2a2a",
+        "r": 18,
+        "rr": 0.5
+      },
+      "rubik": {
+        "c1": "#0d0d0d",
+        "c2": "#0d0d0d",
+        "b": "#2a2a2a",
+        "r": 26,
+        "rr": 0.5,
+        "t": [
+          "#ffd500",
+          "#0b57d0",
+          "#c41e3a",
+          "#00a152",
+          "#ff5a00",
+          "#f4f4f4"
+        ]
+      },
+      "classic": {
+        "bg": "#0d0d0d",
+        "r": 18,
+        "border": "#ffd500",
+        "text": "#f4f4f4",
+        "hover": "rgba(255,213,0,0.2)",
+        "active": "#ffd500",
+        "bw": 1,
+        "hov": ""
       }
     }
   ]

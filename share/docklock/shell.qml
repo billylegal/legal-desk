@@ -88,7 +88,7 @@ ShellRoot {
   Process { id: zoomW; command: ["bash", "-c", "echo \"$0\" > \"$HOME/.cache/dock-zoom\"", String(zoomRaw)] }
   Process { id: runner2; property var cmd: []; command: cmd }
   property int iconIdx: 0
-  readonly property var iconNames: ["Tile", "Outline", "Glyph", "Duotone", "Glass", "Neon", "Flat", "Pixel", "Sticker", "Cube"]
+  readonly property var iconNames: ["Tile", "Outline", "Glyph", "Duotone", "Glass", "Neon", "Flat", "Pixel", "Sticker", "Cube", "Thin", "Light", "Regular", "Bold", "Fill", "Two-tone", "Type", "Shadow", "Gradient", "Colour", "Apple", "Mono Accent", "Mono Silver", "3D Tilt", "3D Cover", "Dance", "Groove", "Coin", "Flip", "Silver", "Gold", "Bronze", "Tela", "MacTahoe", "Colloid", "McMojave", "Qogir", "Fluent", "Papirus", "Nebula", "Purple Chrome"]
   FileView {
     id: icoFile
     path: Quickshell.env("HOME") + "/.cache/dock-icon-style"
@@ -292,23 +292,23 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       required property var modelData
       screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
       anchors { bottom: true; left: clockPos === "left"; right: clockPos === "right" }
-      // centred on the dock's icons: they sit 12 px above the screen bottom and are sizePx tall, this box is 46 tall
-      margins { bottom: mac ? Math.max(4, Math.round(12 + sizePx / 2 - 23)) : 6; left: 6; right: 6 }
-      implicitWidth: Math.max(112, ctxt.implicitWidth + 28) + (tLeft !== "" ? tpill.width + 8 : 0) + (mac ? 0 : 34); implicitHeight: 46
+      // Fixed height, so the Size slider only resizes the icons: the Mac dock's icons sit 12 px above the screen bottom, and this 46 px box is centred on them at the standard size
+      margins { bottom: mac ? 12 : 6; left: 6; right: 6 }
+      implicitWidth: Math.max(ctxt.implicitWidth, cdate.implicitWidth) + 28 + (tLeft !== "" ? tpill.width + 8 : 0) + (mac ? 0 : 34); implicitHeight: 46
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.layer: WlrLayer.Top
       WlrLayershell.namespace: "dockclock"
       Rectangle {
-        anchors.fill: parent; radius: 12; color: ckMa.containsMouse ? selC : bgC; border.color: accC; border.width: 1
+        anchors.fill: parent; radius: 12; color: ckMa.containsMouse ? selC : bgC   // no outline
         Behavior on color { ColorAnimation { duration: 120 } }
-        MouseArea { id: ckMa; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton; cursorShape: Qt.PointingHandCursor
+        MouseArea { id: ckMa; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton; cursorShape: Qt.ArrowCursor
           onClicked: (m) => { if (m.button === Qt.RightButton) { openClk.running = false; openClk.running = true } else { openCal.running = false; openCal.running = true } } }
-        Column { x: 14; anchors.verticalCenter: parent.verticalCenter; spacing: 1
-          Text { id: ctxt; text: clockTxt; color: txtC; font.pixelSize: 17; font.bold: true }
-          Text { text: clockDate.toUpperCase(); color: accC; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 } }
+        Column { x: 14; width: Math.max(ctxt.implicitWidth, cdate.implicitWidth); anchors.verticalCenter: parent.verticalCenter; spacing: 1
+          Text { id: ctxt; anchors.horizontalCenter: parent.horizontalCenter; text: clockTxt; color: txtC; font.pixelSize: 17; font.bold: true }
+          Text { id: cdate; anchors.horizontalCenter: parent.horizontalCenter; text: clockDate.toUpperCase(); color: accC; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 } }
         Rectangle { id: tpill; visible: tLeft !== ""; height: 24; width: tl.implicitWidth + 16; radius: 12; color: accC
-          x: Math.max(112, ctxt.implicitWidth + 28) + 0; anchors.verticalCenter: parent.verticalCenter
+          x: Math.max(ctxt.implicitWidth, cdate.implicitWidth) + 28; anchors.verticalCenter: parent.verticalCenter
           Text { id: tl; anchors.centerIn: parent; text: "\u23F1 " + tLeft; color: bgC; font.pixelSize: 11; font.bold: true } }
         Rectangle { visible: !mac; width: 24; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
           color: snapMa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
@@ -355,7 +355,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       }
       MouseArea {
         anchors.fill: parent
-        cursorShape: ov.fromSlot >= 0 ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        cursorShape: Qt.ArrowCursor
         onPressed: (m) => { ov.fromSlot = ov.slotAt(m.x); ov.toSlot = ov.fromSlot }
         onPositionChanged: (m) => { if (ov.fromSlot >= 0) ov.toSlot = ov.slotAt(m.x) }
         onReleased: {
@@ -479,7 +479,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   function startMove() { wasLocked = locked; if (locked) toggle.running = true; moving = true; if (mac) moveIpc("true") }
   function endMove() { if (!moving) return; moving = false; if (wasLocked) toggle.running = true; if (mac) moveIpc("false") }
   function moveIpc(v) { mvProc.running = false; mvProc.v = v; mvProc.running = true }
-  Process { id: mvProc; property string v: "true"; command: ["quickshell", "-p", Quickshell.env("HOME") + "/.config/macdock", "ipc", "call", "macdock", "moveMode", v] }
+  Process { id: mvProc; property string v: "true"; command: ["bash", "-c", "D=\"$HOME/.config/macdock\"; [ -d \"$D\" ] || D=/usr/share/legal-desk/macdock; exec quickshell -p \"$D\" ipc call macdock moveMode \"$1\"", "x", v] }
   Process { id: hideToggle; command: ["/usr/lib/legal-desk/dock-hide-toggle"]; onExited: poll.running = true }
   Process { id: sizer; property string which: "medium"; command: ["/usr/lib/legal-desk/dock-size-set", which]; onExited: poll.running = true }
   Process { id: styler; property string which: "off"; command: ["/usr/lib/legal-desk/macdock-toggle", which]; onExited: poll.running = true }
@@ -489,18 +489,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
   Process { id: rebootProc; command: ["/usr/lib/legal-desk/reboot-confirm", "reboot", "center"] }
   Process { id: tasksProc; command: ["/usr/lib/legal-desk/legal-tasks"] }
   Process { id: shutdownProc; command: ["/usr/lib/legal-desk/reboot-confirm", "shutdown", "center"] }
-  property bool blocksOn: false
-  FileView {
-    id: blocksFile
-    path: Quickshell.env("HOME") + "/.cache/dock-block"
-    printErrors: false
-    watchChanges: true
-    onFileChanged: reload()
-    onLoaded: ldr.blocksOn = true
-    onLoadFailed: ldr.blocksOn = false
-  }
-  Timer { interval: 1000; running: true; repeat: true; onTriggered: blocksFile.reload() }
-  Process { id: lookProc; property string a: "solid"; command: ["/usr/lib/legal-desk/dock-look", a]; onExited: { poll.running = true; blocksFile.reload() } }
+  Process { id: lookProc; property string a: "solid"; command: ["/usr/lib/legal-desk/dock-look", a]; onExited: poll.running = true }
   Process { id: transToggle; command: ["/usr/lib/legal-desk/dock-transparent-toggle"]; onExited: poll.running = true }
 
   // One gear button at the right end of the dock; opens a small menu above it.
@@ -551,6 +540,8 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
         color: bgC; border.color: accC; border.width: 1
         focus: true
         Keys.onEscapePressed: menuOpen = false
+        // A left click on empty space in the menu closes it; the controls, which sit above this, still take their own clicks
+        MouseArea { anchors.fill: parent; acceptedButtons: Qt.LeftButton; onClicked: menuOpen = false }
         Column {
           anchors.fill: parent; anchors.margins: 6; spacing: 2
           // Action buttons: Move icons, (Hide on the classic dock), Mouse and Shut down as solid buttons on one line.
@@ -559,7 +550,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
             Repeater {
               model: [
                 { label: "Apps", icon: "\uf00a", act: "apps", on: true },
-                { label: moving ? "Done" : "Move", icon: "\uf0b2", act: "move", on: true },
+                { label: moving ? "Done" : "Dividers", icon: "\uf0b2", act: "move", on: true },
                 { label: "Mouse", icon: "\uf245", act: "mouse", on: true },
                 { label: "Tasks", icon: "\uf080", act: "tasks", on: true },
                 { label: "Shut Down", icon: "\uf011", act: "shutdown", on: true }
@@ -592,11 +583,11 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           Row {
             width: parent.width; height: 34; spacing: 4
             CycleButton {
-              readonly property var opts: [ { l: "Transparent", k: "transparent" }, { l: "Solid", k: "solid" }, { l: "Block", k: "block" } ]
-              readonly property int cur: blocksOn ? 2 : (transparent ? 0 : 1)
+              readonly property var opts: [ { l: "Transparent", k: "transparent" }, { l: "Solid", k: "solid" } ]
+              readonly property int cur: transparent ? 0 : 1
               width: (parent.width - 8) / 3
               label: opts[cur].l
-              onStep: (d) => { menuT.restart(); lookProc.a = opts[(cur + d + 3) % 3].k; lookProc.running = false; lookProc.running = true }
+              onStep: (d) => { menuT.restart(); lookProc.a = opts[(cur + d + 2) % 2].k; lookProc.running = false; lookProc.running = true }
             }
             CycleButton {
               readonly property var opts: [ { l: "Classic", k: "off" }, { l: "Mac", k: "on" }, { l: "Rubik", k: "rubik" } ]

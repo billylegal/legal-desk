@@ -4,6 +4,8 @@
 #           Drag the window anywhere; the spot is remembered (~/.cache/dock-radio-pos).
 R=/usr/lib/snapdock/bin/sd-radio; command -v sd-radio >/dev/null && R=sd-radio
 [ -x "$R" ] || command -v "$R" >/dev/null || { notify-send "1UP Radio" "The radio player (SnapDock's sd-radio) is not installed."; exit 1; }
+# every request is noted (when, what, by which program) so a start nobody asked for can be traced: ~/.cache/legal-radio-calls.log
+[ "$1" = status ] || echo "$(date +%F\ %T) $* <- $(ps -o args= -p $PPID | cut -c1-90)" >> "$HOME/.cache/legal-radio-calls.log" 2>/dev/null
 case "${1:-window}" in
   window)
     # Each press of the dock button: open small -> medium -> large -> close. (The player stays on; only the window goes.)

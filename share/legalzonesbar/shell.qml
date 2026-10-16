@@ -11,7 +11,9 @@ ShellRoot {
   property color accC: "#8B5CF6"
   property color txtC: "#E6E1FA"
   property color selC: "#2A1B52"
+  // Colours follow the dock skin; the file is re-read every second, so a skin change shows up at once.
   FileView {
+    id: colorsFile
     path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
     onLoaded: {
       var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
@@ -21,9 +23,14 @@ ShellRoot {
       if (c.sel) zr.selC = c.sel
     }
   }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: colorsFile.reload() }
   readonly property string core: "/usr/lib/legal-desk/legal-zones-core"
   readonly property string launcher: "/usr/lib/legal-desk/legal-zones"
   property var data: ({ layouts: [], active: "" })
+  // "mine" = the layouts you made; they come first, and the tab picks which set the strip shows.
+  property string tab: "mine"
+  readonly property var mineLayouts: data.layouts.filter(l => l.mine)
+  readonly property var shown: (tab === "mine" && mineLayouts.length) ? mineLayouts : mineLayouts.concat(data.layouts.filter(l => !l.mine))
   property string winTitle: ""
   property bool open: false
 
@@ -46,7 +53,7 @@ ShellRoot {
   PanelWindow {
     id: win
     anchors { top: true }
-    implicitWidth: 860; implicitHeight: 230
+    implicitWidth: 860; implicitHeight: 276
     color: "transparent"; exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay; WlrLayershell.namespace: "legalzonesbar"
     mask: Region { item: zr.open ? card : strip }
@@ -62,7 +69,7 @@ ShellRoot {
 
     Rectangle {
       id: card
-      width: parent.width - 20; height: 214
+      width: parent.width - 20; height: 262
       x: 10; y: zr.open ? -2 : -height - 40
       radius: 0; color: zr.bgC; border.color: zr.accC; border.width: 2
       Behavior on y { NumberAnimation { duration: 170; easing.type: Easing.OutCubic } }
@@ -84,11 +91,27 @@ ShellRoot {
           MouseArea { id: ma2; anchors.fill: parent; hoverEnabled: true; onClicked: { zr.run([zr.launcher, "manage"]); zr.hide() } } }
       }
 
+      // My layout / All layouts tabs
+      Row {
+        x: 14; y: 50; spacing: 6
+        Repeater {
+          model: [{ k: "mine", l: "My layout (" + zr.mineLayouts.length + ")" }, { k: "all", l: "All layouts (" + zr.data.layouts.length + ")" }]
+          Rectangle {
+            required property var modelData
+            width: 150; height: 26; radius: 0
+            color: zr.tab === modelData.k ? zr.accC : (ta.containsMouse ? zr.selC : "transparent")
+            border.color: zr.accC; border.width: 1
+            Text { anchors.centerIn: parent; text: parent.modelData.l; color: zr.tab === parent.modelData.k ? zr.bgC : zr.txtC; font.pixelSize: 12; font.bold: zr.tab === parent.modelData.k }
+            MouseArea { id: ta; anchors.fill: parent; hoverEnabled: true; onClicked: zr.tab = parent.modelData.k }
+          }
+        }
+      }
+
       ListView {
         id: lv
-        x: 14; y: 52; width: card.width - 28; height: 140
+        x: 14; y: 84; width: card.width - 28; height: 140
         orientation: ListView.Horizontal; spacing: 12; clip: true
-        model: zr.data.layouts
+        model: zr.shown
         delegate: Item {
           id: cell
           required property var modelData

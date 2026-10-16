@@ -1,0 +1,4 @@
+#!/bin/bash
+# dock-menu-toggle : the dock menu (Legal Desk's right-click menu) opens if closed, closes if open.
+find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }
+quickshell -p "$(find_dir docklock)" ipc call dockmenu toggle >/dev/null 2>&1

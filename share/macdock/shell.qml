@@ -123,6 +123,25 @@ ShellRoot {
   }
   function curOrder() { return items.map(i => i.cls).filter(c => !fixedCls(c) && (isSep(c) || c.indexOf("__") === 0 || isPinned(c))) }
   function addDivider() { var o = curOrder(), at = o.indexOf("__launcher__"); if (at < 0) at = o.length; o.splice(at, 0, "__sep__" + Date.now()); saveLayout(o) }
+  // Taking anything off the dock asks twice (two different questions), so it can never happen by accident.
+  property string rmCls: ""
+  property string rmKind: ""
+  property int rmStep: 0
+  function askRemove(kind, cls) { ctx = ""; rmKind = kind; rmCls = cls; rmStep = 1 }
+  function rmCancel() { rmStep = 0; rmCls = ""; rmKind = "" }
+  function rmName(c) {
+    if (isSep(c)) return "this divider"
+    var n = { "__launcher__": "Legal Desk", "__calendar__": "Calendar", "__notes__": "Notes", "__tasks__": "Task Manager", "__snap__": "Screenshot", "__radio__": "1UP Radio", "__disks__": "Disk Management", "__zones__": "Legal Zones", "__trash__": "Trash", "__folder__": "Downloads" }[c]
+    return n || ((appmap[c] && appmap[c].name) || c.replace(/^chrome-/, "").replace(/-Default$/, "").replace(/__.*$/, ""))
+  }
+  function rmYes() {
+    if (rmStep === 1) { rmStep = 2; return }
+    var k = rmKind, c = rmCls
+    rmCancel()
+    if (k === "sep") { var i = items.findIndex(x => x.cls === c); if (i >= 0) removeAt(i) }
+    else if (k === "unown") sh(["/usr/lib/legal-desk/dock-own-toggle", c])
+    else if (k === "pin") sh(["/usr/lib/legal-desk/dock-pin-toggle", c])
+  }
   function removeAt(i) { var o = curOrder(), c = items[i].cls; saveLayout(o.filter(x => x !== c)) }
   readonly property real sepW: 10                                  // a divider is a narrow cell, so icons sit close to it
   function restW(i) { return items[i] && isSep(items[i].cls) ? sepW : base }
@@ -153,6 +172,11 @@ ShellRoot {
   }
   Timer { interval: 3000; running: true; repeat: true; onTriggered: omaFile.reload() }
   // Menu colours follow the chosen dock skin (~/.cache/dock-menu-colors, written by macdock-skin); default = Nebula.
+  // Start-up: the dock stays hidden until its colours are read (no purple flash of the default), and after the splash.
+  property bool colorsLoaded: false
+  property bool splashOn: true   // held until the splash check says whether to show it
+  readonly property bool dockShown: colorsLoaded && !splashOn
+  Timer { interval: 3000; running: true; onTriggered: root.colorsLoaded = true }   // fallback if the colour file is missing
   property color pBg: "#0B0818"
   property color pAcc: "#8B5CF6"
   property color pTxt: "#E6E1FA"
@@ -170,6 +194,7 @@ ShellRoot {
     onFileChanged: reload()
     onLoaded: {
       var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
+      root.colorsLoaded = true
       if (c.bg) root.pBg = c.bg
       if (c.acc) root.pAcc = c.acc
       if (c.txt) root.pTxt = c.txt
@@ -207,11 +232,39 @@ ShellRoot {
   }
   // The 10 icon sets (menu: Icons < >). Each is a full look: the art of Legal Desk's own icons (drawn by legal-icons, see artDir below)
   // and how other apps' icons are dressed: ic = tinted ("gray" / "skin"), sk = on plates (see tileDefs), blk = on blocks in the skin's colours.
-  property int iconStyle: 0
-  readonly property var iconNames: ["Tile", "Outline", "Glyph", "Duotone", "Glass", "Neon", "Flat", "Pixel", "Sticker", "Cube"]
+  property int iconRaw: 0
+  readonly property int iconStyle: iconRaw >= 21 ? 12 : iconRaw   // 21-28 are Regular plus an effect
+  readonly property int fx: (iconRaw >= 21 && iconRaw <= 28) ? iconRaw - 20 : 0      // 1 Mono Accent 2 Mono Silver 3 3D Tilt 4 3D Cover 5 Dance 6 Groove 7 Coin 8 Flip
+  property real fxPhase: 0
+  readonly property string metalTone: iconRaw === 29 ? "#dfe4ea" : iconRaw === 30 ? "#f3c84a" : iconRaw === 31 ? "#d38a50" : iconRaw >= 39 ? "#b9a3f0" : ""   // Silver / Gold / Bronze: 1UP Radio and the Globe get the same metal
+  property real rowAreaW: 0
+  NumberAnimation on fxPhase { from: 0; to: 1; duration: 2400; loops: Animation.Infinite; running: root.fx >= 5 }
+  readonly property var iconNames: ["Tile", "Outline", "Glyph", "Duotone", "Glass", "Neon", "Flat", "Pixel", "Sticker", "Cube", "Thin", "Light", "Regular", "Bold", "Fill", "Two-tone", "Type", "Shadow", "Gradient", "Colour", "Apple", "Mono Accent", "Mono Silver", "3D Tilt", "3D Cover", "Dance", "Groove", "Coin", "Flip", "Silver", "Gold", "Bronze", "Tela", "MacTahoe", "Colloid", "McMojave", "Qogir", "Fluent", "Papirus", "Nebula", "Purple Chrome"]
   readonly property var iconDefs: [
-    {}, {}, { ic: "skin" }, { blk: true }, { sk: "Glass" }, { ic: "skin", blk: true }, { sk: "Flat" }, { sk: "Pixel" }, { sk: "Sticker" }, { sk: "Cube" }
+    {}, {}, { ic: "skin" }, { blk: true }, { sk: "Glass" }, { ic: "skin", blk: true }, { sk: "Flat" }, { sk: "Pixel" }, { sk: "Sticker" }, { sk: "Cube" },
+    {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}   // 10-19: free-standing sets, no plates; 20: Apple (real macOS-style icons)
   ]
+  readonly property bool freeSet: iconStyle >= 10   // Thin Light Regular Bold Fill Two-tone Type Shadow Gradient Colour: icons stand on their own, never on blocks
+  // how other apps' icons are redrawn for a set (dock-icon-outline MODE); "" = as they are
+  readonly property string appMode: iconRaw >= 29 ? ["metal-silver", "metal-gold", "metal-bronze", "theme-tela", "theme-mactahoe", "theme-colloid", "theme-mcmojave", "theme-qogir", "theme-fluent", "theme-papirus", "metal-nebula", "metal-chrome"][iconRaw - 29] : ({ "1": "outline", "10": "hair", "11": "light", "12": "regular", "13": "bold", "14": "fill", "15": "duo", "17": "shadow", "18": "gradient", "20": "apple" })["" + iconStyle] || ""
+  // Type set: the app's name in capitals
+  function ownWord(cls) {
+    return cls === "__notes__" ? "NOTES" : cls === "__tasks__" ? "TASKS" : cls === "__disks__" ? "DISKS" : cls === "__zones__" ? "ZONES" : cls === "__snap__" ? "SCREEN\nSHOT" : cls === "__folder__" ? "LOADS" : cls === "__trash__" ? "TRASH" : cls === "__calendar__" ? "CAL" : ""
+  }
+  function typeName(cls) {
+    if (cls === "chrome-127.0.0.1__globe_-Default") return "RADIO\nGLOBE"
+    var r = appmap[cls], n = (r && r.name) ? r.name : cls.replace(/^chrome-/, "").replace(/__.*$/, "").replace(/-Default$/, "").replace(/\.(com|org|net|io|ai)$/, "").replace(/^org\./, "").replace(/\./g, " ")
+    n = n.replace(/\b(Google|Desktop|Web|Browser|App|Application)\b/ig, " ").replace(/\s+/g, " ").trim()
+    return stackWords((n || cls).toUpperCase())
+  }
+  // Type set: a name of several words stands on two lines, split where the two lines come out most even (YT TO / AUDIO, CLAUDE / CODE)
+  function stackWords(t) {
+    var w = t.split(" ")
+    if (w.length < 2) return t
+    var best = 0, bl = 1e9
+    for (var i = 1; i < w.length; i++) { var m = Math.max(w.slice(0, i).join(" ").length, w.slice(i).join(" ").length); if (m < bl) { bl = m; best = i } }
+    return w.slice(0, best).join(" ") + "\n" + w.slice(best).join(" ")
+  }
   readonly property var tileDefs: ({
     "Glass":   { c1: "#58ffffff", c2: "#22ffffff", b: "#aaffffff", r: 18, t: [] },
     "Flat":    { c1: Qt.darker(accC, 1.6), c2: Qt.darker(accC, 2.0), b: accC, r: 10, t: [] },
@@ -252,6 +305,18 @@ ShellRoot {
     stdout: StdioCollector { onStreamFinished: { try { var r = JSON.parse(text); root.radioOn = !!r.playing && !r.paused } catch (e) { } } }
   }
   Timer { interval: 1500; running: root.ownTokens.indexOf("__radio__") >= 0; repeat: true; triggeredOnStart: true; onTriggered: { if (!radioPoll.running) radioPoll.running = true } }
+  // Omarchy Store: updates waiting (red badge on its icon; click goes straight to the Updates page)
+  property int storeUpd: 0
+  readonly property string storeCls: "chrome-127.0.0.1__-Default"
+  Process {
+    id: storePoll
+    command: ["/usr/lib/legal-desk/dock-store-updates"]
+    stdout: StdioCollector { onStreamFinished: { try { root.storeUpd = JSON.parse(text).n || 0 } catch (e) { } } }
+  }
+  Timer { interval: 900000; running: true; repeat: true; triggeredOnStart: true; onTriggered: { if (!storePoll.running) storePoll.running = true } }
+  // after the Store is opened / Update is chosen, look again every 30 s so the red badge goes away as soon as the update is done
+  property int storeFast: 0
+  Timer { interval: 30000; running: root.storeFast > 0; repeat: true; onTriggered: { root.storeFast--; if (root.storeUpd === 0) root.storeFast = 0; else if (!storePoll.running) storePoll.running = true } }
   property int artDay: -1
   Process { id: artProc; command: ["/usr/lib/legal-desk/legal-icons", "refresh"] }   // a new day: the Calendar icon shows the new date
   Connections { target: root; function onNowDChanged() { var d = root.nowD.getDate(); if (root.artDay >= 0 && d !== root.artDay) { artProc.running = false; artProc.running = true } root.artDay = d } }
@@ -269,8 +334,8 @@ ShellRoot {
     id: icoFile
     path: Quickshell.env("HOME") + "/.cache/dock-icon-style"
     printErrors: false
-    onLoaded: { var n = parseInt(text()); root.iconStyle = (isNaN(n) || n < 0 || n >= root.iconNames.length) ? 0 : n }
-    onLoadFailed: root.iconStyle = 0
+    onLoaded: { var n = parseInt(text()); root.iconRaw = (isNaN(n) || n < 0 || n >= root.iconNames.length) ? 0 : n }
+    onLoadFailed: root.iconRaw = 0
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: icoFile.reload() }
   // Full-width dock (menu: Full-width dock): the solid plate becomes a bar across the whole screen width (flag file ~/.cache/dock-full).
@@ -283,18 +348,10 @@ ShellRoot {
     onLoadFailed: root.block = false
   }
   Timer { interval: 1000; running: true; repeat: true; onTriggered: blockFile.reload() }
-  // Block look (menu: Block): every icon sits on its own block in the skin's colours, no plate behind them (flag file ~/.cache/dock-block).
-  property bool blocks: false
+  // The Block look was removed (only Solid and Transparent remain), so the per-icon blocks never show.
+  readonly property bool blocks: false
   readonly property bool ownPlate: blocks || iconTiles || (skin.tile || "") !== ""   // Calendar/Notes/etc. sit on a plate only when the other icons do
   readonly property real ownK: 0.94
-  FileView {
-    id: blocksFile
-    path: Quickshell.env("HOME") + "/.cache/dock-block"
-    printErrors: false
-    onLoaded: root.blocks = true
-    onLoadFailed: root.blocks = false
-  }
-  Timer { interval: 1000; running: true; repeat: true; onTriggered: blocksFile.reload() }
   // ---- Clock beside the dock (menu: CLOCK / TIME): drawn here for the Mac and Rubik docks; files ~/.cache/dock-clock, dock-clock-fmt ----
   property string clockPos: "off"
   property bool clock24: false
@@ -472,9 +529,10 @@ print(json.dumps(out))
   Process { id: trashChk; command: ["bash", "-c", "ls -A \"$HOME/.local/share/Trash/files\" 2>/dev/null | head -1"]
     stdout: StdioCollector { onStreamFinished: root.trashFull = text.trim().length > 0 } }
   function activate(cls) {
+    if (cls === storeCls) { sh(["/usr/lib/legal-desk/dock-store-open"]); storeFast = 60; return }
     if (cls === "__trash__") { launch(["gio", "open", "trash:///"]); return }
     if (cls === "__folder__") { launch(["xdg-open", Quickshell.env("HOME") + "/Downloads"]); return }
-    if (cls === "__launcher__") { sh(["/usr/lib/legal-desk/drawer-toggle"]); return }
+    if (cls === "__launcher__") { sh(["/usr/lib/legal-desk/drawer-only"]); return }
     if (cls === "__calendar__") { sh(["/usr/lib/legal-desk/legal-calendar"]); return }
     if (cls === "__notes__") { sh(["/usr/lib/legal-desk/legal-notes"]); return }
     if (cls === "__zones__") { sh(["/usr/lib/legal-desk/legal-zones"]); return }
@@ -492,6 +550,7 @@ print(json.dumps(out))
   function iconFor(cls) {
     if (cls === "__launcher__") return "file:///usr/share/nwg-dock-hyprland/images/grid.svg"
     if (cls === "__trash__" || cls === "__folder__") return artDir !== "" ? artDir + "/" + artName(cls) + ".svg" : ""
+    if (cls === storeCls) { var sp = Quickshell.iconPath("omarchy-store", true); if (sp) return sp }   // the Omarchy Store always gets its own icon, even when its launcher does not name the window class
     var r = appmap[cls]
     var n = r && r.icon ? r.icon : cls
     if (n.startsWith("/")) return "file://" + n
@@ -514,23 +573,26 @@ print(json.dumps(out))
   property string outKey: ""
   function shownIcon(cls) {
     var u = iconFor(cls)
-    if (iconStyle === 1 && u !== "") { var o = outlines[plainPath(u)]; if (o) return "file://" + o }
+    if (appMode !== "" && u !== "") { var o = outlines[plainPath(u)]; if (o) return "file://" + o }
     return u
   }
   function reoutline() {
-    if (iconStyle !== 1) return
+    if (appMode === "") return
     var ps = []
     for (var i = 0; i < items.length; i++) { var u = iconFor(items[i].cls); if (u !== "" && !String(u).startsWith(artDir)) ps.push(plainPath(u)) }
-    var k = ps.join("|") + "#" + accC
+    var k = appMode + "|" + ps.join("|") + "#" + accC + txtC
     if (k === outKey) return
+    if (outliner.running) return   // one at a time; when it ends reoutline() runs again and picks up whatever changed meanwhile
     outKey = k
-    outliner.cmd = ["/usr/lib/legal-desk/dock-icon-outline"].concat(ps)
-    outliner.running = false; outliner.running = true
+    outliner.mode = appMode
+    outliner.cmd = ["/usr/lib/legal-desk/dock-icon-outline", appMode].concat(ps)
+    outliner.running = true
   }
-  Process { id: outliner; property var cmd: []; command: cmd
-    stdout: StdioCollector { onStreamFinished: { try { root.outlines = JSON.parse(text) } catch (e) { } } } }
-  onIconStyleChanged: { outKey = ""; reoutline() }
-  onAccCChanged: { outKey = ""; reoutline() }
+  Process { id: outliner; property string mode: ""; property var cmd: []; command: cmd
+    stdout: StdioCollector { onStreamFinished: { try { var r = JSON.parse(text); if (outliner.mode === root.appMode) root.outlines = r; else root.outKey = "" } catch (e) { } } }
+    onRunningChanged: if (!running) Qt.callLater(root.reoutline) }
+  onIconRawChanged: { outlines = ({}); reoutline() }
+  onAccCChanged: reoutline()
   function plainPath(s) { return s.startsWith("file://") ? s.substring(7) : s }
   function scaleOf(cls) { var s = iscale[plainPath(iconFor(cls))]; return s ? s : 1 }
   function remeasure() {
@@ -556,19 +618,29 @@ print(json.dumps(out))
   // and um is solved so the icon under the pointer really stays under it (no feedback from the animated icons -> no jitter).
   // mag (0..1) and umS are spring-animated, which gives the elastic pop when the mouse arrives, moves and leaves.
   property real mag: 0
-  Behavior on mag { SpringAnimation { spring: 5; damping: 0.3; epsilon: 0.002 } }
-  property real umT: 0
-  property real umS: 0
-  // umS chases umT with our own per-frame spring. (A Behavior/SpringAnimation restarts on every mouse event and a mouse
-  // reports faster than the screen refreshes, so it never got to advance: the wave froze and then jumped.)
-  property real umV: 0
+  // The fisheye grows and shrinks along a cubic-bezier curve (cubic-bezier(.22, 1, .36, 1): fast start, long soft landing).
+  Behavior on mag { NumberAnimation { duration: 240; easing.type: Easing.BezierSpline; easing.bezierCurve: [0.22, 1, 0.36, 1, 1, 1] } }
+  property real umT: 0          // where the pointer sits in the unscaled layout (solved from the mouse)
+  property real umS: 0          // where the fisheye is drawn: follows umT on a critically damped spring
+  property real umV: 0          // the spring's speed, kept between mouse events so the motion never stops and restarts
+  property bool settling: false // the spring is still moving: the frame loop runs only then
+  property real lastT: 0
+  property real pmx: 0          // newest mouse x (mouse events can come faster than the screen; only the newest is solved)
+  property bool pdirty: false
+  readonly property real springK: 900   // stiffness: omega = 30 rad/s, the fisheye settles in about 0.15 s
+  readonly property real springC: 60    // damping = 2 * omega: it lands without overshoot
+
+  // Runs once per frame, and only while the pointer is over the dock or the spring is still moving.
   FrameAnimation {
-    running: root.mag > 0.01 && (Math.abs(root.umS - root.umT) > 0.05 || Math.abs(root.umV) > 0.05)
+    running: root.pdirty || root.settling
     onTriggered: {
-      var dt = Math.min(frameTime, 0.05), n = Math.max(1, Math.ceil(dt / 0.006)), h = dt / n
-      var x = root.umS, v = root.umV
-      for (var i = 0; i < n; i++) { v += (-1000 * (x - root.umT) - 46 * v) * h; x += v * h }
-      root.umV = v; root.umS = x
+      if (root.pdirty) { root.pdirty = false; root.solvePointer(root.pmx) }
+      if (!root.settling) return
+      var now = Date.now(), dt = Math.min(0.034, (now - root.lastT) / 1000)
+      root.lastT = now
+      root.umV += ((root.umT - root.umS) * root.springK - root.umV * root.springC) * dt
+      root.umS += root.umV * dt
+      if (Math.abs(root.umT - root.umS) < 0.05 && Math.abs(root.umV) < 0.5) { root.umS = root.umT; root.umV = 0; root.settling = false }
     }
   }
   property int hoverIdx: -1
@@ -602,6 +674,8 @@ print(json.dumps(out))
   }
   readonly property var lay: layoutFor(umS, mag, win.width)
   // Where the last icon (the launcher) sits on the screen at rest; the menus above the dock line up with it.
+  // Layered icons are drawn once into a texture this many times bigger than their resting size, so the GPU can scale them up sharply.
+  readonly property real texK: Math.min(4, Math.ceil(maxScale))
   readonly property real launcherX: { var l = layoutFor(0, 0, win.width), k = items.findIndex(i => i.cls === "__launcher__"); return k < 0 ? 0 : Math.round(((win.screen ? win.screen.width : 1920) - win.width) / 2 + l.xs[k] + l.ws[k] / 2) }
   onLauncherXChanged: lxT.restart()
   Timer { id: lxT; interval: 400; onTriggered: lxW.running = true }
@@ -610,11 +684,9 @@ print(json.dumps(out))
   onMenuLineChanged: lxT.restart()
   Process { id: lxW; command: ["bash", "-c", "echo \"$0 $1\" > \"$HOME/.cache/dock-launcher\"", String(root.launcherX), String(root.menuLine)] }
 
-  // Mouse events can arrive at 1000 Hz; solve for the latest position at most every 8 ms.
-  property real pmx: 0
-  Timer { id: ptT; interval: 8; onTriggered: root.solvePointer(root.pmx) }
-  function pointer(mx) { pmx = mx; if (!ptT.running) ptT.start() }
+  function pointer(mx) { pmx = mx; pdirty = true }
   function nearestIdx(rx) { var b = 0, bd = 1e9; for (var i = 0; i < items.length; i++) { var d = Math.abs(rx - (restXs[i] + restW(i) / 2)); if (d < bd) { bd = d; b = i } } return b }
+  // Solves where the pointer sits in the unscaled layout (umT): the icon under the pointer stays under it.
   function solvePointer(mx) {
     var n = items.length; if (n < 1) return
     var L0 = (win.width - baseTotal) / 2
@@ -628,7 +700,8 @@ print(json.dumps(out))
       p += (mx - sx) * 0.5
     }
     umT = p
-    if (mag <= 0.15) { umS = p; umV = 0 }
+    if (mag <= 0.15) { umS = p; umV = 0; settling = false }   // just arrived: jump to the pointer, the fisheye itself eases in
+    else { if (!settling) lastT = Date.now(); settling = true }
     hoverIdx = nearestIdx(p - L0)
   }
   function moveTo(from, to) {
@@ -639,8 +712,73 @@ print(json.dumps(out))
     saveLayout(o.filter(c => !fixedCls(c) && (isSep(c) || c.indexOf("__") === 0 || isPinned(c))))
   }
 
+  // Start-up splash: "LEGAL DESK" in the skin's colours, once per login, then the dock comes in.
+  property bool splashUp: false
+  Process {
+    id: splashChk
+    command: ["bash", "-c", "f=\"${XDG_RUNTIME_DIR:-/tmp}/legal-desk-splash\"; [ -e \"$f\" ] && exit 1; : > \"$f\""]
+    onExited: (code) => { if (code === 0) { root.splashUp = true } else root.splashOn = false }
+  }
+  Timer { id: splashHold; interval: 1500; onTriggered: root.splashOn = false }
+  Timer { id: splashGone; interval: 2100; onTriggered: root.splashUp = false }
+  Component.onCompleted: splashChk.running = true
+  PanelWindow {
+    id: splash
+    visible: root.splashUp
+    anchors { top: true; bottom: true; left: true; right: true }
+    color: "transparent"
+    exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.namespace: "legaldesk-splash"
+    mask: Region {}   // it never takes the mouse
+    // the timing starts when the window is really on screen
+    onVisibleChanged: if (visible) { stage.start(); splashHold.restart(); splashGone.restart() }
+    Item {
+      id: stage
+      anchors.fill: parent
+      readonly property real cy: height / 2 - 60
+      property bool risen: false
+      // the wordmark rises from the bottom edge of the screen, then bursts open
+      Item {
+        id: logo
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.min(640, stage.width * 0.4); height: width * 950 / 4131 + 44
+        y: stage.risen ? stage.cy - height / 2 : stage.height + 40
+        scale: 1
+        opacity: root.splashOn ? 1 : 0
+        Behavior on y { NumberAnimation { duration: 620; easing.type: Easing.OutCubic } }
+        Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+        Image {
+          id: word
+          width: parent.width; height: width * 950 / 4131
+          source: Qt.resolvedUrl("splash-wordmark.svg")
+          sourceSize.width: 1600; smooth: true
+          fillMode: Image.PreserveAspectFit
+          layer.enabled: true
+          layer.effect: MultiEffect { colorization: 1.0; colorizationColor: root.accC }
+        }
+        Text {
+          id: cap
+          anchors { top: word.bottom; topMargin: 6; horizontalCenter: parent.horizontalCenter }
+          text: "LEGAL DESK"; color: root.accC; font.family: "Bebas Neue"; font.pixelSize: 38; font.letterSpacing: 6
+          opacity: 0
+          NumberAnimation on opacity { id: capIn; running: false; to: 1; duration: 300 }
+        }
+        transformOrigin: Item.Center
+        SequentialAnimation {
+          id: boom
+          PauseAnimation { duration: 600 }
+          NumberAnimation { target: logo; property: "scale"; to: 1.22; duration: 150; easing.type: Easing.OutQuad }
+          NumberAnimation { target: logo; property: "scale"; to: 1.0; duration: 420; easing.type: Easing.OutBack }
+        }
+      }
+      function start() { risen = true; boom.restart(); capIn.running = true }
+    }
+  }
+
   PanelWindow {
     id: win
+    visible: root.dockShown
     anchors { bottom: true }
     margins { bottom: root.testMode ? 150 : (root.block ? 0 : 4) }
     implicitWidth: root.block ? (win.screen ? win.screen.width : 1900) : Math.min(root.panelW, win.screen ? win.screen.width : 1900)
@@ -704,6 +842,8 @@ print(json.dumps(out))
     // Row of icons, centred. Positions come from the cumulative scaled widths, so neighbours push apart.
     Item {
       id: rowArea
+      Component.onCompleted: root.rowAreaW = width
+      onWidthChanged: root.rowAreaW = width
       opacity: (!root.hidden || hover.containsMouse) ? 1 : 0
       Behavior on opacity { NumberAnimation { duration: 160 } }
       anchors.bottom: parent.bottom
@@ -722,9 +862,15 @@ print(json.dumps(out))
           readonly property bool isSep: root.isSep(modelData.cls)
           readonly property bool ownIcon: modelData.cls === "__radio__" || modelData.cls === "__trash__" || modelData.cls === "__folder__" || modelData.cls === "__calendar__" || modelData.cls === "__notes__" || modelData.cls === "__tasks__" || modelData.cls === "__disks__" || modelData.cls === "__zones__" || modelData.cls === "__snap__"   // draw their own tile
           readonly property real lift: dragged ? 1.18 : 1
-          width: (root.lay.ws[index] || root.base) * lift
-          height: isSep ? root.base : width
-          x: dragged ? root.dragX - width / 2 : (root.lay.xs[index] || 0)
+          // Magnification never re-lays-out the icon: the cell keeps its resting size and is scaled as a GPU transform
+          // (about its bottom centre); only its position is updated. Its content is a texture, not repainted per frame.
+          readonly property real restSize: root.restW(index)
+          readonly property real mScale: ((root.lay.ws[index] || restSize) / restSize) * lift
+          width: restSize
+          height: isSep ? root.base : restSize
+          scale: mScale
+          transformOrigin: Item.Bottom
+          x: dragged ? root.dragX - width / 2 : (root.lay.xs[index] || 0) + ((root.lay.ws[index] || restSize) - restSize) / 2
           Behavior on x { enabled: root.dragIdx >= 0 && !cell.dragged; NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
           z: dragged ? 10 : 0
           property real jig: 0
@@ -765,9 +911,43 @@ print(json.dumps(out))
             }
           }
           Item {
+            id: fxBox
             visible: !cell.isSep; anchors.fill: parent
+            // icon-set effects 21-28 (Regular's icons): one colour, 3D, dancing, spinning
+            readonly property real ph: root.fxPhase * 6.2832 - cell.index * 0.7
+            readonly property real cx: root.rowAreaW > 0 ? ((cell.x + cell.width / 2) / root.rowAreaW - 0.5) * 2 : 0
+            readonly property real wave: ((root.fxPhase * 2.2 - cell.index * 0.09) % 1 + 1) % 1
+            layer.enabled: root.fx >= 1 && root.fx <= 4
+            layer.textureSize: Qt.size(Math.ceil(width * root.texK), Math.ceil(height * root.texK))
+            layer.smooth: true
+            layer.effect: MultiEffect {
+              colorization: root.fx === 1 ? 1.0 : 0.0
+              colorizationColor: root.accC
+              saturation: root.fx === 2 ? -1.0 : 0.0
+              brightness: root.fx === 2 ? 0.05 : 0.0
+              shadowEnabled: root.fx === 3 || root.fx === 4
+              shadowColor: "#000000"; shadowOpacity: 0.7; shadowBlur: 0.6; shadowVerticalOffset: 6; shadowHorizontalOffset: 0
+              autoPaddingEnabled: true
+            }
+            transform: [
+              Translate { y: root.fx === 5 ? -Math.abs(Math.sin(fxBox.ph)) * cell.height * 0.34 : root.fx === 6 ? Math.sin(fxBox.ph * 2) * cell.height * 0.05 : 0
+                          x: root.fx === 6 ? Math.sin(fxBox.ph) * cell.width * 0.06 : 0 },
+              Scale { origin.x: fxBox.width / 2; origin.y: fxBox.height
+                      xScale: root.fx === 5 ? 1 + 0.10 * (1 - Math.abs(Math.sin(fxBox.ph))) : root.fx === 6 ? 1 + 0.06 * Math.sin(fxBox.ph * 2) : 1
+                      yScale: root.fx === 5 ? 1 - 0.10 * (1 - Math.abs(Math.sin(fxBox.ph))) : root.fx === 6 ? 1 - 0.06 * Math.sin(fxBox.ph * 2) : 1 },
+              Rotation { origin.x: fxBox.width / 2; origin.y: fxBox.height; axis { x: 0; y: 0; z: 1 }
+                         angle: root.fx === 6 ? Math.sin(fxBox.ph) * 11 : root.fx === 5 ? Math.sin(fxBox.ph) * 4 : 0 },
+              Rotation { origin.x: fxBox.width / 2; origin.y: fxBox.height; axis { x: 1; y: 0; z: 0 }
+                         angle: root.fx === 3 ? 52 : 0 },
+              Rotation { origin.x: fxBox.width / 2; origin.y: fxBox.height / 2; axis { x: 0; y: 1; z: 0 }
+                         angle: root.fx === 4 ? -Math.max(-1, Math.min(1, fxBox.cx)) * 52 - (fxBox.cx === 0 ? 0 : 0)
+                              : root.fx === 7 ? root.fxPhase * 360 + cell.index * 40
+                              : 0 },
+              Rotation { origin.x: fxBox.width / 2; origin.y: fxBox.height / 2; axis { x: 1; y: 0; z: 0 }
+                         angle: root.fx === 8 ? (fxBox.wave < 0.35 ? 360 * (fxBox.wave / 0.35) * (fxBox.wave / 0.35) * (3 - 2 * fxBox.wave / 0.35) : 0) : 0 }
+            ]
           Rectangle {
-            visible: root.rubik && cell.modelData.cls !== "__launcher__"
+            visible: root.rubik && cell.modelData.cls !== "__launcher__" && !root.freeSet
             anchors.fill: parent; radius: width * (root.skin.rr !== undefined ? root.skin.rr : 0.2)
             color: (cell.ownIcon || root.iconStyle === 1) ? "#0d0d0d" : root.iconTiles ? root.tc1(cell.modelData.cls) : ((root.rpal && root.rpal.length) ? root.rpal[cell.index % root.rpal.length] : "#333333"); border.color: (root.iconStyle === 1 && !cell.ownIcon) ? root.accC : "#0d0d0d"; border.width: (root.iconStyle === 1 && !cell.ownIcon) ? 1.5 : 2
             rotation: cell.twist
@@ -795,7 +975,7 @@ print(json.dumps(out))
           }
           // Block look: each icon on its own block (skins that already have tiles keep theirs).
           Rectangle {
-            visible: root.blocks && !root.rubik && !root.iconTiles && (root.skin.tile || "") === "" && cell.modelData.cls !== "__launcher__" && !cell.ownIcon
+            visible: root.blocks && !root.freeSet && !root.rubik && !root.iconTiles && (root.skin.tile || "") === "" && cell.modelData.cls !== "__launcher__" && !cell.ownIcon
             anchors.centerIn: parent; width: parent.width * 0.98; height: width; radius: width * 0.22
             gradient: Gradient { GradientStop { position: 0; color: Qt.lighter(root.skin.c1, 1.4) } GradientStop { position: 1; color: Qt.lighter(root.skin.c2, 1.4) } }
             border.color: root.omaSkin ? "transparent" : root.skin.b; border.width: root.omaSkin ? 0 : 1
@@ -806,8 +986,19 @@ print(json.dumps(out))
             color: root.tint(cell.modelData.cls)
             Text { anchors.centerIn: parent; text: root.letterOf(cell.modelData.cls); color: "white"; font.bold: true; font.pixelSize: parent.height * 0.55 }
           }
+          // Type set: other apps are just their name, in capitals
+          Text {
+            visible: root.iconStyle === 16 && !cell.ownIcon && cell.modelData.cls !== "__launcher__"
+            anchors.centerIn: parent
+            width: parent.width * 0.98; height: parent.height * 0.86
+            readonly property bool two: text.indexOf("\n") >= 0
+            text: root.typeName(cell.modelData.cls)
+            font.family: "Bebas Neue"; font.pixelSize: parent.height * (two ? 0.4 : 0.5); fontSizeMode: Text.Fit; minimumPixelSize: 6; lineHeight: 0.86
+            wrapMode: Text.NoWrap; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+            color: root.accC; font.letterSpacing: 1
+          }
           Image {
-            visible: cell.modelData.cls !== "__launcher__" && !cell.ownIcon && cell.modelData.cls !== "chrome-127.0.0.1__globe_-Default"
+            visible: cell.modelData.cls !== "__launcher__" && !cell.ownIcon && cell.modelData.cls !== "chrome-127.0.0.1__globe_-Default" && root.iconStyle !== 16
             anchors.fill: parent
             scale: root.scaleOf(cell.modelData.cls) * ((root.rubik || (root.blocks && (root.skin.tile || "") === "") || (root.iconTiles && (root.skin.tile || "") !== "circle")) ? (root.iconCircle ? 0.66 : 0.74) : (root.skin.ik || 1))
             rotation: cell.twist
@@ -817,6 +1008,7 @@ print(json.dumps(out))
             smooth: true
             mipmap: true
             layer.enabled: root.icEff !== ""
+            layer.textureSize: Qt.size(Math.ceil(width * root.texK), Math.ceil(height * root.texK))
             layer.smooth: true
             layer.effect: MultiEffect {
               saturation: root.icEff === "gray" ? -1 : 0
@@ -981,9 +1173,40 @@ print(json.dumps(out))
             gradient: Gradient { GradientStop { position: 0; color: Qt.lighter(root.skin.c1, 1.4) } GradientStop { position: 1; color: Qt.lighter(root.skin.c2, 1.4) } }
             border.color: root.omaSkin ? "transparent" : root.skin.b; border.width: root.omaSkin ? 0 : 1
           }
+          // Type set: Legal Desk's own icons are words too (the Calendar shows the weekday over the day number)
+          Item {
+            visible: root.iconStyle === 16 && cell.ownIcon && root.ownWord(cell.modelData.cls) !== ""
+            anchors.centerIn: parent
+            width: parent.width * root.ownK; height: width
+            Text { visible: cell.modelData.cls !== "__calendar__"; anchors.centerIn: parent; width: parent.width; height: parent.height * (text.indexOf("\n") >= 0 ? 0.86 : 0.5)
+              text: root.ownWord(cell.modelData.cls); font.family: "Bebas Neue"; font.pixelSize: parent.height * (text.indexOf("\n") >= 0 ? 0.4 : 0.5); fontSizeMode: Text.Fit; minimumPixelSize: 6; lineHeight: 0.86
+              horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: root.accC; font.letterSpacing: 1 }
+            // Calendar: weekday over the day number; the ink of the two (not their text boxes) is centred in the tile, measured with FontMetrics
+            Item {
+              id: calT
+              visible: cell.modelData.cls === "__calendar__"
+              anchors.fill: parent
+              readonly property real wPx: cell.height * 0.22
+              readonly property real nPx: cell.height * 0.62
+              readonly property string wTxt: Qt.formatDate(root.nowD, "ddd").toUpperCase()
+              readonly property string nTxt: "" + root.nowD.getDate()
+              FontMetrics { id: fmW; font.family: "Bebas Neue"; font.pixelSize: calT.wPx }
+              FontMetrics { id: fmN; font.family: "Bebas Neue"; font.pixelSize: calT.nPx }
+              readonly property real hW: (fmW.ascent, fmW.descent, fmW.tightBoundingRect(wTxt).height)   // ascent/descent listed so it is measured again when the font has loaded
+              readonly property real hN: (fmN.ascent, fmN.descent, fmN.tightBoundingRect(nTxt).height)
+              readonly property real gap: cell.height * 0.05
+              readonly property real top0: (height - (hW + gap + hN)) / 2
+              Text { anchors.horizontalCenter: parent.horizontalCenter; anchors.horizontalCenterOffset: 2
+                y: calT.top0 - baselineOffset - (fmW.ascent, fmW.tightBoundingRect(calT.wTxt).y)
+                text: calT.wTxt; font.family: "Bebas Neue"; font.pixelSize: calT.wPx; color: root.accC; font.letterSpacing: 4 }
+              Text { anchors.horizontalCenter: parent.horizontalCenter
+                y: calT.top0 + calT.hW + calT.gap - baselineOffset - (fmN.ascent, fmN.tightBoundingRect(calT.nTxt).y)
+                text: calT.nTxt; font.family: "Bebas Neue"; font.pixelSize: calT.nPx; color: root.txtC }
+            }
+          }
           // Legal Desk's own icons (Calendar, Notes, Tasks, Disks, Zones, Screenshot, Downloads, Trash): the art of the chosen icon set, in the skin's colours.
           Image {
-            visible: cell.ownIcon && cell.modelData.cls !== "__radio__" && root.artName(cell.modelData.cls) !== "" && root.artDir !== ""
+            visible: cell.ownIcon && cell.modelData.cls !== "__radio__" && root.artName(cell.modelData.cls) !== "" && root.artDir !== "" && !(root.iconStyle === 16 && root.ownWord(cell.modelData.cls) !== "")
             anchors.centerIn: parent
             width: parent.width * root.ownK; height: width
             source: visible ? root.artDir + "/" + root.artName(cell.modelData.cls) + ".svg" : ""
@@ -1006,8 +1229,10 @@ print(json.dumps(out))
               anchors.fill: parent
               readonly property real k: width / 512
               layer.enabled: visible
+              layer.textureSize: Qt.size(Math.ceil(width * root.texK), Math.ceil(height * root.texK))
+              layer.smooth: true
               layer.effect: MultiEffect { maskEnabled: true; maskSource: logoMask }
-              Image { anchors.fill: parent; source: Qt.resolvedUrl("1up-logo.png"); sourceSize: Qt.size(512, 512); smooth: true; mipmap: true }
+              Image { anchors.fill: parent; source: Qt.resolvedUrl(root.metalTone === "" ? "1up-logo.png" : "1up-logo-" + (root.iconRaw === 40 ? "chrome" : root.iconRaw === 29 || root.iconRaw === 39 ? "silver" : root.iconRaw === 30 ? "gold" : "bronze") + ".png"); sourceSize: Qt.size(512, 512); smooth: true; mipmap: true }
               Rectangle { x: 112 * logoHost.k; y: 50 * logoHost.k; width: 288 * logoHost.k; height: 83 * logoHost.k; color: "#121212" }
               Repeater {
                 model: 9
@@ -1080,7 +1305,9 @@ print(json.dumps(out))
           // A View From Space (Radio Globe): the app's bullseye + speaker, drawn once (no animation, no CPU) in the skin's colours
           Canvas {
             id: gb
-            visible: cell.modelData.cls === "chrome-127.0.0.1__globe_-Default"
+            visible: cell.modelData.cls === "chrome-127.0.0.1__globe_-Default" && root.iconStyle !== 16
+            layer.enabled: root.metalTone !== ""
+            layer.effect: MultiEffect { colorization: 0.92; colorizationColor: root.metalTone; contrast: 0.3; brightness: 0.12; saturation: -0.2 }
             width: 192; height: 192
             anchors.centerIn: parent
             scale: cell.width / 192
@@ -1137,14 +1364,23 @@ print(json.dumps(out))
             opacity: on ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: 120 } }
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.top; anchors.bottomMargin: 6
+            anchors.bottom: parent.top; anchors.bottomMargin: 6 / cell.mScale
+            scale: 1 / cell.mScale; transformOrigin: Item.Bottom
             width: lbl.width + 16; height: lbl.height + 8; radius: 7
             color: Qt.rgba(root.bgC.r, root.bgC.g, root.bgC.b, 0.92); border.color: root.accC; border.width: 1
             Text { id: lbl; anchors.centerIn: parent; color: root.txtC; font.pixelSize: 12
-              text: cell.modelData.cls === "__launcher__" ? "Legal Desk" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__snap__" ? "Screenshot" : cell.modelData.cls === "__radio__" ? "1UP Radio" : cell.modelData.cls === "__disks__" ? "Disk Management" : cell.modelData.cls === "__zones__" ? "Desk Zones" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
+              text: cell.modelData.cls === "__launcher__" ? "Legal Desk" : cell.modelData.cls === "__calendar__" ? "Calendar" : cell.modelData.cls === "__notes__" ? "Notes" : cell.modelData.cls === "__tasks__" ? "Task Manager" : cell.modelData.cls === "__snap__" ? "Screenshot" : cell.modelData.cls === "__radio__" ? "1UP Radio" : cell.modelData.cls === "__disks__" ? "Disk Management" : cell.modelData.cls === "__zones__" ? "Legal Zones" : cell.modelData.cls === "__trash__" ? (root.trashFull ? "Trash (full)" : "Trash") : cell.modelData.cls === "__folder__" ? "Downloads" : ((root.appmap[cell.modelData.cls] && root.appmap[cell.modelData.cls].name) || cell.modelData.cls.replace(/^chrome-/, "").replace(/-default$/, "")) }
           }
           // ring around the icon whose menu is open
           Rectangle { visible: root.ctx !== "" && root.ctx === cell.modelData.cls; anchors.fill: parent; anchors.margins: -2; radius: width * 0.24; color: "transparent"; border.color: root.accC; border.width: 2 }
+          // red badge: Omarchy Store has updates waiting
+          Rectangle {
+            visible: cell.modelData.cls === root.storeCls && root.storeUpd > 0
+            z: 5; anchors.top: parent.top; anchors.right: parent.right; anchors.topMargin: -3; anchors.rightMargin: -3
+            width: Math.max(16, bn.implicitWidth + 8); height: 16; radius: 8
+            color: "#ff3b30"; border.color: "#ffffff"; border.width: 1.5
+            Text { id: bn; anchors.centerIn: parent; text: root.storeUpd > 9 ? "9+" : root.storeUpd; color: "#ffffff"; font.pixelSize: 10; font.bold: true }
+          }
           // running dot
           Rectangle {
             visible: cell.modelData.cls !== "__launcher__" && !!root.running[cell.modelData.cls.toLowerCase()]
@@ -1152,13 +1388,14 @@ print(json.dumps(out))
             color: "#dddddd"
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.bottom
-            anchors.topMargin: 2
+            anchors.topMargin: 2 / cell.mScale
+            scale: 1 / cell.mScale; transformOrigin: Item.Top
           }
           }
           MouseArea {
             id: cma
             anchors.fill: parent
-            cursorShape: cell.dragged ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+            cursorShape: Qt.ArrowCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
             property real px0: 0
             property bool moved: false
@@ -1181,8 +1418,8 @@ print(json.dumps(out))
                 var ti = root.items.findIndex(i => i.cls === "__trash__"), tw = root.base, tx = (win.width - root.baseTotal) / 2 + (ti >= 0 ? root.restXs[ti] : 0)
                 var over = ti >= 0 && fc !== "__trash__" && root.dragX > tx - tw * 0.2 && root.dragX < tx + tw * 1.2
                 root.dragIdx = -1
-                if (over && root.isSep(fc)) { root.removeAt(f); return }
-                if (over && root.isPinned(fc)) { root.sh(["/usr/lib/legal-desk/dock-pin-toggle", fc]); return }
+                if (over && root.isSep(fc)) { root.askRemove("sep", fc); return }
+                if (over && root.isPinned(fc)) { root.askRemove("pin", fc); return }
                 root.moveTo(f, t)
                 root.mag = (hover.hovered && !root.moveMode) ? 1 : 0
                 root.pointer(hover.point.position.x)
@@ -1190,10 +1427,15 @@ print(json.dumps(out))
             }
             onClicked: (m) => {
               if (moved) { moved = false; return }
-              if (cell.isSep) { if (root.moveMode && !root.fixedCls(cell.modelData.cls)) root.removeAt(cell.index); return }
-              if (cell.modelData.cls === "__launcher__") { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.activate("__launcher__"); return }
+              if (cell.isSep) { if (root.moveMode && !root.fixedCls(cell.modelData.cls)) root.askRemove("sep", cell.modelData.cls); return }
+              // Launcher: left click opens / closes the Apps window; right click opens / closes the dock menu
+              if (cell.modelData.cls === "__launcher__") {
+                if (root.rubik) twistAnim.restart(); root.ctx = ""
+                if (m.button === Qt.RightButton) root.sh(["/usr/lib/legal-desk/dock-menu-toggle"]); else root.sh(["/usr/lib/legal-desk/drawer-only"])
+                return
+              }
               if (m.button === Qt.LeftButton) { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.closeMain(); root.activate(cell.modelData.cls) }
-              else if (m.button === Qt.MiddleButton) { root.sh(["/usr/lib/legal-desk/dock-pin-toggle", cell.modelData.cls]) }
+              else if (m.button === Qt.MiddleButton) { if (root.isPinned(cell.modelData.cls)) root.askRemove("pin", cell.modelData.cls); else root.sh(["/usr/lib/legal-desk/dock-pin-toggle", cell.modelData.cls]) }
               else { root.ctxX = cell.mapToItem(null, cell.width / 2, 0).x; root.ctx = cell.modelData.cls }
             }
           }
@@ -1202,9 +1444,9 @@ print(json.dumps(out))
     }
   }
 
-  // Right-click menu on an icon: open windows, New window, Pin/Unpin, Close.
+  // Right-click menu on an icon: open windows, New window, Pin / Remove from dock, Close.
   IpcHandler { target: "macdockact"; function activate(cls: string): void { root.activate(cls) } }
-  IpcHandler { target: "macdock"; function closeMenu(): void { root.ctx = "" } function menu(cls: string): void { root.ctxX = 800; root.ctx = cls } function moveMode(on: bool): void { root.moveMode = on; root.ctx = ""; root.mag = 0 } }
+  IpcHandler { target: "macdock"; function askRemove(kind: string, cls: string): void { root.askRemove(kind, cls) } function closeMenu(): void { root.ctx = "" } function menu(cls: string): void { root.ctxX = 800; root.ctx = cls } function moveMode(on: bool): void { root.moveMode = on; root.ctx = ""; root.mag = 0 } }
   property string ctx: ""
   // Opening a right-click menu, or clicking any icon, closes the grid-button menu if it is open.
   function closeMain() { sh([Quickshell.env("HOME") + "/.local/bin/dock-menu-close", "main"]) }
@@ -1223,7 +1465,8 @@ print(json.dumps(out))
     var rows = []
     if (ctx === "__trash__") return [{ l: "Trash", a: "hdr" }, { l: "Open trash", a: "open" }, { l: "Empty trash", a: "empty" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__folder__") return [{ l: "Downloads", a: "hdr" }, { l: "Open folder", a: "open" }, { l: "Cancel", a: "cancel" }]
-    if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__" || ctx === "__disks__" || ctx === "__zones__") return [{ l: ctx === "__zones__" ? "Desk Zones" : ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : ctx === "__disks__" ? "Disk Management" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__" || ctx === "__disks__" || ctx === "__zones__") return [{ l: ctx === "__zones__" ? "Legal Zones" : ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : ctx === "__disks__" ? "Disk Management" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === storeCls) { var sr = [{ l: "Omarchy Store", a: "hdr" }]; if (storeUpd > 0) sr.push({ l: "Update available  ·  " + storeUpd, a: "storeupd" }); sr.push({ l: "Check for updates", a: "storecheck" }, { l: "Open the store", a: "storeopen" }, { l: isPinned(ctx) ? "Remove from dock" : "Pin to dock", a: "pin" }, { l: "Cancel", a: "cancel" }); return sr }
     if (ctx === "__radio__") return [{ l: "1UP Radio", a: "hdr" }, { l: "Open radio window", a: "open" }, { l: "Play / Pause", a: "rtoggle" }, { l: "Live (jump to now)", a: "rlive" }, { l: "Stop", a: "rstop" }, { l: radioStyle === "logo" ? "Icon: meters" : "Icon: original logo", a: "ricon" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "settings") return [{ l: "Settings", a: "hdr" }, { l: "Open settings", a: "open" }, { l: "Task manager", a: "tasks" }, { l: "Cancel", a: "cancel" }]
     if (ctx === "__snap__") return [{ l: "Screenshot", a: "hdr" }, { l: "Take screenshot", a: "open" }, { l: "Cancel", a: "cancel" }]
@@ -1232,10 +1475,53 @@ print(json.dumps(out))
     for (var i = 0; i < w.length && i < 6; i++) rows.push({ l: " " + (w[i].t.length > 20 ? w[i].t.substring(0, 19) + "…" : (w[i].t || "(untitled)")), a: "focus", addr: w[i].a })
     if (appmap[ctx]) rows.push({ l: "New window", a: "new" })
     if (isBrowser(ctx)) rows.push({ l: "New incognito window", a: "incog" })
-    rows.push({ l: isPinned(ctx) ? "Unpin from dock" : "Pin to dock", a: "pin" })
+    rows.push({ l: isPinned(ctx) ? "Remove from dock" : "Pin to dock", a: "pin" })
     if (w.length > 0) rows.push({ l: "Close app", a: "close" })
     rows.push({ l: "Cancel", a: "cancel" })
     return rows
+  }
+  // The two "Remove from dock?" questions.
+  Variants {
+    model: root.rmStep > 0 ? [root.rmStep] : []
+    PanelWindow {
+      id: rmw
+      required property var modelData
+      implicitWidth: 400; implicitHeight: 170
+      color: "transparent"
+      exclusionMode: ExclusionMode.Ignore
+      WlrLayershell.layer: WlrLayer.Overlay
+      WlrLayershell.namespace: "macdockconfirm"
+      WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+      Rectangle {
+        anchors.fill: parent; anchors.margins: 6; radius: 10; color: root.bgC; border.color: rmw.modelData === 2 ? "#ff5a5a" : root.accC; border.width: 2
+        focus: true
+        Keys.onEscapePressed: root.rmCancel()
+        Row {
+          x: 18; y: 16; spacing: 12
+          Image { width: 40; height: 40; source: root.isSep(root.rmCls) ? "" : root.iconFor(root.rmCls); sourceSize: Qt.size(96, 96); fillMode: Image.PreserveAspectFit }
+          Column {
+            spacing: 6; width: rmw.width - 100
+            Text { text: rmw.modelData === 1 ? "Remove from the dock?" : "Are you really sure?"; color: rmw.modelData === 2 ? "#ff7a7a" : root.txtC; font.pixelSize: 16; font.bold: true }
+            Text { width: parent.width; wrapMode: Text.WordWrap; color: root.txtC; font.pixelSize: 12
+              text: rmw.modelData === 1 ? "Take " + root.rmName(root.rmCls) + " off the dock." : "Last chance: " + root.rmName(root.rmCls) + " will be taken off the dock. You can put it back later." }
+          }
+        }
+        Row {
+          anchors { bottom: parent.bottom; bottomMargin: 16; horizontalCenter: parent.horizontalCenter }
+          spacing: 14
+          Rectangle {
+            width: 150; height: 34; radius: 7; color: kma.containsMouse ? root.selC : "transparent"; border.color: root.accC; border.width: 2
+            Text { anchors.centerIn: parent; text: rmw.modelData === 1 ? "Keep it" : "No, keep it"; color: root.txtC; font.pixelSize: 13; font.bold: true }
+            MouseArea { id: kma; anchors.fill: parent; hoverEnabled: true; onClicked: root.rmCancel() }
+          }
+          Rectangle {
+            width: 150; height: 34; radius: 7; color: yma.containsMouse ? "#b03030" : "transparent"; border.color: "#ff5a5a"; border.width: 2
+            Text { anchors.centerIn: parent; text: rmw.modelData === 1 ? "Remove…" : "Yes, remove it"; color: yma.containsMouse ? "white" : "#ff7a7a"; font.pixelSize: 13; font.bold: true }
+            MouseArea { id: yma; anchors.fill: parent; hoverEnabled: true; onClicked: root.rmYes() }
+          }
+        }
+      }
+    }
   }
   Timer { interval: 9000; running: root.ctx !== ""; onTriggered: root.ctx = "" }
   Variants {
@@ -1277,13 +1563,16 @@ print(json.dumps(out))
                   if (act === "hdr") return
                   if (act === "open") root.activate(c)
                   else if (act === "tasks") root.sh(["/usr/lib/legal-desk/legal-tasks"])
+                  else if (act === "storeupd") { root.sh(["/usr/lib/legal-desk/dock-store-open", "updates"]); root.storeFast = 60 }
+                  else if (act === "storeopen") { root.sh(["/usr/lib/legal-desk/dock-store-open"]); root.storeFast = 60 }
+                  else if (act === "storecheck") { if (!storePoll.running) storePoll.running = true }
                   else if (act === "rtoggle") root.sh(["/usr/lib/legal-desk/legal-radio", "toggle"])
                   else if (act === "ricon") root.sh(["/usr/lib/legal-desk/dock-radio-icon", "toggle"])
                   else if (act === "rlive") root.sh(["/usr/lib/legal-desk/legal-radio", "live"])
                   else if (act === "rstop") root.sh(["/usr/lib/legal-desk/legal-radio", "stop"])
-                  else if (act === "unown") root.sh(["/usr/lib/legal-desk/dock-own-toggle", c])
+                  else if (act === "unown") root.askRemove("unown", c)
                   else if (act === "empty") root.sh(["gio", "trash", "--empty"])
-                  else if (act === "pin") root.sh(["/usr/lib/legal-desk/dock-pin-toggle", c])
+                  else if (act === "pin") { if (root.isPinned(c)) root.askRemove("pin", c); else root.sh(["/usr/lib/legal-desk/dock-pin-toggle", c]) }
                   else if (act === "close") root.sh(["/usr/lib/legal-desk/dock-close-app", c])
                   else if (act === "focus") root.sh(["hyprctl", "dispatch", "hl.dsp.focus({window='address:" + addr + "'})"])
                   else if (act === "incog") root.launch(["/usr/lib/legal-desk/browser-incognito", c])

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Legal Desk — one command for the whole dock.
-# legal-desk [start|menu|classic|mac|rubik|theme|reset|small|medium|large|restart|status|radio|radio-bar|uninstall|version]
+# legal-desk [start|setup|menu|classic|mac|rubik|theme|reset|small|medium|large|restart|status|radio|radio-bar|uninstall|version]
 B="/usr/lib/legal-desk"
 SH="/usr/share/legal-desk"
 VERSION="2.0.0"
@@ -28,8 +28,11 @@ seed_pins() {
 }
 
 start_all() {
+  [ -x "$B/legal-config" ] && "$B/legal-config" repair --quiet >/dev/null 2>&1   # strict validation + automatic recovery of the dock settings and layout
   ensure_config
   seed_pins
+  # the minimize daemon (a systemd user unit when installed, else started directly)
+  { systemctl --user is-active --quiet legal-minimized 2>/dev/null || pgrep -f "legal-minimized daemon" >/dev/null || setsid "$B/legal-minimized" daemon; } >/dev/null 2>&1 </dev/null &
   # Each job is fully detached (output closed) so callers - terminals, scripts, ssh - never hang waiting on the dock.
   { pgrep -f "quickshell -n -p $SH/docklock" >/dev/null || setsid quickshell -n -p "$SH/docklock"; } >/dev/null 2>&1 </dev/null &
   { pgrep -f "dock-keepalive" >/dev/null || setsid "$B/dock-keepalive"; } >/dev/null 2>&1 </dev/null &
@@ -39,7 +42,7 @@ start_all() {
 }
 
 case "${1:-menu}" in
-  start) start_all ;;
+  start) start_all; "$B/legal-desk-setup" first-run >/dev/null 2>&1 </dev/null & ;;   # the very first start asks (once) before changing anything
   menu) start_all; sleep 0.3; quickshell -p "$SH/docklock" ipc call dockmenu toggle ;;
   classic) "$B/macdock-toggle" off ;;
   mac) "$B/macdock-toggle" on ;;
@@ -48,11 +51,13 @@ case "${1:-menu}" in
     src=/usr/share/legal-desk/themes/nebula; [ -d "$src" ] || src="$(dirname "$(readlink -f "$0")")/share/themes/nebula"
     mkdir -p "$HOME/.config/omarchy/themes" && rm -rf "$HOME/.config/omarchy/themes/nebula" && cp -r "$src" "$HOME/.config/omarchy/themes/nebula" || exit 1
     omarchy-theme-set nebula 2>/dev/null || echo "Theme copied to ~/.config/omarchy/themes/nebula - pick Nebula in the Omarchy theme menu."
-    for s in classic mac rubik; do echo 0 > "$HOME/.cache/dock-skin-$s"; done; "$B/macdock-skin" apply >/dev/null 2>&1 ;;
+    for s in classic mac rubik; do echo 0 > "$HOME/.cache/dock-skin-$s"; done; "$B/macdock-skin" apply >/dev/null 2>&1
+    "$B/dock-launcher-icon" 10 >/dev/null 2>&1 ;;   # the Nebula look comes with the Spark launcher
   radio) shift; "$B/legal-radio" "$@" ;;
   radio-icon) "$B/dock-radio-icon" "${2:-show}" ;;
   radio-info) "$B/legal-radio-info" ;;
   radio-bar) "$B/legal-radio-bar" "${2:-status}" ;;
+  setup) shift; case "${1:-}" in restore) "$B/legal-desk-setup" restore ;; plan|apply|status|later) "$B/legal-desk-setup" "$@" ;; *) rm -f "$HOME/.config/legal-desk/setup.json"; "$B/legal-desk-setup" first-run ;; esac ;;
   zones) shift; "$B/legal-zones" "$@" ;;
   reset) "$B/dock-reset" ;;
   pointer) "$B/dock-pointer" "${2:-show}" ;;

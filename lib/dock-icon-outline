@@ -1,26 +1,53 @@
 #!/usr/bin/env python3
-"""dock-icon-outline PATH... : draw other apps' icons as line art in the skin's accent colour (the Outline icon set).
-Prints one JSON object {icon path: outline png}. Outlines are cached in ~/.cache/legal-desk/outline (per icon file, modification time and colour).
-An icon is flattened, its edges are found (canny) together with the edge of its silhouette, thickened a little and filled with the accent."""
+"""dock-icon-outline [MODE] PATH... : redraw other apps' icons so they match an icon set (the Outline set and the free-standing sets 10-19).
+Prints one JSON object {icon path or image://icon/NAME: result png}. Results are cached in ~/.cache/legal-desk/outline (per icon file, modification time, mode and colours).
+MODE (default outline) -> line art: outline hair light regular bold | stencil shapes: fill duo shadow gradient.
+Line art: edges of the picture and of its silhouette, thickened and filled with the colour. Stencil: the picture's silhouette (its transparency, or its
+lighter/darker shape when it is a full square) in one colour with the picture's inner lines cut out of it."""
 import hashlib, json, os, re, subprocess, sys, tempfile
 
 HOME = os.path.expanduser("~")
 OUT = os.path.join(HOME, ".cache", "legal-desk", "outline")
 os.makedirs(OUT, exist_ok=True)
-acc = "#8B5CF6"
+pal = {"bg": "#0B0818", "acc": "#8B5CF6", "txt": "#E6E1FA"}
 try:
     for line in open(os.path.join(HOME, ".cache", "dock-menu-colors")):
-        m = re.match(r"\s*acc\s*=\s*(#[0-9a-fA-F]{6})", line)
+        m = re.match(r"\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})", line)
         if m:
-            acc = m.group(1)
+            pal[m.group(1)] = m.group(2)
 except OSError:
     pass
-# the line colour: the accent, lifted a little on dark skins so thin lines stay readable
-r, g, b = (int(acc[i:i + 2], 16) for i in (1, 3, 5))
-if 0.2126 * r + 0.7152 * g + 0.0722 * b < 150:
-    r, g, b = (int(v + (255 - v) * 0.35) for v in (r, g, b))
-col = "#%02x%02x%02x" % (r, g, b)
 S = 256
+
+
+def hexrgb(h):
+    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def lift(h):
+    """lift a dark colour a little so thin lines stay readable"""
+    r, g, b = hexrgb(h)
+    if 0.2126 * r + 0.7152 * g + 0.0722 * b < 150:
+        r, g, b = (int(v + (255 - v) * 0.35) for v in (r, g, b))
+    return "#%02x%02x%02x" % (r, g, b)
+
+
+def mixc(a, b, t):
+    A, B = hexrgb(a), hexrgb(b)
+    return "#%02x%02x%02x" % tuple(int(A[i] + (B[i] - A[i]) * t) for i in range(3))
+
+
+ACC, TXT = lift(pal["acc"]), pal["txt"]
+# mode -> (kind, colour, line thickness)
+MODES = {"outline": ("line", ACC, 2.6), "hair": ("line", TXT, 1.5), "light": ("line", ACC, 2.3), "regular": ("line", TXT, 3.0), "bold": ("line", ACC, 5.0),
+         "fill": ("stencil", ACC, 0), "duo": ("duo", ACC, 2.0), "shadow": ("shadow", ACC, 0), "gradient": ("gradient", ACC, 0), "apple": ("apple", ACC, 0)}
+for _m in ("metal-silver", "metal-gold", "metal-bronze", "metal-nebula", "metal-chrome", "theme-tela", "theme-mactahoe", "theme-colloid", "theme-mcmojave", "theme-qogir", "theme-fluent", "theme-papirus"):
+    MODES[_m] = ("apple", ACC, 0)   # like Regular (macOS look, one size), then dressed by metal() / theme_icon()
+mode = "outline"
+args = sys.argv[1:]
+if args and args[0] in MODES:
+    mode, args = args[0], args[1:]
+kind, col, thick = MODES[mode]
 
 
 def theme_order():
@@ -33,7 +60,7 @@ def theme_order():
         except Exception: pass
     return roots, names
 
-def resolve(name):
+def _resolve_uncached(name):
     """image://icon/NAME -> file path (scalable first, else largest raster)."""
     best, bsz = None, -1
     roots, names = theme_order()
@@ -57,49 +84,300 @@ def resolve(name):
     return best
 
 
+RCACHE = os.path.join(HOME, ".cache", "legal-desk", "outline-resolve.json")
+try:
+    _rc = json.load(open(RCACHE))
+except Exception:
+    _rc = {}
+
+
+def resolve(name):
+    """icon name -> file, remembered (searching the icon themes is slow)"""
+    p = _rc.get(name)
+    if p and os.path.isfile(p):
+        return p
+    if p == "" and os.path.getmtime(RCACHE) > __import__("time").time() - 86400:   # not found recently: do not search again today
+        return None
+    p = _resolve_uncached(name)
+    if True:
+        _rc[name] = p or ""
+        try:
+            json.dump(_rc, open(RCACHE + "." + str(os.getpid()), "w"))
+            os.replace(RCACHE + "." + str(os.getpid()), RCACHE)
+        except OSError:
+            pass
+    return p
+
+
+def run(*a):
+    subprocess.run(list(a), check=True, capture_output=True)
+
+
+def num(*a):
+    return float(subprocess.run(list(a), capture_output=True, text=True).stdout or 0)
+
+
+def render(src, png):
+    if src.lower().endswith(".svg"):
+        subprocess.run(["rsvg-convert", "-w", str(S), "-h", str(S), "-a", src, "-o", png], check=True, capture_output=True)
+        run("magick", png, "-background", "none", "-gravity", "center", "-extent", f"{S}x{S}", png)
+    else:
+        run("magick", src + "[0]", "-background", "none", "-resize", f"{S}x{S}", "-gravity", "center", "-extent", f"{S}x{S}", png)
+
+
+def frame(path):
+    """a thin rounded frame, for icons that are a full opaque square"""
+    return ["(", "-size", f"{S}x{S}", "xc:black", "-fill", "none", "-stroke", "white", "-strokewidth", "2", "-draw", f"roundrectangle 8,8 {S - 9},{S - 9} 46,46", ")"]
+
+
+def lines_mask(png, tmp, dil, out):
+    """edges of the picture + edge of its silhouette -> white lines on black"""
+    cov = num("magick", png, "-alpha", "extract", "-threshold", "50%", "-format", "%[fx:mean]", "info:")
+    flat = num("magick", png, "-alpha", "extract", "-format", "%[fx:minima]", "info:") > 0.98
+    e1, e2 = os.path.join(tmp, "e1.png"), os.path.join(tmp, "e2.png")
+    if flat:   # fully opaque: canny of a flat image would be solid white
+        run("magick", "-size", f"{S}x{S}", "xc:black", e2)
+    else:
+        run("magick", png, "-alpha", "extract", "-canny", "0x1+10%+30%", e2)
+    # edges of the picture itself; a busy picture needs a less sensitive edge finder to stay line art instead of a blob
+    for lo, hi in ((8, 20), (14, 32), (22, 45), (32, 60)):
+        run("magick", png, "-background", "black", "-alpha", "remove", "-alpha", "off", "-colorspace", "Gray", "-canny", f"0x1+{lo}%+{hi}%", e1)
+        args = ["magick", e1, e2, "-compose", "lighten", "-composite"]
+        if cov > 0.8:
+            args += frame(png) + ["-compose", "lighten", "-composite"]
+        args += ["-morphology", "Dilate", f"Disk:{dil}", "-blur", "0x0.8", "-level", "0%,70%", out]
+        run(*args)
+        if num("magick", out, "-format", "%[fx:mean]", "info:") <= 0.34:
+            return
+    args = ["magick", e2] + frame(png) + ["-compose", "lighten", "-composite", "-morphology", "Dilate", f"Disk:{dil}", "-blur", "0x0.8", "-level", "0%,70%", out]
+    run(*args)
+
+
+def shape_mask(png, tmp, out):
+    """the glyph as a white shape on black: transparency, else the minority side of a light/dark split"""
+    flat = num("magick", png, "-alpha", "extract", "-format", "%[fx:minima]", "info:") > 0.98
+    if not flat:
+        run("magick", png, "-alpha", "extract", "-threshold", "50%", out)
+        return
+    run("magick", png, "-background", "black", "-alpha", "remove", "-alpha", "off", "-colorspace", "Gray", "-auto-threshold", "OTSU", out)
+    if num("magick", out, "-format", "%[fx:mean]", "info:") > 0.5:
+        run("magick", out, "-negate", out)
+
+
+def colourise(mask, colour, dst, opacity=1.0):
+    run("magick", "-size", f"{S}x{S}", f"xc:{colour}", mask, "-compose", "CopyOpacity", "-composite", *(["-channel", "A", "-evaluate", "multiply", str(opacity), "+channel"] if opacity < 1 else []), dst)
+
 
 def make(src, dst, tmp):
     png = os.path.join(tmp, "a.png")
-    if src.lower().endswith(".svg"):
-        subprocess.run(["rsvg-convert", "-w", str(S), "-h", str(S), "-a", src, "-o", png], check=True, capture_output=True)
-    else:
-        subprocess.run(["magick", src + "[0]", "-background", "none", "-resize", f"{S}x{S}", "-gravity", "center", "-extent", f"{S}x{S}", png], check=True, capture_output=True)
-    # opaque square icons have no silhouette edge of their own: frame them
-    cov = subprocess.run(["magick", png, "-alpha", "extract", "-threshold", "50%", "-format", "%[fx:mean]", "info:"], capture_output=True, text=True).stdout
-    cov = float(cov or 0)
-    e1, e2, em = (os.path.join(tmp, n) for n in ("e1.png", "e2.png", "m.png"))
-    subprocess.run(["magick", png, "-background", "black", "-alpha", "remove", "-alpha", "off", "-colorspace", "Gray", "-canny", "0x1+8%+20%", e1], check=True, capture_output=True)
-    flat = float(subprocess.run(["magick", png, "-alpha", "extract", "-format", "%[fx:minima]", "info:"], capture_output=True, text=True).stdout or 0) > 0.98
-    if flat:   # fully opaque: no silhouette edge (canny would turn a flat image solid white)
-        subprocess.run(["magick", "-size", f"{S}x{S}", "xc:black", e2], check=True, capture_output=True)
-    else:
-        subprocess.run(["magick", png, "-alpha", "extract", "-canny", "0x1+10%+30%", e2], check=True, capture_output=True)
-    args = ["magick", e1, e2, "-compose", "lighten", "-composite"]
-    if cov > 0.8:
-        args += ["(", "-size", f"{S}x{S}", "xc:black", "-fill", "none", "-stroke", "white", "-strokewidth", "2", "-draw", f"roundrectangle 8,8 {S - 9},{S - 9} 46,46", ")", "-compose", "lighten", "-composite"]
-    args += ["-morphology", "Dilate", "Disk:2.6", "-blur", "0x0.8", "-level", "0%,70%", em]
-    subprocess.run(args, check=True, capture_output=True)
-    # a busy picture turns into a solid blob: keep only its silhouette (and the frame) then
-    fill = float(subprocess.run(["magick", em, "-format", "%[fx:mean]", "info:"], capture_output=True, text=True).stdout or 0)
-    if fill > 0.38:
-        args = ["magick", e2, "(", "-size", f"{S}x{S}", "xc:black", "-fill", "none", "-stroke", "white", "-strokewidth", "2", "-draw", f"roundrectangle 8,8 {S - 9},{S - 9} 46,46", ")",
-                "-compose", "lighten", "-composite", "-morphology", "Dilate", "Disk:2.6", "-blur", "0x0.8", "-level", "0%,70%", em]
-        subprocess.run(args, check=True, capture_output=True)
-    subprocess.run(["magick", "-size", f"{S}x{S}", f"xc:{col}", em, "-compose", "CopyOpacity", "-composite", dst], check=True, capture_output=True)
+    render(src, png)
+    if kind == "line":
+        m = os.path.join(tmp, "m.png")
+        lines_mask(png, tmp, thick, m)
+        colourise(m, col, dst)
+        return
+    shape, cut = os.path.join(tmp, "shape.png"), os.path.join(tmp, "cut.png")
+    shape_mask(png, tmp, shape)
+    # the inner lines are cut out of the shape (a stencil)
+    run("magick", png, "-background", "black", "-alpha", "remove", "-alpha", "off", "-colorspace", "Gray", "-canny", "0x1+8%+20%", "-morphology", "Dilate", "Disk:1.3", cut)
+    stencil = os.path.join(tmp, "stencil.png")
+    run("magick", shape, "(", cut, "-negate", ")", "-compose", "Multiply", "-composite", "-blur", "0x0.7", "-level", "25%,75%", stencil)
+    area = num("magick", stencil, "-format", "%[fx:mean]", "info:")
+    if kind in ("stencil", "gradient", "shadow") and (area < 0.07 or area > 0.9):   # an empty or all-covering shape says nothing: line art instead
+        lm = os.path.join(tmp, "lm2.png")
+        lines_mask(png, tmp, 3.4, lm)
+        colourise(lm, col, dst)
+        return
+    if kind == "stencil":
+        colourise(stencil, col, dst)
+    elif kind == "duo":   # soft shape + the line art on top
+        lm, soft, line = (os.path.join(tmp, n) for n in ("lm.png", "soft.png", "line.png"))
+        lines_mask(png, tmp, thick, lm)
+        colourise(shape, mixc(col, "#ffffff", 0.35), soft, 0.4)
+        colourise(lm, col, line)
+        run("magick", soft, line, "-compose", "over", "-composite", dst)
+    elif kind == "gradient":
+        g = os.path.join(tmp, "g.png")
+        run("magick", "-size", f"{S}x{S}", f"gradient:{mixc(col, '#ffffff', 0.55)}-{mixc(col, '#000000', 0.25)}", g)
+        run("magick", g, stencil, "-compose", "CopyOpacity", "-composite", dst)
+    elif kind == "shadow":
+        small = os.path.join(tmp, "small.png")
+        run("magick", stencil, "-resize", "82%", "-background", "black", "-gravity", "northwest", "-extent", f"{S}x{S}", "-gravity", "center", "-roll", "-8-8", small)
+        acc = os.path.join(tmp, "long.png")
+        cmd = ["magick", small]
+        for k in range(1, 9):
+            cmd += ["(", small, "-roll", f"+{k * 2}+{k * 2}", ")", "-compose", "lighten", "-composite"]
+        run(*cmd, acc)
+        shadow, top = os.path.join(tmp, "shadow.png"), os.path.join(tmp, "top.png")
+        colourise(acc, mixc(col, pal["bg"], 0.6), shadow)
+        colourise(small, col, top)
+        run("magick", shadow, top, "-compose", "over", "-composite", dst)
 
 
-res = {}
-with tempfile.TemporaryDirectory() as tmp:
-    for arg in sys.argv[1:]:
-        try:
-            src = resolve(arg[len("image://icon/"):]) if arg.startswith("image://icon/") else arg
-            if not src or not os.path.isfile(src):
-                continue
-            key = hashlib.sha1(f"{src}|{int(os.path.getmtime(src))}|{col}".encode()).hexdigest()[:16]
-            dst = os.path.join(OUT, key + ".png")
-            if not os.path.exists(dst):
-                make(src, dst, tmp)
-            res[arg] = dst
-        except Exception:
-            pass
+WS = next((d for d in (os.path.join(HOME, ".local", "share", "icons", "WhiteSur", "apps", "scalable"), "/usr/share/icons/WhiteSur/apps/scalable") if os.path.isdir(d)), os.path.join(HOME, ".local", "share", "icons", "WhiteSur", "apps", "scalable"))
+
+
+def apple_icon(arg, plated=True):
+    """Apple set: swap an app's icon for the macOS-style WhiteSur icon of the same name (no redrawing); apps WhiteSur has no icon for keep theirs."""
+    name = arg[len("image://icon/"):] if arg.startswith("image://icon/") else os.path.splitext(os.path.basename(arg))[0]
+    base = re.sub(r"-symbolic$", "", name)
+    if not plated:   # Regular: own black Grok / Hermes lettering icons, and Gemini a little smaller
+        ov = {"grok-bot": "grok-bot", "hermes": "hermes", "com.nousresearch.hermes": "hermes", "hermes-desktop": "hermes", "yt-to-audio": "yt-audio"}.get(name)
+        f = ov and os.path.join(HOME, ".local", "share", "legal-desk", "regular", ov + ".png")
+        if f and os.path.isfile(f):
+            return arg, f
+        if "outlook" in name.lower() and os.path.isfile(os.path.join(WS, "ms-outlook.svg")):   # the macOS-style mail + O badge
+            return arg, os.path.join(WS, "ms-outlook.svg")
+        if "gemini" in name:
+            src = resolve(name) if arg.startswith("image://icon/") else arg
+            if src and os.path.isfile(src):
+                dst = os.path.join(OUT, hashlib.sha1(f"small2|{src}|{int(os.path.getmtime(src))}".encode()).hexdigest()[:16] + ".png")
+                if not os.path.exists(dst):
+                    with tempfile.TemporaryDirectory() as tmp:
+                        g = os.path.join(tmp, "g.png"); render(src, g)
+                        run("magick", g, "-resize", "200x200", "-background", "none", "-gravity", "center", "-extent", "256x256", dst + ".part.png")
+                    os.replace(dst + ".part.png", dst)
+                return arg, dst
+    if not plated and re.search(r"gemini|chrome-x\.com|brave|chromium|google-chrome|^chrome$|^x$", name):   # Regular: these keep their own free-standing logo
+        src = resolve(name) if arg.startswith("image://icon/") else arg
+        return (arg, src) if src and os.path.isfile(src) else None
+    for n in (name, base, base.lower(), base.lower().replace("_", "-"), base.lower().replace(" ", "-"), re.sub(r"^(org|com|io|net)\.[^.]+\.", "", base),
+              re.sub(r"^(org|com|io|net)\.[^.]+\.", "", base).lower()):
+        f = os.path.join(WS, n + ".svg")
+        if n and os.path.isfile(f):
+            return arg, f
+    if not plated:   # Regular: no plate, the app keeps its own full logo
+        src = resolve(name) if arg.startswith("image://icon/") else arg
+        return (arg, src) if src and os.path.isfile(src) else None
+    return arg, plate(arg, name)
+
+
+def plate(arg, name):
+    """No WhiteSur icon of that name: the app's own icon sits on a macOS-style rounded plate (light gradient, soft edge) so the dock reads as one set."""
+    try:
+        src = resolve(name) if arg.startswith("image://icon/") else arg
+        if not src or not os.path.isfile(src):
+            return None
+        key = hashlib.sha1(f"apple1|{src}|{int(os.path.getmtime(src))}".encode()).hexdigest()[:16]
+        dst = os.path.join(OUT, key + ".png")
+        if not os.path.exists(dst):
+            with tempfile.TemporaryDirectory() as tmp:
+                glyph = os.path.join(tmp, "g.png")
+                render(src, glyph)
+                part = dst + ".part.png"
+                run("magick", "-size", "256x256", "gradient:#ffffff-#dcdce4", "(", "-size", "256x256", "xc:black", "-fill", "white",
+                    "-draw", "roundrectangle 6,6 249,249 58,58", ")", "-alpha", "off", "-compose", "CopyOpacity", "-composite",
+                    "(", glyph, "-resize", "166x166", ")", "-gravity", "center", "-compose", "over", "-composite", part)
+                os.replace(part, dst)
+        return dst
+    except Exception:
+        return None
+
+
+APPLE_IN_REGULAR = ()   # (settings and Files are special-cased in work())
+
+
+def normalize(res):
+    """Regular set: every icon is trimmed to its visible shape and scaled to the same size (squares/circles/stars look alike), so the dock reads even."""
+    if not res:
+        return res
+    arg, src = res
+    try:
+        gem = "gemini" in arg.lower()
+        key = hashlib.sha1(f"norm4|{src}|{int(os.path.getmtime(src))}|{gem}".encode()).hexdigest()[:16]
+        dst = os.path.join(OUT, key + ".png")
+        if not os.path.exists(dst):
+            with tempfile.TemporaryDirectory() as tmp:
+                big = os.path.join(tmp, "b.png")
+                if src.lower().endswith(".svg"):
+                    subprocess.run(["rsvg-convert", "-w", "512", "-h", "512", "-a", src, "-o", big], check=True, capture_output=True)
+                else:
+                    run("magick", src + "[0]", "-background", "none", "-resize", "512x512", big)
+                info = subprocess.run(["magick", big, "-alpha", "extract", "-threshold", "12%", "-format", "%@|%[fx:mean]", "info:"], capture_output=True, text=True, check=True).stdout
+                box, mean = info.strip().split("|")
+                w, h = [int(v) for v in box.split("+")[0].split("x")]
+                fill = min(1.0, max(0.05, float(mean) * 512 * 512 / (w * h)))
+                side = 236 * min(1.0, 0.86 + 0.14 * fill ** 0.5)        # thin shapes (rings, stars) get a touch less
+                if gem:
+                    side *= 0.8
+                part = dst + ".part.png"
+                run("magick", big, "-trim", "+repage", "-resize", f"{side:.0f}x{side:.0f}", "-background", "none", "-gravity", "center", "-extent", "256x256", part)
+                os.replace(part, dst)
+        return arg, dst
+    except Exception:
+        return res
+
+
+def work(arg):
+    r = work0(arg)
+    if r and r[1].endswith("regular/files.png") and mode != "metal-chrome":   # already drawn on the same canvas as the Downloads folder
+        return r
+    if r and mode.startswith("metal-"):
+        return metal(r)
+    return normalize(r) if mode == "regular" or mode.startswith("theme-") else r
+
+
+METAL_BIN = os.path.join(os.path.dirname(os.path.realpath(__file__)), "legal-metal")
+
+
+def metal(r):
+    """silver / gold / bronze: the icon (already one size, Regular look) mapped onto a metal ramp"""
+    arg, f = r
+    try:
+        kind = mode.split("-", 1)[1]
+        dst = os.path.join(OUT, hashlib.sha1(f"metal7|{kind}|{f}|{int(os.path.getmtime(f))}".encode()).hexdigest()[:16] + ".png")
+        if not os.path.exists(dst):
+            subprocess.run([METAL_BIN, kind, f, dst + ".part.png"], check=True, capture_output=True, env={**os.environ, **({"LEGAL_CHROME_LOGO": "1"} if re.search(r"(^|/)(google-chrome|chromium)(\.[a-z]+)?$|outlook", arg) else {})})   # Chrome-like round logos: the whole logo turns silver
+            os.replace(dst + ".part.png", dst)
+        return arg, dst
+    except Exception:
+        return r
+
+
+THEMES_DIR = os.path.join(HOME, ".local", "share", "legal-desk", "icon-themes")
+
+
+def theme_icon(arg):
+    """the same app in another icon theme (Tela, MacTahoe, ...); apps it lacks keep the Regular look"""
+    key = mode.split("-", 1)[1]
+    name = arg[len("image://icon/"):] if arg.startswith("image://icon/") else os.path.splitext(os.path.basename(arg))[0]
+    base = re.sub(r"-symbolic$", "", name)
+    short = re.sub(r"^(org|com|io|net)\.[^.]+\.", "", base)
+    for n in (name, base, base.lower(), base.lower().replace("_", "-"), base.lower().replace(" ", "-"), short, short.lower()):
+        for ctx in ("apps", "places", "devices"):
+            f = os.path.join(THEMES_DIR, key, ctx, n + ".svg")
+            if n and os.path.isfile(f):
+                return arg, f
+    return None
+
+
+def work0(arg):
+    if mode in ("regular", "metal-silver", "metal-gold", "metal-bronze", "metal-nebula", "metal-chrome") and arg in ("image://icon/settings", ) + tuple(a for a in [arg] if os.path.splitext(os.path.basename(a))[0] in ("settings", "settings-gear")) and os.path.isfile(os.path.join(WS, "preferences-system.svg")):
+        return arg, os.path.join(WS, "preferences-system.svg")   # System Settings: the macOS gear
+    if mode in ("regular", "metal-silver", "metal-gold", "metal-bronze", "metal-nebula", "metal-chrome") and (arg == "image://icon/org.gnome.Nautilus" or os.path.splitext(os.path.basename(arg))[0] in ("org.gnome.Nautilus", "org.gnome.nautilus")):
+        return arg, os.path.join(HOME, ".local", "share", "legal-desk", "regular", "files.png")   # Files = the macOS folder with "Files" written on it (same size as Downloads)
+    if mode.startswith("theme-"):
+        r = theme_icon(arg)
+        if r:
+            return r
+    if mode in ("apple", "regular") or mode.startswith(("metal-", "theme-")):   # Regular dresses every app like macOS too (WhiteSur icon, else a macOS plate)
+        return apple_icon(arg, plated=(mode == "apple"))
+    try:
+        src = resolve(arg[len("image://icon/"):]) if arg.startswith("image://icon/") else arg
+        if not src or not os.path.isfile(src):
+            return None
+        key = hashlib.sha1(f"v3|{mode}|{src}|{int(os.path.getmtime(src))}|{col}|{pal['bg']}".encode()).hexdigest()[:16]
+        dst = os.path.join(OUT, key + ".png")
+        if not os.path.exists(dst):
+            with tempfile.TemporaryDirectory() as tmp:
+                make(src, dst + ".part.png", tmp)
+            os.replace(dst + ".part.png", dst)
+        return arg, dst
+    except Exception:
+        return None
+
+
+from concurrent.futures import ThreadPoolExecutor
+with ThreadPoolExecutor(max_workers=max(2, min(8, (os.cpu_count() or 4)))) as ex:
+    res = dict(r for r in ex.map(work, args) if r)
 print(json.dumps(res))

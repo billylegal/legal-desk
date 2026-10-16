@@ -1,0 +1,19 @@
+#!/bin/bash
+# dock-store-updates : print {"n":N} = how many updates the Omarchy Store has waiting (store apps + system + AUR). Read-only; also saved in ~/.cache/dock-store-updates.
+P=$(cat "$HOME/.local/state/omarchy-store/port" 2>/dev/null)
+n=""
+if [ -n "$P" ]; then
+  n=$(curl -s -m 25 "http://127.0.0.1:$P/api/updates?refresh=1" 2>/dev/null | python3 -c 'import json,sys
+try:
+    d=json.load(sys.stdin); print(len(d.get("apps",[]))+int(d.get("system",0))+int(d.get("aur",0)))
+except Exception: pass')
+fi
+if [ -z "$n" ]; then   # the store helper is not running: count pending repo updates directly
+  n=$(checkupdates 2>/dev/null | wc -l)
+fi
+old=$(cat "$HOME/.cache/dock-store-updates" 2>/dev/null || echo 0)
+echo "$n" > "$HOME/.cache/dock-store-updates"
+if [ "${n:-0}" -gt "${old:-0}" ]; then   # a new update was pushed: tell the user
+  notify-send -i omarchy-store -a "Omarchy Store" "Update available" "${n} update(s) waiting - right-click the Store icon in the dock." 2>/dev/null
+fi
+echo "{\"n\":${n:-0}}"

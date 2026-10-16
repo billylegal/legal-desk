@@ -43,7 +43,7 @@ if cmd == "on":
     lay, found = entries(d)
     if not found:
         right = lay.setdefault("right", [])
-        at = next((i for i, e in enumerate(right) if isinstance(e, dict) and e.get("id") in ("aigazoo.audio", "omarchy.audio")), len(right))
+        at = next((i for i, e in enumerate(right) if isinstance(e, dict) and e.get("id") in ("omarchy.audio",)), len(right))
         right.insert(at, {"id": ID})
         save(d)
     print("1UP Radio is in the bar")

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # legal-zones-core : the engine of Legal Legal Zones (a FancyZones for Hyprland).
-#   legal-zones-core list                      layouts + active one (JSON)
+#   legal-zones-core list                      layouts + active one (JSON; each layout has mine: true when you made it)
 #   legal-zones-core new [NAME]                make a new layout of your own (starts as two columns) and print its name
 #   legal-zones-core grid COLSxROWS [NAME]     make a grid layout (5x4 = 20 small windows) and switch to it
 #   legal-zones-core use NAME                  switch layout
@@ -16,7 +16,6 @@ import sys, os, json, subprocess, socket, time
 
 CFG = os.path.expanduser('~/.local/share/legal-desk/zones.json')
 STATE = os.path.expanduser('~/.cache/legal-zones-state')
-NOBAR = ('org.telegram.desktop', 'org.gnome.')
 
 def T(cols, rows=None):
     return None
@@ -33,11 +32,13 @@ def tpl():
         {'name': 'Focus', 'zones': [[.15, .08, .7, .84], [0, 0, .15, 1], [.85, 0, .15, 1]]},
     ]
 
+BUILTIN = [l['name'] for l in tpl()]   # the six layouts that ship with Legal Zones; every other layout is yours
+
 def load():
     try: d = json.load(open(CFG))
     except Exception: d = {}
     if not d.get('layouts'): d['layouts'] = tpl()
-    d.setdefault('active', d['layouts'][0]['name']); d.setdefault('gap', 8); d.setdefault('auto', False)
+    d.setdefault('active', d['layouts'][0]['name']); d.setdefault('gap', 8); d.setdefault('auto', True); d.setdefault('flyout', False)   # new windows open inside a free zone; the top-edge menu stays off unless switched on (it sits over the top bar)
     return d
 
 def save(d):
@@ -62,13 +63,17 @@ def area():
     return m['x'] + rl, m['y'] + rt, w - rl - rr, h - rt - rb, m['activeWorkspace']['id']
 
 def rect(z, gap):
+    # the window edges (left, top, right, bottom) of zone z, in whole pixels. Zone borders are rounded once, shared by both neighbours,
+    # then each window is inset by half the gap: two windows side by side always have exactly `gap` px between them.
     ax, ay, aw, ah, _ = area()
-    x0, y0, x1, y1 = ax + z[0] * aw, ay + z[1] * ah, ax + (z[0] + z[2]) * aw, ay + (z[1] + z[3]) * ah
-    g = gap / 2
-    return x0 + g, y0 + g, x1 - g, y1 - g
+    G = int(round(gap)); lo = G // 2; hi = G - lo
+    x0, y0 = round(ax + z[0] * aw), round(ay + z[1] * ah)
+    x1, y1 = round(ax + (z[0] + z[2]) * aw), round(ay + (z[1] + z[3]) * ah)
+    return x0 + lo, y0 + lo, x1 - hi, y1 - hi
 
-def barh(c):
-    return 0 if any(c.startswith(n) for n in NOBAR) else 28
+def box(z, gap):
+    l, t, r, b = rect(z, gap)
+    return l, t, r - l, b - t
 
 def wins(ws=None):
     out = []
@@ -86,12 +91,11 @@ def snap(addr, n, d=None):
     cs = [c for c in (hj('clients') or []) if c['address'] == addr]
     if not cs: return
     c = cs[0]
-    x0, y0, x1, y1 = rect(L['zones'][n], d['gap'])
-    bh = barh(c['class'])
+    x, y, w_, h_ = box(L['zones'][n], d['gap'])
     w = f'window = "address:{addr}"'
     if not c['floating']: disp(f'hl.dsp.window.float({{ action = "enable", {w} }})')
-    disp(f'hl.dsp.window.resize({{ x = {int(x1 - x0)}, y = {int(y1 - y0 - bh)}, exact = true, {w} }})')
-    disp(f'hl.dsp.window.move({{ x = {int(x0)}, y = {int(y0 + bh)}, exact = true, {w} }})')
+    disp(f'hl.dsp.window.resize({{ x = {w_}, y = {h_}, exact = true, {w} }})')
+    disp(f'hl.dsp.window.move({{ x = {x}, y = {y}, exact = true, {w} }})')
     try: st = json.load(open(STATE))
     except Exception: st = {}
     st[addr] = n; json.dump(st, open(STATE, 'w'))
@@ -112,7 +116,9 @@ def active():
 def main(a):
     cmd = a[0] if a else 'list'
     d = load()
-    if cmd == 'list': print(json.dumps(d))
+    if cmd == 'list':
+        for l in d['layouts']: l['mine'] = l['name'] not in BUILTIN
+        print(json.dumps(d))
     elif cmd == 'setdata':   # setdata JSON: replace the whole settings + layouts file (used by the editor)
         nd = json.loads(a[1])
         if nd.get('layouts'): save(nd)
@@ -204,11 +210,11 @@ def drag():
         if w and w.get('address') == addr:
             if w['size'] != lastsz: szchg += 1; lastsz = w['size']   # a window that keeps changing size is being resized, not moved (one change = tiled -> floating)
             if szchg < 4 and abs(w['at'][0] - at0[0]) + abs(w['at'][1] - at0[1]) > 30: moved = True
-        if not moved and time.time() - t0 > 4: log('no move in 4s (click/selection)'); return   # just a click or a text selection
+        if not moved and time.time() - t0 > 2: log('no move in 2s (click/selection)'); return   # just a click or a text selection
         if lastc != (cx, cy) or (w and w.get('at') != at0 and False): lastmv = time.time()
         lastc = (cx, cy)
         if moved and time.time() - lastmv > 3: why = 'idle (no release seen)'; break   # safety net if the button release never reaches us
-        near = moved and (cx - mx < EDGE or cy - my < EDGE or mx + mw - cx < EDGE or my + mh - cy < EDGE)
+        near = moved and (not d.get('dragedge') or cx - mx < EDGE or cy - my < EDGE or mx + mw - cx < EDGE or my + mh - cy < EDGE)   # zones show for any drag (set "dragedge": true in zones.json to need the screen edge)
         best, bd = -1, 1e18
         if near:
             for i, r in enumerate(rects):
@@ -233,14 +239,20 @@ def watch():
         while b'\n' in buf:
             line, buf = buf.split(b'\n', 1); line = line.decode('utf-8', 'ignore')
             if not line.startswith('openwindow>>'): continue
+            try: watch_one(line)
+            except Exception as e: log('watch: %r' % e)
+
+def watch_one(line):
+    if True:
+        if True:
             d = load()
-            if not d.get('auto'): continue
+            if not d.get('auto'): return
             addr = '0x' + line.split('>>')[1].split(',')[0]
             time.sleep(0.4)
             cs = [c for c in (hj('clients') or []) if c['address'] == addr]
-            if not cs or cs[0]['class'] in ('',) or cs[0]['class'].startswith('quickshell') or cs[0].get('floating') and cs[0]['class'].startswith('legal'): continue
+            if not cs or cs[0]['class'] in ('',) or cs[0]['class'].startswith('quickshell') or cs[0].get('floating') and cs[0]['class'].startswith('legal'): return
             ax, ay, aw, ah, ws = area()
-            if cs[0]['workspace']['id'] != ws: continue
+            if cs[0]['workspace']['id'] != ws: return
             taken = set()
             for c in wins(ws):
                 if c['address'] != addr and c['floating']: taken.add(zone_of(c, d))

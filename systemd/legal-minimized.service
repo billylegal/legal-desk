@@ -1,0 +1,24 @@
+[Unit]
+Description=Legal Dock minimize daemon (Hyprland IPC)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/legal-desk/legal-minimized daemon
+Restart=on-failure
+RestartSec=2
+# the daemon only needs its own sockets, the Hyprland sockets and its state file
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+RuntimeDirectory=legal-desk
+RuntimeDirectoryMode=0700
+StateDirectory=legal-desk
+StateDirectoryMode=0700
+PrivateTmp=no
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=yes
+
+[Install]
+WantedBy=graphical-session.target

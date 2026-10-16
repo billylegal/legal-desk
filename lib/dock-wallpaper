@@ -5,7 +5,7 @@ CUR="$HOME/.local/state/omarchy/current"
 command -v omarchy-theme-bg-set >/dev/null || { echo "0/0 none"; exit 0; }   # not on Omarchy: the dock hides the Wallpaper row
 # The Omarchy skin only offers wallpapers that match its colours: Omarchy's original theme (Tokyo Night).
 style=classic; [ -e "$HOME/.cache/dock-mac" ] && { [ "$(cat "$HOME/.cache/dock-style" 2>/dev/null)" = rubik ] && style=rubik || style=mac; }
-case $style in classic) OMA_IDX=14;; mac) OMA_IDX=20;; rubik) OMA_IDX=10;; esac
+OMA_IDX=1   # Omarchy is skin 1 in share/skins.json
 if [ "$(cat "$HOME/.cache/dock-skin-$style" 2>/dev/null)" = "$OMA_IDX" ]; then
   mapfile -t W < <(find -L /usr/share/omarchy/themes/tokyo-night/backgrounds -maxdepth 1 -type f \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) 2>/dev/null | while read -r f; do readlink -f "$f"; done | sort -u)
 else

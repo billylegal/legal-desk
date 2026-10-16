@@ -1,0 +1,365 @@
+#!/usr/bin/env python3
+"""legal-minimized : Legal Dock's minimize daemon (Hyprland has no minimize).
+
+Talks to Hyprland directly over its IPC sockets (no hyprctl, no shell), keeps a small state machine per window and parks minimized
+windows on the special workspace "special:minimized". Restoring puts a window back on the workspace it came from, with the floating /
+tiled state, geometry, fullscreen state and focus it had.
+
+  legal-minimized daemon            run the daemon (systemd user unit: legal-minimized.service)
+  legal-minimized ping              exit 0 if the daemon answers
+  legal-minimized minimize [ADDR]   minimize ADDR (default: the active window)
+  legal-minimized restore [ADDR]    restore ADDR (default: the most recently minimized window)
+  legal-minimized restore-class C   restore every minimized window of app class C
+  legal-minimized toggle [ADDR]     minimize if visible, restore if minimized
+  legal-minimized list | status     JSON of what is minimized / daemon state
+  legal-minimized forget ADDR       drop a window from the state without touching it
+
+State per window:   NORMAL -> MINIMIZING -> MINIMIZED -> RESTORING -> NORMAL        (a closed window leaves any state)
+  NORMAL      not tracked (the window is somewhere normal)
+  MINIMIZING  snapshot taken, move to the special workspace sent, waiting for Hyprland to confirm it
+  MINIMIZED   confirmed on special:minimized; the snapshot is kept (and saved to disk, so a daemon restart loses nothing)
+  RESTORING   move back + geometry + focus in progress (commands for that window are refused until done)
+Events from Hyprland keep it honest: a closed window is forgotten, a window moved out by something else is "externally restored".
+
+Security: the control socket lives in a 0700 directory, is 0600, and only accepts the same user (SO_PEERCRED). Commands are matched
+against a fixed list and every argument against a strict pattern (window address 0x<hex>, app class [A-Za-z0-9_.:@+-]).
+Nothing a client sends is ever passed to a shell or put inside a Hyprland command unchecked.
+"""
+import asyncio, json, os, re, signal, socket, struct, sys, time
+
+UID = os.getuid()
+RUN = os.environ.get("XDG_RUNTIME_DIR", "/run/user/%d" % UID)
+SOCK_DIR = os.path.join(RUN, "legal-desk")
+SOCK = os.environ.get("LEGAL_MIN_SOCK", os.path.join(SOCK_DIR, "minimized.sock"))
+STATE_DIR = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")), "legal-desk")
+STATE = os.environ.get("LEGAL_MIN_STATE", os.path.join(STATE_DIR, "minimized.json"))
+PARK = "special:minimized"
+ADDR_RE = re.compile(r"^0x[0-9a-fA-F]{1,16}$")
+CLASS_RE = re.compile(r"^[A-Za-z0-9_.:@+\-]{1,128}$")
+WS_NAME_RE = re.compile(r"^[A-Za-z0-9_.:@+\- ]{1,64}$")
+MAX_LINE = 256
+
+NORMAL, MINIMIZING, MINIMIZED, RESTORING = "NORMAL", "MINIMIZING", "MINIMIZED", "RESTORING"
+
+
+def log(*a):
+    print(time.strftime("%H:%M:%S"), *a, file=sys.stderr, flush=True)
+
+
+# ---------------------------------------------------------------- Hyprland IPC
+def hypr_dir():
+    sig = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE", "")
+    if sig and os.path.isdir(os.path.join(RUN, "hypr", sig)):
+        return os.path.join(RUN, "hypr", sig)
+    base = os.path.join(RUN, "hypr")                      # no variable (a service started too early): newest live instance
+    try:
+        c = [os.path.join(base, d) for d in os.listdir(base) if os.path.exists(os.path.join(base, d, ".socket.sock"))]
+    except OSError:
+        c = []
+    if not c:
+        raise RuntimeError("no running Hyprland instance")
+    return max(c, key=os.path.getmtime)
+
+
+class Hypr:
+    def __init__(self):
+        self.dir = hypr_dir()
+        self.lua = os.path.exists(os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "hypr", "hyprland.lua"))
+
+    async def _talk(self, payload):
+        r, w = await asyncio.open_unix_connection(os.path.join(self.dir, ".socket.sock"))
+        w.write(payload.encode()); await w.drain()
+        data = await r.read(-1)
+        w.close()
+        return data.decode("utf-8", "replace")
+
+    async def json(self, what):
+        return json.loads(await self._talk("j/" + what) or "null")
+
+    async def dispatch(self, lua_expr, classic):
+        """Lua configs take hl.dsp.* expressions, classic configs the old dispatcher names. Only validated values are ever passed in."""
+        out = await self._talk("dispatch " + (lua_expr if self.lua else classic))
+        return out.strip() == "ok"
+
+    # -- the handful of operations the state machine needs (all arguments already validated by the caller)
+    async def move(self, addr, ws, follow):
+        if self.lua:
+            return await self.dispatch("hl.dsp.window.move({ workspace = '%s', window = 'address:%s', follow = %s })" % (ws, addr, "true" if follow else "false"), "")
+        return await self.dispatch("", ("movetoworkspace %s,address:%s" if follow else "movetoworkspacesilent %s,address:%s") % (ws, addr))
+
+    async def focus(self, addr):
+        return await self.dispatch("hl.dsp.focus({ window = 'address:%s' })" % addr, "focuswindow address:%s" % addr)
+
+    async def set_float(self, addr, on):
+        return await self.dispatch("hl.dsp.window.float({ action = '%s', window = 'address:%s' })" % ("enable" if on else "disable", addr),
+                                   "setfloating address:%s" % addr if on else "settiled address:%s" % addr)
+
+    async def place(self, addr, x, y, w, h):
+        a = await self.dispatch("hl.dsp.window.resize({ x = %d, y = %d, exact = true, window = 'address:%s' })" % (w, h, addr), "resizewindowpixel exact %d %d,address:%s" % (w, h, addr))
+        b = await self.dispatch("hl.dsp.window.move({ x = %d, y = %d, exact = true, window = 'address:%s' })" % (x, y, addr), "movewindowpixel exact %d %d,address:%s" % (x, y, addr))
+        return a and b
+
+    async def fullscreen(self, addr, mode):
+        return await self.dispatch("hl.dsp.window.fullscreen({ mode = %d, action = 'set', window = 'address:%s' })" % (mode, addr),
+                                   "fullscreenstate %d %d,address:%s" % (mode, mode, addr))
+
+
+# ---------------------------------------------------------------- state machine
+class Daemon:
+    def __init__(self):
+        self.h = Hypr()
+        self.recs = {}        # addr -> record (state MINIMIZING / MINIMIZED / RESTORING)
+        self.lock = asyncio.Lock()
+        self.started = time.time()
+        self.stop = asyncio.Event()
+
+    # ---- persistence
+    def save(self):
+        try:
+            os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
+            tmp = STATE + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump({"version": 1, "recs": {a: r for a, r in self.recs.items() if r["state"] == MINIMIZED}}, f)
+            os.replace(tmp, STATE)
+        except OSError as e:
+            log("could not save state:", e)
+
+    def load(self):
+        try:
+            d = json.load(open(STATE))
+            for a, r in d.get("recs", {}).items():
+                if ADDR_RE.match(a) and isinstance(r, dict):
+                    r["state"] = MINIMIZED; self.recs[a] = r
+        except (OSError, ValueError):
+            pass
+
+    async def clients(self):
+        return {c["address"]: c for c in (await self.h.json("clients") or []) if c.get("mapped", True)}
+
+    async def reconcile(self):
+        """Make the state agree with what Hyprland really has (start-up, reconnect, or any doubt)."""
+        cl = await self.clients()
+        act = await self.h.json("activeworkspace") or {}
+        for a in list(self.recs):
+            c = cl.get(a)
+            if c is None or c["workspace"]["name"] != PARK:
+                if self.recs[a]["state"] != RESTORING:
+                    log("forget", a, "(gone or no longer parked)"); del self.recs[a]
+        for a, c in cl.items():
+            if c["workspace"]["name"] == PARK and a not in self.recs:       # parked by someone else (e.g. the old win-minimize script)
+                self.recs[a] = self.snapshot(c, act); self.recs[a]["state"] = MINIMIZED
+                try:                                                          # the old script remembered the workspace it came from
+                    old = open(os.path.expanduser("~/.cache/win-minimized/" + a)).read().strip()
+                    if WS_NAME_RE.match(old) and not old.startswith("special:"): self.recs[a]["ws_name"] = old
+                except OSError:
+                    pass
+                log("adopted", a, c.get("class"))
+        self.save()
+
+    @staticmethod
+    def snapshot(c, act=None):
+        ws = c.get("workspace", {})
+        if ws.get("name", "") == PARK and act:            # unknown origin: use the workspace that is showing
+            ws = {"id": act.get("id", 1), "name": act.get("name", "1")}
+        return {"state": NORMAL, "class": c.get("class", ""), "title": (c.get("title") or "")[:80], "ws_id": ws.get("id", 1), "ws_name": ws.get("name", "1"),
+                "monitor": c.get("monitor", 0), "floating": bool(c.get("floating")), "at": list(c.get("at", [0, 0])), "size": list(c.get("size", [0, 0])),
+                "fullscreen": int(c.get("fullscreen") or 0), "ts": time.time()}
+
+    # ---- transitions
+    async def minimize(self, addr):
+        async with self.lock:
+            cl = await self.clients()
+            c = cl.get(addr)
+            if c is None: return {"ok": False, "error": "no such window"}
+            if c["workspace"]["name"] == PARK: return {"ok": True, "state": MINIMIZED, "note": "already minimized"}
+            if c.get("pinned"): return {"ok": False, "error": "pinned windows cannot be minimized"}
+            rec = self.snapshot(c); rec["state"] = MINIMIZING
+            self.recs[addr] = rec
+            if not await self.h.move(addr, PARK, False):
+                del self.recs[addr]; return {"ok": False, "error": "Hyprland refused the move"}
+            for _ in range(20):                                          # wait (max 1 s) for Hyprland to confirm
+                await asyncio.sleep(0.05)
+                now = (await self.clients()).get(addr)
+                if now is not None and now["workspace"]["name"] == PARK:
+                    rec["state"] = MINIMIZED; self.save(); log("minimized", addr, rec["class"], "from ws", rec["ws_name"])
+                    return {"ok": True, "state": MINIMIZED}
+            del self.recs[addr]
+            return {"ok": False, "error": "window did not move"}
+
+    async def target_workspace(self, rec, cl_ws, act):
+        """The workspace it came from if that still exists, else the one showing on its old monitor, else the active one."""
+        names = {w["name"]: w for w in cl_ws}
+        if rec["ws_name"] in names and WS_NAME_RE.match(rec["ws_name"]) and not rec["ws_name"].startswith("special:"):
+            return rec["ws_name"]
+        if rec["ws_id"] in [w["id"] for w in cl_ws] and rec["ws_id"] > 0:
+            return str(rec["ws_id"])
+        return str(act.get("id", 1))
+
+    async def restore(self, addr):
+        async with self.lock:
+            rec = self.recs.get(addr)
+            cl = await self.clients(); c = cl.get(addr)
+            if c is None:
+                self.recs.pop(addr, None); self.save(); return {"ok": False, "error": "no such window"}
+            if rec is None or rec["state"] != MINIMIZED:
+                return {"ok": False, "error": "not minimized"}
+            rec["state"] = RESTORING
+            try:
+                ws_list = await self.h.json("workspaces") or []
+                act = await self.h.json("activeworkspace") or {}
+                ws = await self.target_workspace(rec, ws_list, act)
+                if not await self.h.move(addr, ws, True):
+                    rec["state"] = MINIMIZED; return {"ok": False, "error": "Hyprland refused the move"}
+                await asyncio.sleep(0.08)
+                now = (await self.clients()).get(addr) or {}
+                if rec["floating"]:                                      # put a floating window back exactly where it was (kept on a visible screen)
+                    if not now.get("floating"): await self.h.set_float(addr, True); await asyncio.sleep(0.05)
+                    x, y = rec["at"]; w, h = rec["size"]
+                    mons = await self.h.json("monitors") or []
+                    mon = next((m for m in mons if m.get("id") == rec["monitor"]), None) or next((m for m in mons if m.get("focused")), None)
+                    if mon:
+                        mw, mh = int(mon["width"] / mon.get("scale", 1)), int(mon["height"] / mon.get("scale", 1))
+                        w, h = min(w, mw), min(h, mh)
+                        x = max(mon["x"], min(x, mon["x"] + mw - w)); y = max(mon["y"], min(y, mon["y"] + mh - h))
+                    if w > 0 and h > 0: await self.h.place(addr, int(x), int(y), int(w), int(h))
+                elif now.get("floating"):
+                    await self.h.set_float(addr, False)
+                if rec["fullscreen"]: await self.h.fullscreen(addr, rec["fullscreen"])
+                await self.h.focus(addr)
+                del self.recs[addr]; self.save()
+                log("restored", addr, rec["class"], "to ws", ws)
+                return {"ok": True, "state": NORMAL, "workspace": ws}
+            except Exception as e:                                       # never leave a window stuck in RESTORING
+                log("restore failed:", e)
+                if addr in self.recs: self.recs[addr]["state"] = MINIMIZED
+                return {"ok": False, "error": "restore failed"}
+
+    # ---- events from Hyprland
+    async def on_event(self, line):
+        ev, _, data = line.partition(">>")
+        if ev == "closewindow":
+            a = "0x" + data.strip()
+            if self.recs.pop(a, None) is not None: self.save(); log("closed while minimized:", a)
+        elif ev == "movewindowv2":
+            a, _, rest = data.partition(","); a = "0x" + a
+            r = self.recs.get(a)
+            if r is not None and r["state"] == MINIMIZED and PARK not in rest:
+                del self.recs[a]; self.save(); log("externally restored:", a)
+        elif ev in ("monitorremoved", "monitorremovedv2", "destroyworkspacev2"):
+            pass                                                         # handled lazily: target_workspace falls back to the active workspace
+
+    async def events(self):
+        while not self.stop.is_set():
+            try:
+                r, w = await asyncio.open_unix_connection(os.path.join(self.h.dir, ".socket2.sock"))
+                await self.reconcile()
+                while True:
+                    line = await r.readline()
+                    if not line: break
+                    await self.on_event(line.decode("utf-8", "replace").rstrip("\n"))
+            except (OSError, RuntimeError) as e:
+                log("Hyprland event socket:", e)
+            if self.stop.is_set(): break
+            await asyncio.sleep(1.0)                                     # Hyprland restarted? find the new instance and try again
+            try: self.h = Hypr()
+            except RuntimeError: pass
+
+    # ---- control socket
+    async def handle(self, r, w):
+        try:
+            cred = w.get_extra_info("socket").getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, struct.calcsize("3i"))
+            if struct.unpack("3i", cred)[1] != UID: w.close(); return
+            line = await asyncio.wait_for(r.readline(), 3)
+            if not line or len(line) > MAX_LINE: raise ValueError("bad line")
+            out = await self.run(line.decode("utf-8").strip().split())
+        except Exception as e:
+            out = {"ok": False, "error": "bad request"}
+            if not isinstance(e, (ValueError, UnicodeError, asyncio.TimeoutError)): log("request error:", repr(e))
+        try: w.write((json.dumps(out) + "\n").encode()); await w.drain()
+        except OSError: pass
+        w.close()
+
+    async def run(self, a):
+        if not a: return {"ok": False, "error": "empty command"}
+        cmd, args = a[0], a[1:]
+        addr_arg = lambda: args[0] if args and ADDR_RE.match(args[0]) else None
+        if cmd == "ping": return {"ok": True, "pong": True}
+        if cmd == "status": return {"ok": True, "uptime": int(time.time() - self.started), "minimized": sum(1 for r in self.recs.values() if r["state"] == MINIMIZED), "lua": self.h.lua}
+        if cmd == "list":
+            return {"ok": True, "windows": [{"address": a2, "class": r["class"], "title": r["title"], "workspace": r["ws_name"], "state": r["state"], "since": int(r["ts"])} for a2, r in sorted(self.recs.items(), key=lambda kv: -kv[1]["ts"])]}
+        if cmd in ("minimize", "toggle"):
+            if args and not addr_arg(): return {"ok": False, "error": "bad address"}
+            a2 = addr_arg() or (await self.h.json("activewindow") or {}).get("address", "")
+            if not ADDR_RE.match(a2 or ""): return {"ok": False, "error": "no window"}
+            if cmd == "toggle" and a2 in self.recs and self.recs[a2]["state"] == MINIMIZED: return await self.restore(a2)
+            return await self.minimize(a2)
+        if cmd == "restore":
+            if args and not addr_arg(): return {"ok": False, "error": "bad address"}
+            a2 = addr_arg()
+            if a2 is None:
+                m = sorted((r["ts"], k) for k, r in self.recs.items() if r["state"] == MINIMIZED)
+                if not m: return {"ok": False, "error": "nothing minimized"}
+                a2 = m[-1][1]
+            return await self.restore(a2)
+        if cmd == "restore-class":
+            if len(args) != 1 or not CLASS_RE.match(args[0]): return {"ok": False, "error": "bad class"}
+            want = args[0].lower(); res = []
+            for a2 in [k for k, r in self.recs.items() if r["state"] == MINIMIZED and r["class"].lower() == want]:
+                res.append(await self.restore(a2))
+            return {"ok": bool(res) and all(x.get("ok") for x in res), "restored": len(res)}
+        if cmd == "forget":
+            if not addr_arg(): return {"ok": False, "error": "bad address"}
+            self.recs.pop(addr_arg(), None); self.save(); return {"ok": True}
+        return {"ok": False, "error": "unknown command"}
+
+    async def serve(self):
+        os.makedirs(os.path.dirname(SOCK), mode=0o700, exist_ok=True)
+        os.chmod(os.path.dirname(SOCK), 0o700)
+        try: os.unlink(SOCK)
+        except FileNotFoundError: pass
+        old = os.umask(0o177)
+        srv = await asyncio.start_unix_server(self.handle, path=SOCK)
+        os.umask(old); os.chmod(SOCK, 0o600)
+        self.load()
+        loop = asyncio.get_running_loop()
+        for s in (signal.SIGTERM, signal.SIGINT): loop.add_signal_handler(s, self.stop.set)
+        ev = asyncio.create_task(self.events())
+        log("legal-minimized ready on", SOCK)
+        await self.stop.wait()
+        ev.cancel(); srv.close()
+        try: os.unlink(SOCK)
+        except OSError: pass
+
+
+# ---------------------------------------------------------------- client
+def client(args):
+    s = socket.socket(socket.AF_UNIX); s.settimeout(5)
+    try: s.connect(SOCK)
+    except OSError: return None
+    s.sendall((" ".join(args) + "\n").encode())
+    buf = b""
+    while not buf.endswith(b"\n"):
+        d = s.recv(65536)
+        if not d: break
+        buf += d
+    s.close()
+    try: return json.loads(buf)
+    except ValueError: return None
+
+
+def main():
+    a = sys.argv[1:] or ["status"]
+    if a[0] == "daemon":
+        try: asyncio.run(Daemon().serve())
+        except RuntimeError as e: log(e); return 1
+        return 0
+    r = client(a)
+    if r is None:
+        print("legal-minimized: daemon not running (start it: systemctl --user start legal-minimized)", file=sys.stderr); return 2
+    if a[0] in ("list", "status"): print(json.dumps(r, indent=1))
+    elif not r.get("ok"): print("legal-minimized:", r.get("error", "failed"), file=sys.stderr)
+    return 0 if r.get("ok") else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

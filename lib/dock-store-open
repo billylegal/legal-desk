@@ -1,0 +1,12 @@
+#!/bin/bash
+# dock-store-open [updates] : open the Omarchy Store window (starting its helper if needed); "updates" lands on the Updates page.
+P=$(cat "$HOME/.local/state/omarchy-store/port" 2>/dev/null)
+up() { [ -n "$P" ] && curl -s -m 2 -o /dev/null "http://127.0.0.1:$P/api/status"; }
+if ! up; then
+  nohup omarchy-store --serve >/dev/null 2>&1 &
+  for i in $(seq 1 20); do sleep 0.5; P=$(cat "$HOME/.local/state/omarchy-store/port" 2>/dev/null); up && break; done
+fi
+if [ "$1" = updates ]; then
+  exec omarchy-launch-webapp "http://127.0.0.1:$P/updates" --class=omarchy-store --disable-features=StatusBubble
+fi
+exec omarchy-store

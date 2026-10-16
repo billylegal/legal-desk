@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""legal-metal KIND IN OUT.png : turn any icon (svg/png) into a polished metal one (KIND = silver | gold | bronze | nebula | chrome (purple icon, bright shiny silver logo)).
+The icon's light and dark areas are mapped onto a brushed-metal colour ramp (dark edge, bright highlight, dark band, soft reflection); transparency is kept."""
+import subprocess, sys, tempfile, os
+RAMPS = {
+    "silver": ["#50555d", "#a9afb7", "#ffffff", "#9aa0a8", "#e9ecf0", "#cfd4da", "#757a82"],
+    "gold":   ["#4d3304", "#b7820f", "#fff4b0", "#a8730c", "#f4d767", "#d9a526", "#5e3f05"],
+    "nebula": ["#1c1830", "#7d74b0", "#ffffff", "#4f4684", "#d6cff2", "#aab0cc", "#26204a"],
+    "chrome": ["#1a0b3d", "#3d1f8a", "#6a3fd0", "#8a63e6"],   # plate: deep to bright purple (the glyph is painted silver below)
+    "bronze": ["#2f180b", "#8c4f24", "#f5b985", "#7a4220", "#dc9559", "#b8703a", "#47260f"],
+}
+def chrome(src, dst, t):
+    """purple plate + bright mirror-silver logo: the icon's glyph (the part that differs from the plate colour) becomes a polished silver, the rest purple"""
+    big = os.path.join(t, "b.png")
+    if src.lower().endswith(".svg"):
+        subprocess.run(["rsvg-convert", "-w", "256", "-h", "256", "-a", src, "-o", big], check=True)
+    else:
+        subprocess.run(["magick", src + "[0]", "-background", "none", "-resize", "256x256", big], check=True)
+    alpha = os.path.join(t, "a.png"); subprocess.run(["magick", big, "-alpha", "extract", alpha], check=True)
+    # glyph = whatever differs from the plate: compare with the plate's own colour, taken from a column near the left edge and stretched across (handles gradient plates, light or dark glyphs)
+    flat, ref, mask = (os.path.join(t, n) for n in ("f.png", "r.png", "m.png"))
+    subprocess.run(["magick", big, "-background", "#808080", "-alpha", "remove", "-alpha", "off", flat], check=True)
+    subprocess.run(["magick", "(", flat, "-crop", "1x56+72+0", "+repage", ")", "(", flat, "-crop", "1x144+20+56", "+repage", ")", "(", flat, "-crop", "1x56+72+200", "+repage", ")",
+                    "-append", "-filter", "point", "-resize", "256x256!", ref], check=True)   # rounded corners: top and bottom rows are read further in
+    subprocess.run(["magick", flat, ref, "-compose", "Difference", "-composite", "-colorspace", "Gray", "-level", "12%,34%", "-blur", "0x0.6", mask], check=True)
+    # purple plate with a soft top light and a nebula glow
+    plate = os.path.join(t, "p.png")
+    subprocess.run(["magick", "-size", "256x256", "gradient:#8a5df0-#2a1068", "(", "-size", "256x256", "radial-gradient:#ff7fe6-none", "-evaluate", "multiply", "0.35", ")", "-compose", "Screen", "-composite", plate], check=True)
+    # mirror silver: bright horizon band, dark reflection line, bright base
+    sil = os.path.join(t, "s.png")
+    subprocess.run(["magick", "-size", "256x256", "gradient:#ffffff-#6a7280", "(", "-size", "256x256", "gradient:#f4f6fa-#9aa1ad", "-rotate", "180", ")", "-compose", "Overlay", "-composite",
+                    "(", "-size", "256x256", "gradient:white-black", "-function", "Sinusoid", "3,0", "-evaluate", "multiply", "0.45", ")", "-compose", "Screen", "-composite", sil], check=True)
+    sa = os.path.join(t, "sa.png")
+    subprocess.run(["magick", sil, mask, "-alpha", "off", "-compose", "CopyOpacity", "-composite", sa], check=True)
+    subprocess.run(["magick", plate, sa, "-compose", "Over", "-composite", alpha, "-compose", "CopyOpacity", "-composite", dst], check=True)
+
+
+kind, src, dst = sys.argv[1:4]
+with tempfile.TemporaryDirectory() as t:
+    if kind == "chrome":
+        r = subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.realpath(__file__)), "legal-chrome"), src, dst], capture_output=True)
+        if r.returncode != 0:   # no numpy on this computer: the simpler ImageMagick version of the look, so the icons still match
+            chrome(src, dst, t)
+        sys.exit(0)
+    big = os.path.join(t, "b.png")
+    if src.lower().endswith(".svg"):
+        subprocess.run(["rsvg-convert", "-w", "256", "-h", "256", "-a", src, "-o", big], check=True)
+    else:
+        subprocess.run(["magick", src + "[0]", "-background", "none", "-resize", "256x256", big], check=True)
+    ramp = os.path.join(t, "r.png")
+    subprocess.run(["magick"] + sum([["xc:" + c] for c in RAMPS[kind]], []) + ["+append", "-filter", "triangle", "-resize", "256x1!", ramp], check=True)
+    alpha = os.path.join(t, "a.png")
+    subprocess.run(["magick", big, "-alpha", "extract", alpha], check=True)
+    # detail: grey the icon, stretch its contrast, keep the edge lighting from a blurred emboss of the shape
+    subprocess.run(["magick", big, "-background", "white", "-alpha", "remove", "-colorspace", "Gray", "-contrast-stretch", "1%x1%", "-sigmoidal-contrast", "3,50%", "+level", "24%,100%",
+                    "(", alpha, "-blur", "0x2.2", "-shade", "125x38", "-auto-level", "-evaluate", "multiply", "0.55", ")", "-compose", "Overlay", "-composite",
+                    ramp, "-clut", alpha, "-compose", "CopyOpacity", "-composite", dst], check=True)
+    if kind == "nebula":   # a purple-magenta nebula haze and a few stars, kept inside the icon's shape
+        import random; random.seed(7)
+        stars = []
+        for _ in range(24):
+            x, y = random.randint(24, 232), random.randint(24, 232)
+            stars += ["-fill", "white", "-draw", "circle %d,%d %d,%d" % (x, y, x + random.choice([1, 1, 2]), y)]
+        haze = os.path.join(t, "h.png")
+        subprocess.run(["magick", "-size", "256x256", "radial-gradient:#ff6fe0-#2a14b8", "-blur", "0x10", haze], check=True)
+        subprocess.run(["magick", dst, haze, "-compose", "Blend", "-define", "compose:args=24", "-composite", "(", "-size", "256x256", "xc:none"] + stars + [")", "-compose", "Over", "-composite",
+                        alpha, "-compose", "DstIn", "-composite", dst], check=True)

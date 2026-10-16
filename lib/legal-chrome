@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+"""legal-chrome IN OUT.png : Purple Chrome look for one icon (svg/png): a purple plate with a bright, shiny mirror-silver logo.
+The logo is whatever differs from the plate's own colour (read per row from the plate's edge), so light or dark plates, gradients, folders and round icons all work.
+The logo is drawn as polished silver (horizon reflection, bevel, detail of the original kept) with a soft shadow on the purple."""
+import subprocess, sys, os, tempfile
+import numpy as np
+
+N = 256
+
+
+def load(src, size=N):
+    with tempfile.TemporaryDirectory() as t:
+        png = src
+        if src.lower().endswith(".svg"):
+            png = os.path.join(t, "s.png")
+            subprocess.run(["rsvg-convert", "-w", str(size), "-h", str(size), "-a", src, "-o", png], check=True)
+        raw = subprocess.run(["magick", png + "[0]", "-background", "none", "-resize", f"{size}x{size}", "-gravity", "center", "-extent", f"{N}x{N}", "-depth", "8", "rgba:-"],
+                             check=True, capture_output=True).stdout
+    return np.frombuffer(raw, np.uint8).reshape(N, N, 4).astype(np.float32) / 255.0
+
+
+def save(img, dst):
+    raw = (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8).tobytes()
+    subprocess.run(["magick", "-size", f"{N}x{N}", "-depth", "8", "rgba:-", dst], input=raw, check=True)
+
+
+def blur(a, s):
+    if s <= 0:
+        return a
+    r = int(s * 3 + 1)
+    k = np.exp(-0.5 * (np.arange(-r, r + 1) / s) ** 2); k /= k.sum()
+    for ax in (0, 1):
+        a = np.apply_along_axis(lambda v: np.convolve(np.pad(v, r, mode="edge"), k, mode="valid"), ax, a)
+    return a
+
+
+def erode(a, n):
+    for _ in range(n):
+        p = np.pad(a, 1, mode="edge")
+        a = np.minimum.reduce([p[y:y + N, x:x + N] for y in range(3) for x in range(3)])
+    return a
+
+
+def shift(a, dy, dx):
+    return np.roll(np.roll(a, dy, 0), dx, 1)
+
+
+def smooth_rows(v, w=7):
+    p = np.pad(v, ((w // 2, w // 2), (0, 0)), mode="edge")
+    return np.median(np.stack([p[i:i + N] for i in range(w)]), axis=0)
+
+
+def ramp(x, stops):
+    xs = [s[0] for s in stops]
+    return np.stack([np.interp(x, xs, [int(s[1][i:i + 2], 16) / 255 for s in stops]) for i in (1, 3, 5)], -1) if False else \
+        np.stack([np.interp(x, xs, [int(s[1][c:c + 2], 16) / 255 for s in stops]) for c in (1, 3, 5)], -1)
+
+
+def main(src, dst):
+    A = load(src)
+    rgb, al = A[..., :3], A[..., 3]
+    op = al > 0.5
+    sparse = op.mean() < 0.40     # a symbolic icon without a plate (outline glyph, bin, ...): it gets a purple plate of its own and becomes the silver logo
+    if sparse:
+        A = load(src, 150); rgb, ga = A[..., :3], A[..., 3]
+        yy0, xx0 = np.mgrid[0:N, 0:N].astype(np.float32) - (N - 1) / 2
+        q = np.stack([np.abs(xx0) - (118 - 52), np.abs(yy0) - (118 - 52)], -1)
+        sdf = np.hypot(np.maximum(q[..., 0], 0), np.maximum(q[..., 1], 0)) + np.minimum(np.maximum(q[..., 0], q[..., 1]), 0) - 52
+        al = np.clip(0.5 - sdf, 0, 1).astype(np.float32); op = al > 0.5
+    # the plate colour of every row, read just inside its left and right edge
+    refL = np.zeros((N, 3), np.float32); refR = np.zeros((N, 3), np.float32); ok = np.zeros(N, bool)
+    for y in range(N):
+        xs = np.where(op[y])[0]
+        if len(xs) < 24:
+            continue
+        l, r = min(xs[0] + 12, xs[-1]), max(xs[-1] - 12, xs[0])
+        refL[y] = rgb[y, max(l - 1, 0):l + 2].mean(0); refR[y] = rgb[y, max(r - 1, 0):r + 2].mean(0); ok[y] = True
+    refL, refR = smooth_rows(refL), smooth_rows(refR)
+    if sparse:
+        m = blur(ga, 0.5); ok[:] = False
+    dL = np.abs(rgb - refL[:, None, :]).max(-1); dR = np.abs(rgb - refR[:, None, :]).max(-1)
+    diff = np.minimum(dL, dR) * ok[:, None]
+    if not sparse:
+        t0 = 0.09
+        m = np.clip((diff - t0) / 0.2, 0, 1)
+        m = m * m * (3 - 2 * m)
+        inner = np.clip(erode((al > 0.9).astype(np.float32), 4), 0, 1)   # keeps the plate's rim / shadow out of the logo
+        m = blur(m * inner, 0.6)
+        if m.sum() / max(1.0, op.sum()) > 0.8:       # nothing but logo: everything is silver
+            m = inner.copy()
+        mx, mn = rgb.max(-1), rgb.min(-1); sat = (mx - mn) / np.maximum(mx, 1e-3)
+        col = op & (sat > 0.35) & (mx > 0.25)
+        hue = np.arctan2(np.sqrt(3) * (rgb[..., 1] - rgb[..., 2]), 2 * rgb[..., 0] - rgb[..., 1] - rgb[..., 2])
+        hist = np.histogram(hue[col], bins=12, range=(-np.pi, np.pi))[0] if col.sum() else np.zeros(12)
+        multi = col.sum() > 0.15 * op.sum() and (hist > 0.07 * col.sum()).sum() >= 3
+        platefrac = ((diff < 0.09) & op).sum() / max(1.0, op.sum())
+        if (multi and platefrac < 0.5) or os.environ.get("LEGAL_CHROME_LOGO"):   # a full-colour logo (Chrome, ...): no plate to speak of; the whole logo turns silver on a plate of ours
+            A = load(src, 190); rgb, ga = A[..., :3], A[..., 3]
+            yy0, xx0 = np.mgrid[0:N, 0:N].astype(np.float32) - (N - 1) / 2
+            q = np.stack([np.abs(xx0) - (118 - 52), np.abs(yy0) - (118 - 52)], -1)
+            sdf = np.hypot(np.maximum(q[..., 0], 0), np.maximum(q[..., 1], 0)) + np.minimum(np.maximum(q[..., 0], q[..., 1]), 0) - 52
+            al = np.clip(0.5 - sdf, 0, 1).astype(np.float32); op = al > 0.5
+            m = blur(ga, 0.5)
+        elif m.sum() < 0.02 * op.sum():                # a plain one-colour shape (folder, bin): a bright silver edge makes it metal
+            a1 = (al > 0.9).astype(np.float32)
+            m = blur(np.clip(a1 - erode(a1, 3), 0, 1), 0.7)
+    # --- purple plate
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float32) / (N - 1)
+    top, bot = np.array([0.56, 0.37, 0.96]), np.array([0.14, 0.05, 0.40])
+    plate = top[None, None, :] * (1 - yy[..., None]) + bot[None, None, :] * yy[..., None]
+    glow = np.clip(1 - np.hypot(xx - 0.28, yy - 0.18) / 0.75, 0, 1) ** 2
+    plate = plate + glow[..., None] * np.array([0.40, 0.14, 0.34]) * 0.55
+    # --- mirror silver logo
+    ys = np.where(m.max(1) > 0.3)[0]
+    y0, y1 = (ys[0], ys[-1]) if len(ys) else (0, N - 1)
+    ty = np.clip((np.arange(N) - y0) / max(1, y1 - y0), 0, 1)
+    horizon = np.interp(ty, [0, 0.42, 0.5, 0.58, 1.0], [0.95, 0.66, 0.22, 0.82, 0.98])[:, None]
+    lum = rgb @ np.array([0.3, 0.59, 0.11], np.float32)
+    sel = m > 0.5
+    if sel.sum() > 20:
+        lo, hi = np.percentile(lum[sel], [3, 97])
+        d = np.clip((lum - lo) / max(0.12, hi - lo), 0, 1)
+    else:
+        d = np.full((N, N), 0.6, np.float32)
+    mb = blur(m, 1.6)
+    gx, gy = np.gradient(mb, axis=1), np.gradient(mb, axis=0)
+    bevel = np.clip(-(gx + gy) * 2.2, -0.5, 0.5)            # light from the top left: bright upper edge, dark lower edge
+    b = np.clip(0.62 * horizon + 0.22 * (d - 0.5) + 0.2 + bevel, 0, 1)
+    silver = ramp(b, [(0.0, "#555b68"), (0.3, "#9ea5b2"), (0.65, "#e4e8ee"), (0.9, "#ffffff"), (1.0, "#ffffff")])
+    # --- put it together
+    sh = blur(shift(m, 3, 2), 2.4)
+    pl = plate * (1 - 0.55 * (sh * (1 - m))[..., None])
+    rim = np.clip(al - shift(al, 2, 2), 0, 1) * (al > 0.5)   # a light edge on the plate (upper left)
+    pl = pl + rim[..., None] * 0.22
+    out = pl * (1 - m[..., None]) + silver * m[..., None]
+    save(np.dstack([np.clip(out, 0, 1), al]), dst)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1], sys.argv[2])

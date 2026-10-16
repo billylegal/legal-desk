@@ -1,0 +1,320 @@
+#!/usr/bin/env python3
+"""legal-desk-setup : the first-run setup of Legal Desk, with a way back.
+  legal-desk-setup plan            what Legal Desk would change on this computer (JSON, nothing is touched)
+  legal-desk-setup apply ID,ID...  do the chosen steps (each one is backed up first)
+  legal-desk-setup restore         undo everything this tool did and bring the old setup back
+  legal-desk-setup status          done / not done yet
+  legal-desk-setup first-run       open the setup window once, if it was not answered yet
+  legal-desk-setup later           ask again at the next login
+Steps: dock (take over from the current dock), apps (default dock icons + web app shortcuts), store (Omarchy Store),
+       radio (1UP Radio in the top bar), zones (Legal Zones keys), autoupdate (update Legal Desk by itself).
+Everything that is changed is backed up in ~/.config/legal-desk/backup, and `restore` puts it back."""
+import json, os, re, shutil, subprocess, sys, time
+
+HOME = os.path.expanduser("~")
+CFG = os.path.join(HOME, ".config", "legal-desk")
+BK = os.path.join(CFG, "backup")
+STATE = os.path.join(CFG, "setup.json")
+B = os.path.dirname(os.path.realpath(__file__))
+SH = "/usr/share/legal-desk"
+APPDIRS = ["/usr/share/applications", os.path.join(HOME, ".local/share/applications"), "/var/lib/flatpak/exports/share/applications"]
+HYPR = os.path.join(HOME, ".config", "hypr")
+CACHE = os.path.join(HOME, ".cache")
+
+# What the dock gets on a fresh install: (dock token, label, desktop ids that count as "installed"). Only what is really installed is shown.
+DEFAULT_APPS = [
+    ("chrome-127.0.0.1__-Default", "Omarchy Store", ["omarchy-store"]),
+    ("chrome-youtube.com__-Default", "YouTube", ["chrome-youtube.com__-Default", "YouTube"]),
+    ("spotify", "Spotify", ["spotify"]),
+    ("org.telegram.desktop", "Telegram", ["org.telegram.desktop"]),
+    ("chrome-x.com__-Default", "X", ["chrome-x.com__-Default", "X"]),
+    ("brave-browser", "Brave", ["brave-browser"]),
+    ("chrome-gemini.google.com__-Default", "Gemini", ["chrome-gemini.google.com__-Default", "Gemini"]),
+    ("grok-bot", "Grok", ["grok-bot", "grok"]),
+    ("com.nousresearch.hermes", "Hermes", ["com.nousresearch.hermes", "hermes-desktop"]),
+    ("chrome-claude.ai__-Default", "Claude", ["chrome-claude.ai__-Default", "Claude", "claude"]),
+    ("org.omarchy.agent", "Claude Code", ["org.omarchy.agent"]),
+]
+OWN = ["__calendar__", "__disks__", "__tasks__", "__notes__", "__zones__", "settings", "__radio__", "org.gnome.Nautilus"]
+WEBAPPS = [  # (name, url, icon, dock token): shortcuts made when missing
+    ("YouTube", "https://youtube.com", "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/youtube.png", "chrome-youtube.com__-Default"),
+    ("X", "https://x.com", "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/x.png", "chrome-x.com__-Default"),
+    ("Gemini", "https://gemini.google.com", "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/google-gemini.png", "chrome-gemini.google.com__-Default"),
+    ("Claude", "https://claude.ai", "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/claude-ai.png", "chrome-claude.ai__-Default"),
+]
+STORE_INSTALL = "https://omarchystore.com/install.sh"
+AUTOSTART_LINE = 'o.exec_on_start("sleep 3 && (legal-desk start || nwg-dock-hyprland -r -x -i 56)")'
+
+
+def load():
+    try:
+        return json.load(open(STATE))
+    except Exception:
+        return {}
+
+
+def save(d):
+    os.makedirs(CFG, exist_ok=True)
+    json.dump(d, open(STATE + ".tmp", "w"), indent=1)
+    os.replace(STATE + ".tmp", STATE)
+
+
+def sh(*a, **k):
+    return subprocess.run(a, capture_output=True, text=True, **k)
+
+
+def have(cmd):
+    return shutil.which(cmd) is not None
+
+
+def desktop_exists(i):
+    return any(os.path.exists(os.path.join(d, i + ".desktop")) for d in APPDIRS)
+
+
+def backup(path, st):
+    """copy a file into the backup folder once; remember whether it existed so restore can put it back or remove it"""
+    bk = st.setdefault("backups", {})
+    if path in bk:
+        return
+    os.makedirs(BK, exist_ok=True)
+    if os.path.exists(path):
+        dst = os.path.join(BK, path.replace("/", "_"))
+        shutil.copy2(path, dst)
+        bk[path] = dst
+    else:
+        bk[path] = None
+
+
+def read(path):
+    try:
+        return open(path).read()
+    except OSError:
+        return ""
+
+
+def write(path, text):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    open(path, "w").write(text)
+
+
+def installed_apps():
+    return [(t, n) for t, n, ids in DEFAULT_APPS if any(desktop_exists(i) for i in ids)]
+
+
+def missing_webapps():
+    return [w for w in WEBAPPS if not desktop_exists(w[3]) and not desktop_exists(w[0])]
+
+
+def plan():
+    items = []
+    cur = "the dock you have now" + (" (nwg-dock-hyprland)" if have("nwg-dock-hyprland") else "")
+    items.append({"id": "dock", "on": True, "title": "Use the Legal Desk dock", "why": f"Switches off {cur} and starts the Mac-style Legal Desk dock at login, with a small clock beside it. You can go back any time."})
+    apps = [n for _, n in installed_apps()]
+    web = [w[0] for w in missing_webapps()]
+    why = "Puts these on the dock: " + ", ".join(apps + ["Calendar", "Disk Management", "Task Manager", "Notes", "Legal Zones", "Settings", "1UP Radio", "Files", "Downloads", "Trash"]) + ". Your own pinned apps stay. Every icon is dressed in the same purple Legal Desk style, so they all match."
+    if web:
+        why += " Also makes shortcuts for " + ", ".join(web) + "."
+    items.append({"id": "apps", "on": True, "title": "Fill the dock with the usual apps", "why": why})
+    if not have("omarchy-store"):
+        items.append({"id": "store", "on": True, "title": "Install the Omarchy Store", "why": "Runs the store's own one-click installer from omarchystore.com (home folder only, no sudo). Updates for Legal Desk and your apps arrive there, with an update badge on the dock."})
+    items.append({"id": "radio", "on": True, "title": "Put 1UP Radio in the top bar", "why": "Adds the 1UP Radio widget next to your other bar items. Nothing is removed from your bar."})
+    k = zone_keys()
+    ks = []
+    if k["pick"]: ks.append(k["pick"].replace(" + ", "+").title().replace("Super", "Super") + " picks a zone")
+    if k["dirs"]: ks.append(k["dirs"].replace(" + ", "+").title() + "+arrows move a window between zones")
+    ks.append("dragging a window to a screen edge snaps it into a zone"); ks.append("new windows open inside a free zone")
+    items.append({"id": "zones", "on": True, "title": "Turn on Legal Zones (window snapping)", "why": "Adds Legal Zones: " + "; ".join(ks) + ". These keys were chosen so none of them clash with yours or with Omarchy's."})
+    items.append({"id": "autoupdate", "on": False, "title": "Update Legal Desk automatically", "why": "Off by default. When the store has a new Legal Desk, it is installed without asking."})
+    return {"items": items, "done": bool(load().get("done")), "version": 1}
+
+
+def used_keys():
+    """every key combination already bound by Omarchy's defaults or by the user's own Hyprland config"""
+    import glob
+    used = set()
+    files = glob.glob("/usr/share/omarchy/default/hypr/**/*.lua", recursive=True) + glob.glob(os.path.join(HYPR, "**", "*.lua"), recursive=True)
+    for f in files:
+        for m in re.finditer(r'\.bind\(\s*"([^"]+)"', read(f)):
+            used.add(re.sub(r"\s+", " ", m.group(1)).upper())
+    return used
+
+
+def pick(cands, used):
+    for c in cands:
+        if all(re.sub(r"\s+", " ", k).upper() not in used for k in (c if isinstance(c, list) else [c])):
+            return c
+    return None
+
+
+def zone_keys():
+    u = used_keys()
+    manage = pick(["SUPER + CTRL + SHIFT + Z", "SUPER + ALT + SHIFT + Z"], u)
+    pickz = pick(["SUPER + SHIFT + Z", "SUPER + ALT + Z"], u)
+    dirs = None
+    for m in ("SUPER + CTRL + ALT", "SUPER + CTRL + SHIFT", "CTRL + ALT + SHIFT"):
+        if all(f"{m} + {a}" not in u for a in ("LEFT", "RIGHT", "UP", "DOWN")):
+            dirs = m
+            break
+    return {"manage": manage, "pick": pickz, "dirs": dirs}
+
+
+# ---------------------------------------------------------------- steps
+def step_dock(st):
+    f = os.path.join(HYPR, "autostart.lua")
+    if os.path.exists(f) and "legal-desk start" not in read(f):
+        backup(f, st)
+        t = read(f).rstrip("\n") + "\n\n-- Legal Desk (added by legal-desk-setup; `legal-desk-setup restore` takes it out)\n" + AUTOSTART_LINE + "\n"
+        write(f, t)
+    sh(os.path.join(B, "legal-desk"), "mac") if os.path.exists(os.path.join(B, "legal-desk")) else sh("legal-desk", "mac")
+    sh("legal-desk", "start")
+    clk = os.path.join(CACHE, "dock-clock")     # the small clock beside the dock: on, to the right (a choice you made before is kept)
+    if not os.path.exists(clk):
+        backup(clk, st)
+        sh(os.path.join(B, "dock-clock"), "pos", "right")
+
+
+def step_apps(st):
+    # web app shortcuts first, so the dock can find them
+    st.setdefault("webapps", [])
+    for name, url, icon, tok in missing_webapps():
+        if have("omarchy-webapp-install"):
+            sh("omarchy-webapp-install", name, url, icon)
+            st["webapps"].append(name)
+    pinned = os.path.join(CACHE, "nwg-dock-pinned")
+    layout = os.path.join(CACHE, "macdock-layout")
+    own = os.path.join(CACHE, "macdock-own")
+    for f in (pinned, layout, own):
+        backup(f, st)
+    # one look for every icon: the Legal Desk purple style dresses the apps' own icons too (YouTube, X, Gemini, Chrome, folders...). A style you chose yourself is kept.
+    style = os.path.join(CACHE, "dock-icon-style")
+    if not os.path.exists(style):
+        backup(style, st)
+        write(style, "40\n")
+    have_pins = [x.strip() for x in read(pinned).splitlines() if x.strip()]
+    toks = [t for t, _ in installed_apps()]
+    pins = have_pins + [t for t in toks if t not in have_pins]
+    write(pinned, "\n".join(pins) + "\n")
+    ownlist = [x.strip() for x in read(own).splitlines() if x.strip()]
+    write(own, "\n".join(ownlist + [o for o in OWN if o.startswith("__") and o not in ownlist]) + "\n")
+    if not read(layout).strip():   # a layout you made yourself is never replaced
+        order = [t for t in toks] + [t for t in have_pins if t not in toks]
+        order += ["__sep__setup"] + [o for o in OWN] + ["__launcher__", "__folder__", "__trash__"]
+        sh("/usr/lib/legal-desk/dock-layout-save" if os.path.exists("/usr/lib/legal-desk/dock-layout-save") else os.path.join(B, "dock-layout-save"), *order)
+
+
+def step_store(st):
+    if have("omarchy-store"):
+        return
+    r = subprocess.run("curl -fsSL %s | bash" % STORE_INSTALL, shell=True, capture_output=True, text=True)
+    st["store_installed"] = have("omarchy-store")
+
+
+def step_radio(st):
+    f = os.path.join(HOME, ".config", "omarchy", "shell.json")
+    backup(f, st)
+    sh(os.path.join(B, "legal-radio-bar"), "on")
+
+
+def step_zones(st):
+    f = os.path.join(HYPR, "bindings.lua")
+    if "Legal Zones keys" in read(f) or "Zones:" in read(f):
+        return
+    k = zone_keys()
+    L = ["-- Legal Desk: Legal Zones keys (added by legal-desk-setup; `legal-desk-setup restore` takes them out). Keys that clash with Omarchy or your own binds were skipped."]
+    if k["manage"]:
+        L.append('o.bind("%s", "Zones: open Legal Zones", "legal-desk zones manage")' % k["manage"])
+    if k["pick"]:
+        L.append('o.bind("%s", "Zones: pick a zone for this window", "legal-desk zones pick")' % k["pick"])
+    if k["dirs"]:
+        for a, w in (("LEFT", "left"), ("RIGHT", "right"), ("UP", "up"), ("DOWN", "down")):
+            L.append('o.bind("%s + %s", "Zones: window to the zone on the %s", "legal-desk zones dir %s")' % (k["dirs"], a, w, w))
+    # snapping a dragged window: look at the drag, snap on release (these do not take over the normal window drag)
+    L.append('o.bind("mouse:272", "Zones: preview where a dragged window will snap", "legal-desk zones dragstart", { non_consuming = true })')
+    L.append('o.bind("mouse:272", "Zones: snap the dragged window", "legal-desk zones dragend", { release = true, non_consuming = true })')
+    L.append('o.bind("SUPER + mouse:272", "Zones: preview where a dragged window will snap", "legal-desk zones dragstart", { non_consuming = true })')
+    L.append('o.bind("SUPER + mouse:272", "Zones: snap the dragged window", "legal-desk zones dragend", { release = true, non_consuming = true })')
+    backup(f, st)
+    write(f, read(f).rstrip("\n") + "\n\n" + "\n".join(L) + "\n")
+    sh("legal-desk", "zones", "start")
+
+
+def step_autoupdate(st):
+    write(os.path.join(CFG, "autoupdate"), "on\n")
+
+
+STEPS = {"dock": step_dock, "apps": step_apps, "store": step_store, "radio": step_radio, "zones": step_zones, "autoupdate": step_autoupdate}
+
+
+ORDER = ["dock", "store", "apps", "radio", "zones", "autoupdate"]   # the store goes in before the dock icons are chosen
+
+
+def apply(ids):
+    ids = sorted(ids, key=lambda i: ORDER.index(i) if i in ORDER else 99)
+    st = load()
+    st.setdefault("applied", [])
+    for i in ids:
+        if i in STEPS:
+            try:
+                STEPS[i](st)
+                if i not in st["applied"]:
+                    st["applied"].append(i)
+            except Exception as e:
+                st.setdefault("errors", []).append(f"{i}: {e}")
+            save(st)
+    st["done"] = True
+    st["when"] = time.strftime("%F %T")
+    save(st)
+    sh("legal-desk", "restart")   # the dock reloads so every icon is dressed in the new style
+    print(json.dumps({"applied": st["applied"], "errors": st.get("errors", [])}))
+
+
+def restore():
+    st = load()
+    for path, bk in st.get("backups", {}).items():
+        try:
+            if bk and os.path.exists(bk):
+                shutil.copy2(bk, path)
+            elif bk is None and os.path.exists(path):
+                os.remove(path)
+        except OSError:
+            pass
+    for name in st.get("webapps", []):
+        if have("omarchy-webapp-remove"):
+            sh("omarchy-webapp-remove", name)
+    if "radio" in st.get("applied", []):
+        sh(os.path.join(B, "legal-radio-bar"), "off")
+    try:
+        os.remove(os.path.join(CFG, "autoupdate"))
+    except OSError:
+        pass
+    sh("legal-desk", "uninstall")   # stops the Legal Desk services and brings the classic dock back
+    save({"done": False, "restored": time.strftime("%F %T")})
+    print("restored")
+
+
+def first_run():
+    st = load()
+    if st.get("done") or st.get("restored_declined"):
+        return
+    if sh("pgrep", "-f", "quickshell.*legalsetup").returncode == 0:
+        return
+    d = os.path.join(SH, "legalsetup")
+    if not os.path.isdir(d):
+        d = os.path.join(B, "..", "share", "legalsetup")
+    subprocess.Popen(["setsid", "quickshell", "-n", "-p", d], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+
+
+if __name__ == "__main__":
+    a = sys.argv[1:] or ["plan"]
+    if a[0] == "plan":
+        print(json.dumps(plan()))
+    elif a[0] == "apply":
+        apply([x for x in (a[1] if len(a) > 1 else "").split(",") if x])
+    elif a[0] == "restore":
+        restore()
+    elif a[0] == "status":
+        print("done" if load().get("done") else "not done")
+    elif a[0] == "later":
+        st = load(); st["later"] = time.strftime("%F %T"); save(st)
+    elif a[0] == "first-run":
+        first_run()

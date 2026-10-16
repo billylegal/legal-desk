@@ -1,7 +1,9 @@
 #!/bin/bash
-# dock-reset : put everything back to Nebula (the standard): skin (every style), icon look, wallpaper and the Omarchy theme.
+# dock-reset : put everything back to Nebula (the standard): skin (every style), icon look (Purple Chrome), Spark launcher, wallpaper and the Omarchy theme.
 H="$HOME/.cache"; B="$(dirname "$(readlink -f "$0")")"
-rm -f "$H/dock-pointer-size" "$H/dock-icon-style" "$H/dock-launcher-icon"   # icons back to Tile, launcher back to the Legal Desk button
+rm -f "$H/dock-pointer-size"
+echo 40 > "$H/dock-icon-style"        # every icon in the same purple Legal Desk style (Purple Chrome)
+echo 10 > "$H/dock-launcher-icon"      # the Nebula look comes with the Spark launcher
 for s in classic mac rubik; do echo 0 > "$H/dock-skin-$s"; done
 if command -v omarchy-theme-set >/dev/null; then              # desktop theme + its first wallpaper (Omarchy only)
   T="$HOME/.config/omarchy/themes/nebula"

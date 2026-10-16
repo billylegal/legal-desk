@@ -109,7 +109,7 @@ ShellRoot {
       MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton
-        cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+        cursorShape: Qt.ArrowCursor
         onPressed: (m) => {
           var p = mapToItem(win.contentItem, m.x, m.y)
           win.pressX = p.x; win.pressY = p.y; win.startX = card.x; win.startY = card.y
@@ -346,12 +346,12 @@ ShellRoot {
             anchors.verticalCenter: parent.verticalCenter; spacing: 6
             Text { anchors.verticalCenter: parent.verticalCenter; text: "Keep the volume up · Sponsored by"; color: rd.dimC; font.pixelSize: 9 }
             Text { anchors.verticalCenter: parent.verticalCenter; text: "BillyLegal.com"; color: rd.acc2; font.pixelSize: 10; font.bold: true
-              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: rd.open("https://billylegal.com") } }
+              MouseArea { anchors.fill: parent; cursorShape: Qt.ArrowCursor; onClicked: rd.open("https://billylegal.com") } }
             Image { height: 32; width: 23; anchors.verticalCenter: parent.verticalCenter; source: Qt.resolvedUrl("billy-sticker.png"); fillMode: Image.PreserveAspectFit; smooth: true; mipmap: true
-              MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: rd.open("https://billylegal.com") } }
+              MouseArea { anchors.fill: parent; cursorShape: Qt.ArrowCursor; onClicked: rd.open("https://billylegal.com") } }
           }
           Text { anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; text: "1upradio.com"; color: rd.acc2; font.pixelSize: 9; font.letterSpacing: 1
-            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: rd.open("https://1upradio.com") } }
+            MouseArea { anchors.fill: parent; cursorShape: Qt.ArrowCursor; onClicked: rd.open("https://1upradio.com") } }
         }
       }
     }

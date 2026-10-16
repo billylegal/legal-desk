@@ -7,6 +7,18 @@
 #   win-minimize list               show minimized windows
 # The workspace a window came from is remembered in ~/.cache/win-minimized/<address>.
 set -u
+LM="$(dirname "$(readlink -f "$0")")/legal-minimized"
+# The daemon (legal-minimized.service) does this properly: it remembers workspace, geometry, floating state and focus.
+if [ -x "$LM" ] && "$LM" ping >/dev/null 2>&1; then
+  case "${1:-hide}" in
+    hide)          exec "$LM" minimize ${2:+"$2"} ;;
+    restore)       exec "$LM" restore ${2:+"$2"} ;;
+    restore-class) exec "$LM" restore-class "${2:?class}" ;;
+    list)          "$LM" list | python3 -c "import json,sys
+for w in json.load(sys.stdin).get('windows', []): print(w['address'], w['class'], '|', w['title'])"; exit 0 ;;
+  esac
+fi
+# ---- fallback (daemon not running): the original script-only behaviour ----
 D="$HOME/.cache/win-minimized"; mkdir -p "$D"
 SP="special:minimized"
 HD="$(dirname "$(readlink -f "$0")")/hypr-dispatch"

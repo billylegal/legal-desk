@@ -60,10 +60,16 @@ def frac(p):
         return None
 
 out, dirty = {}, False
+if open(os.path.expanduser('~/.cache/dock-icon-style')).read().strip() in ['12'] + [str(n) for n in range(21, 41)]:   # Regular: dock-icon-outline already scaled every icon to one size
+    print(json.dumps({a: 1.0 for a in sys.argv[1:]})); sys.exit(0)
 for arg in sys.argv[1:]:
     p = arg
     if arg.startswith('image://icon/'):
         p = resolve(arg[len('image://icon/'):]) or ''
+    ov = {"image://icon/grok-bot": "grok-bot", "image://icon/hermes": "hermes", "image://icon/yt-to-audio": "yt-audio"}.get(arg)   # Regular set: measure the replacement icon, not the original
+    if ov and open(os.path.expanduser('~/.cache/dock-icon-style')).read().strip() in ['12'] + [str(n) for n in range(21, 41)]:
+        q = os.path.expanduser('~/.local/share/legal-desk/regular/%s.png' % ov)
+        if os.path.isfile(q): p = q
     if not os.path.isfile(p): continue
     key = 'v2|%s|%s' % (p, int(os.path.getmtime(p)))
     if key not in cache:

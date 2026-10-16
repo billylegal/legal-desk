@@ -1,16 +1,21 @@
 #!/bin/bash
-# dock-icon-style next|prev|N|show : choose one of the 10 icon sets (Legal Desk 2.0). Each set is a complete look for the dock's icons:
+# dock-icon-style next|prev|N|show : choose one of the 41 icon sets (21-28 = Regular's icons with an effect: mono, 3D, dancing, spinning; 29-31 metal silver/gold/bronze; 32-38 other icon themes; 40 Purple Chrome = purple icons with bright shiny silver logos; 39 Nebula = silvery purple metal with a nebula glow) (Legal Desk 2.0). Each set is a complete look for the dock's icons:
 #   the art of Legal Desk's own icons (drawn by legal-icons in the skin's colours) and how other apps' icons are dressed.
-#   0 Tile (the standard)  1 Outline  2 Glyph  3 Duotone  4 Glass  5 Neon  6 Flat  7 Pixel  8 Sticker  9 Cube
+#   0 Tile (the standard)  1 Outline  2 Glyph  3 Duotone  5 Neon  8 Sticker
+#   free-standing, no tiles (Phosphor Icons + redrawn app icons): 12 Regular  13 Bold  14 Fill  15 Two-tone  16 Type (words)  17 Shadow  18 Gradient  19 Colour
 # Remembered in ~/.cache/dock-icon-style. It never changes the skin or the menu colours.
 F="$HOME/.cache/dock-icon-style"; B="$(dirname "$(readlink -f "$0")")"
-NAMES=("Tile" "Outline" "Glyph" "Duotone" "Glass" "Neon" "Flat" "Pixel" "Sticker" "Cube")
+NAMES=("Tile" "Outline" "Glyph" "Duotone" "Glass" "Neon" "Flat" "Pixel" "Sticker" "Cube" "Thin" "Light" "Regular" "Bold" "Fill" "Two-tone" "Type" "Shadow" "Gradient" "Colour" "Apple" "Mono Accent" "Mono Silver" "3D Tilt" "3D Cover" "Dance" "Groove" "Coin" "Flip" "Silver" "Gold" "Bronze" "Tela" "MacTahoe" "Colloid" "McMojave" "Qogir" "Fluent" "Papirus" "Nebula" "Purple Chrome")
 N=${#NAMES[@]}
+GONE=" 1 3 4 5 6 7 9 10 11 13 15 18 19 23 24 30 32 33 35 37 38 "   # deleted sets (Outline, Duotone, Glass, Neon, Flat, Pixel, Cube, Thin, Light, Bold, Two-tone, Gradient, Colour, 3D Tilt, 3D Cover, Gold, Tela, MacTahoe, McMojave, Fluent, Papirus): next/prev skip them
+gone() { [[ $GONE == *" $1 "* ]]; }
 cur=$(cat "$F" 2>/dev/null); [[ $cur =~ ^[0-9]+$ ]] && [ "$cur" -lt $N ] || cur=0
+gone "$cur" && cur=0
+step() { while cur=$(( (cur + $1 + N) % N )); gone "$cur"; do :; done; }
 case "$1" in
-  next) cur=$(( (cur + 1) % N )) ;;
-  prev) cur=$(( (cur + N - 1) % N )) ;;
-  [0-9]|[0-9][0-9]) [ "$1" -lt $N ] && cur=$1 ;;
+  next) step 1 ;;
+  prev) step -1 ;;
+  [0-9]|[0-9][0-9]) if [ "$1" -lt $N ] && ! gone "$1"; then cur=$1; fi ;;
 esac
 mkdir -p "$HOME/.cache"; echo "$cur" > "$F"
 [ -x "$B/legal-icons" ] && "$B/legal-icons" refresh >/dev/null 2>&1

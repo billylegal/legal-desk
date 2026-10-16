@@ -11,7 +11,9 @@ ShellRoot {
   property color bgC: "#0B0818"
   property color accC: "#8B5CF6"
   property color txtC: "#E6E1FA"
+  // Colours follow the dock skin; re-read every second so a skin change shows up at once.
   FileView {
+    id: colorsFile
     path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
     onLoaded: {
       var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
@@ -20,6 +22,7 @@ ShellRoot {
       if (c.txt) zr.txtC = c.txt
     }
   }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: colorsFile.reload() }
   property bool show: false
   property int hi: -1
   property var rects: []

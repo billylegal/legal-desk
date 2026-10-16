@@ -1,0 +1,421 @@
+{
+  "_": "Legal Desk 2.0 skins. One list for every dock style (Classic, Mac, Rubik), the menus, the Apps window, the drawer and the window title bars. The 10 skins are the same in all three styles; each style reads its own block: classic (nwg-dock CSS), mac (plate + tiles), rubik (cube plate + 6 sticker colours). menu = bg|acc|txt|sel colours shared by every Legal Desk window. bar = window title-bar button style. dr = drawer button radius.",
+  "default": "Nebula",
+  "skins": [
+    {
+      "name": "Nebula",
+      "bar": "nebula",
+      "dr": 12,
+      "menu": [
+        "#0B0818",
+        "#8B5CF6",
+        "#E6E1FA",
+        "#2A1B52"
+      ],
+      "mac": {
+        "c1": "#2a1466",
+        "c2": "#07050f",
+        "b": "#8B5CF6",
+        "r": 18
+      },
+      "rubik": {
+        "c1": "#1a0f3d",
+        "c2": "#07050f",
+        "b": "#8B5CF6",
+        "r": 12,
+        "t": [
+          "#8B5CF6",
+          "#B061FF",
+          "#6C8CFF",
+          "#5CC8F5",
+          "#CC8CFF",
+          "#E6E1FA"
+        ]
+      },
+      "classic": {
+        "bg": "linear-gradient(to bottom, rgba(42,20,102,0.92), rgba(7,5,15,0.92))",
+        "r": 14,
+        "border": "#8B5CF6",
+        "text": "#E6E1FA",
+        "hover": "rgba(139,92,246,0.3)",
+        "active": "#B061FF",
+        "bw": 1,
+        "hov": "border-radius: 6px;"
+      }
+    },
+    {
+      "name": "Omarchy",
+      "bar": "gnome",
+      "dr": 12,
+      "oma": true,
+      "menu": [
+        "#1a1b26",
+        "#7aa2f7",
+        "#c0caf5",
+        "#292e42"
+      ],
+      "mac": {
+        "c1": "$omaBg",
+        "c2": "$omaBg2",
+        "b": "$omaAcc",
+        "r": 16
+      },
+      "rubik": {
+        "c1": "$omaBg",
+        "c2": "$omaBg2",
+        "b": "$omaAcc",
+        "r": 12,
+        "t": [
+          "$red",
+          "$yellow",
+          "$green",
+          "$blue",
+          "$magenta",
+          "$cyan"
+        ]
+      },
+      "classic": {
+        "bg": "#1a1b26",
+        "r": 10,
+        "border": "#7aa2f7",
+        "text": "#c0caf5",
+        "hover": "#292e42",
+        "active": "#7aa2f7",
+        "bw": 1,
+        "hov": "border-radius: 6px;"
+      }
+    },
+    {
+      "name": "Emerald",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#111c18",
+        "#C1C497",
+        "#C1C497",
+        "#2a3a30"
+      ],
+      "mac": {
+        "c1": "#111c18",
+        "c2": "#111c18",
+        "b": "#55C1C497",
+        "r": 16
+      },
+      "rubik": {
+        "c1": "#0a1f0a",
+        "c2": "#061106",
+        "b": "#52b788",
+        "r": 12,
+        "t": [
+          "#2d6a4f",
+          "#52b788",
+          "#95d5b2",
+          "#d8f3dc",
+          "#1b4332",
+          "#b7e4c7"
+        ]
+      },
+      "classic": {
+        "bg": "#111c18",
+        "r": 10,
+        "border": "transparent",
+        "text": "#C1C497",
+        "hover": "rgba(255,255,255,0.15)",
+        "active": "rgba(255,255,255,0.3)",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Midnight",
+      "bar": "gnome",
+      "dr": 12,
+      "menu": [
+        "#0b1230",
+        "#7a8cff",
+        "#cfd6ff",
+        "#1c2a66"
+      ],
+      "mac": {
+        "c1": "#0f1a4a",
+        "c2": "#04061a",
+        "b": "#554a7aff",
+        "r": 16
+      },
+      "rubik": {
+        "c1": "#0b1230",
+        "c2": "#04061a",
+        "b": "#7a8cff",
+        "r": 12,
+        "t": [
+          "#6C8CFF",
+          "#7a8cff",
+          "#5CC8F5",
+          "#98b0ff",
+          "#4a5ad8",
+          "#cfd6ff"
+        ]
+      },
+      "classic": {
+        "bg": "#0a1030",
+        "r": 14,
+        "border": "rgba(122,106,255,0.5)",
+        "text": "#aab4ff",
+        "hover": "rgba(122,140,255,0.28)",
+        "active": "#5b7cff",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Glass",
+      "bar": "gnome",
+      "dr": 12,
+      "menu": [
+        "#1b1f2a",
+        "#cfd8ff",
+        "#ffffff",
+        "#333a52"
+      ],
+      "mac": {
+        "c1": "#70ffffff",
+        "c2": "#30ffffff",
+        "b": "#aaffffff",
+        "r": 18
+      },
+      "rubik": {
+        "c1": "#f4eef7",
+        "c2": "#e4d8ea",
+        "b": "#d2c3da",
+        "r": 14,
+        "t": [
+          "#ffb3c1",
+          "#b5ead7",
+          "#c7ceea",
+          "#ffdac1",
+          "#e2f0cb",
+          "#fff1a8"
+        ]
+      },
+      "classic": {
+        "bg": "rgba(255,255,255,0.18)",
+        "r": 16,
+        "border": "rgba(255,255,255,0.65)",
+        "text": "#ffffff",
+        "hover": "rgba(255,255,255,0.3)",
+        "active": "#ffffff",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Neon",
+      "bar": "terminal",
+      "dr": 12,
+      "menu": [
+        "#06080c",
+        "#39ff14",
+        "#b8ffa8",
+        "#123a0c"
+      ],
+      "mac": {
+        "c1": "#06080c",
+        "c2": "#06080c",
+        "b": "#39ff14",
+        "r": 14
+      },
+      "rubik": {
+        "c1": "#06080c",
+        "c2": "#06080c",
+        "b": "#39ff14",
+        "r": 12,
+        "t": [
+          "#39ff14",
+          "#00e5ff",
+          "#ff2a2a",
+          "#ffe066",
+          "#d946ff",
+          "#ff6a00"
+        ]
+      },
+      "classic": {
+        "bg": "#06080c",
+        "r": 8,
+        "border": "#39ff14",
+        "text": "#39ff14",
+        "hover": "rgba(57,255,20,0.2)",
+        "active": "#39ff14",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Sunset",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#4a0c2c",
+        "#ff9a3d",
+        "#ffe3c8",
+        "#7a1a48"
+      ],
+      "mac": {
+        "c1": "#ff9a3d",
+        "c2": "#a8124a",
+        "b": "#ffd9b0",
+        "r": 18
+      },
+      "rubik": {
+        "c1": "#3a0a2a",
+        "c2": "#1c0614",
+        "b": "#ffd9b0",
+        "r": 12,
+        "t": [
+          "#ffd500",
+          "#ff5a00",
+          "#c41e3a",
+          "#ff8fb1",
+          "#7a1fa2",
+          "#fff1d6"
+        ]
+      },
+      "classic": {
+        "bg": "#a8124a",
+        "r": 16,
+        "border": "#ffd9b0",
+        "text": "#fff1d6",
+        "hover": "rgba(255,217,176,0.28)",
+        "active": "#ffd500",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Aluminum",
+      "bar": "apple",
+      "dr": 12,
+      "menu": [
+        "#e4e5ea",
+        "#6b7080",
+        "#20232a",
+        "#c4c8d2"
+      ],
+      "mac": {
+        "c1": "#f0f0f2",
+        "c2": "#a4a8b0",
+        "b": "#ffffff",
+        "r": 10
+      },
+      "rubik": {
+        "c1": "#e8e9ee",
+        "c2": "#c8cad2",
+        "b": "#ffffff",
+        "r": 12,
+        "t": [
+          "#6b7080",
+          "#8a90a0",
+          "#4a5060",
+          "#a8adbb",
+          "#2f3440",
+          "#c4c8d2"
+        ]
+      },
+      "classic": {
+        "bg": "#d8dadf",
+        "r": 8,
+        "border": "#ffffff",
+        "text": "#2a2d33",
+        "hover": "rgba(0,0,0,0.12)",
+        "active": "#2a2d33",
+        "bw": 1,
+        "hov": ""
+      }
+    },
+    {
+      "name": "Amber",
+      "bar": "terminal",
+      "dr": 2,
+      "menu": [
+        "#0e0700",
+        "#ffb000",
+        "#ffb000",
+        "#3a2600"
+      ],
+      "mac": {
+        "c1": "#0e0700",
+        "c2": "#0e0700",
+        "b": "#ffb000",
+        "r": 6
+      },
+      "rubik": {
+        "c1": "#0e0700",
+        "c2": "#0e0700",
+        "b": "#ffb000",
+        "r": 8,
+        "t": [
+          "#ffb000",
+          "#ff8c00",
+          "#ffd36b",
+          "#b36b00",
+          "#ffe3a3",
+          "#7a4a00"
+        ]
+      },
+      "classic": {
+        "bg": "#0e0700",
+        "r": 4,
+        "border": "#ffb000",
+        "text": "#ffb000",
+        "hover": "rgba(255,176,0,0.2)",
+        "active": "#ffb000",
+        "bw": 1,
+        "hov": "border-radius: 0px;"
+      }
+    },
+    {
+      "name": "Windows 11",
+      "bar": "win",
+      "dr": 6,
+      "menu": [
+        "#202020",
+        "#60cdff",
+        "#ffffff",
+        "#333333"
+      ],
+      "mac": {
+        "c1": "#ee202020",
+        "c2": "#ee181818",
+        "b": "#33ffffff",
+        "r": 12,
+        "plate": true,
+        "nz": true,
+        "tile": "hpill",
+        "ik": 0.86
+      },
+      "rubik": {
+        "c1": "#202020",
+        "c2": "#181818",
+        "b": "#60cdff",
+        "r": 12,
+        "t": [
+          "#60cdff",
+          "#0078d4",
+          "#ffffff",
+          "#2b88d8",
+          "#a0d8ff",
+          "#005a9e"
+        ]
+      },
+      "classic": {
+        "bg": "rgba(32,32,32,0.92)",
+        "r": 10,
+        "border": "rgba(255,255,255,0.16)",
+        "text": "#ffffff",
+        "hover": "rgba(255,255,255,0.12)",
+        "active": "#60cdff",
+        "bw": 1,
+        "hov": "border-radius: 6px;"
+      }
+    }
+  ]
+}

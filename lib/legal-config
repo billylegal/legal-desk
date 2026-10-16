@@ -1,0 +1,334 @@
+#!/usr/bin/env python3
+"""legal-config : strict validator, sanitiser and recovery layer for Legal Dock's configuration.
+
+Legal Dock keeps each setting in a tiny file in ~/.cache (a flag is "the file exists"). Shell scripts read those files, so a value like
+'5; rm -rf ~' or '$(cmd)' must never survive. The rules live in share/config.schema.json; this tool enforces them.
+
+  legal-config validate [--json]   report every problem (exit 0 = clean, 1 = problems)
+  legal-config repair [--quiet]    fix what is wrong: clamp numbers, reset bad values to their default, replace a broken layout by the clean
+                                   default layout. The bad original is kept in ~/.cache/legal-desk/quarantine/<time>/ (never executed)
+  legal-config get KEY             print the validated value (or the default): always safe to use in a shell script
+  legal-config set KEY VALUE       validate first, then write atomically (refuses anything the schema does not allow)
+  legal-config reset KEY|layout|all   put one setting / the layout / everything back to the defaults
+  legal-config keys                list the keys and their rules
+  legal-config selftest            run the built-in injection tests in a throw-away folder
+
+Every file is read with the same guards: a regular file (no symlink, no device), owned by you, not writable by others, at most 4 KiB,
+valid UTF-8 without control characters. Values are matched against anchored patterns that only allow [A-Za-z0-9_.=#:@+ -].
+"""
+import json, os, re, shutil, stat, sys, tempfile, time
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+for _p in (os.path.join(HERE, "..", "share"), os.path.join(HERE, "..", "..", "share", "legal-desk"), os.path.expanduser("~/.local/share/legal-desk"), "/usr/share/legal-desk"):
+    SCHEMA_PATH = os.path.join(_p, "config.schema.json")
+    if os.path.exists(SCHEMA_PATH): break
+CFG = os.environ.get("LEGAL_CONFIG_DIR", os.path.expanduser("~/.cache"))
+QUAR = os.path.join(CFG, "legal-desk", "quarantine")
+UID = os.getuid()
+SAFE_VALUE = re.compile(r"^[A-Za-z0-9_.=#:@+ \-]{0,200}$")
+CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")
+
+
+class Problem(Exception):
+    pass
+
+
+def load_schema():
+    s = json.load(open(SCHEMA_PATH))
+    if s.get("version") != 1 or "keys" not in s: raise SystemExit("legal-config: schema is not valid")
+    return s
+
+
+def skin_count():
+    for p in (os.path.join(HERE, "..", "share", "skins.json"), os.path.join(HERE, "..", "..", "share", "legal-desk", "skins.json"), os.path.expanduser("~/.local/share/legal-desk/skins.json"), "/usr/share/legal-desk/skins.json"):
+        try: return len(json.load(open(p))["skins"])
+        except (OSError, ValueError, KeyError): continue
+    return 30
+
+
+# ---------------------------------------------------------------- safe file reading
+def safe_read(path, limit):
+    """Return the text of a config file, or raise Problem if the file itself is suspicious."""
+    try: st = os.lstat(path)
+    except FileNotFoundError: return None
+    if stat.S_ISLNK(st.st_mode): raise Problem("is a symlink")
+    if not stat.S_ISREG(st.st_mode): raise Problem("is not a regular file")
+    if st.st_uid != UID: raise Problem("is not owned by you")
+    if st.st_mode & (stat.S_IWGRP | stat.S_IWOTH): raise Problem("is writable by others")
+    if st.st_size > limit: raise Problem("is too big (%d bytes)" % st.st_size)
+    raw = open(path, "rb").read(limit + 1)
+    try: txt = raw.decode("utf-8")
+    except UnicodeDecodeError: raise Problem("is not valid UTF-8")
+    if CTRL.search(txt.replace("\n", "").replace("\r", "")): raise Problem("contains control characters")
+    return txt
+
+
+def one_line(txt):
+    lines = txt.split("\n")
+    if lines and lines[-1] == "": lines.pop()
+    if len(lines) != 1: raise Problem("must be exactly one line")
+    v = lines[0]
+    if "\r" in v or not SAFE_VALUE.match(v): raise Problem("contains characters that are not allowed")
+    return v.strip()
+
+
+# ---------------------------------------------------------------- per-type validation (returns the clean value)
+def check_value(key, rule, v, skins):
+    t = rule["type"]
+    if t == "string":
+        if "enum" in rule and v not in rule["enum"]: raise Problem("must be one of: " + ", ".join(rule["enum"]))
+        if "pattern" in rule:
+            if not re.match(rule["pattern"], v): raise Problem("does not match the pattern")
+            if "numeric_range" in rule and v.isdigit():
+                lo, hi = rule["numeric_range"]; n = int(v)
+                if not lo <= n <= hi: raise Problem("number must be %d-%d" % (lo, hi))
+        return v
+    if t == "integer":
+        if not re.match(r"^[0-9]{1,6}$", v): raise Problem("must be a whole number")
+        n = int(v); hi = skins - 1 if rule.get("maximum_from") == "skins" else rule["maximum"]
+        if not rule.get("minimum", 0) <= n <= hi: raise Problem("must be %d-%d" % (rule.get("minimum", 0), hi))
+        return str(n)
+    if t == "number":
+        if not re.match(r"^[0-9]{1,3}(\.[0-9]{1,3})?$", v): raise Problem("must be a plain number")
+        f = float(v)
+        if not rule["minimum"] <= f <= rule["maximum"]: raise Problem("must be %s-%s" % (rule["minimum"], rule["maximum"]))
+        return v
+    if t == "pair":
+        m = re.match(r"^([0-9]{1,5}) ([0-9]{1,5})$", v)
+        if not m: raise Problem("must be two whole numbers like '10 20'")
+        if not all(rule["minimum"] <= int(g) <= rule["maximum"] for g in m.groups()): raise Problem("out of range")
+        return "%d %d" % tuple(int(g) for g in m.groups())
+    raise Problem("unknown type")
+
+
+def clamp(rule, v, skins):
+    """A well-formed number that is just out of range is pulled into range (the least surprising repair)."""
+    t = rule["type"]
+    if t == "integer" and re.match(r"^[0-9]{1,6}$", v):
+        hi = skins - 1 if rule.get("maximum_from") == "skins" else rule["maximum"]
+        return str(max(rule.get("minimum", 0), min(hi, int(v))))
+    if t == "number" and re.match(r"^[0-9]{1,3}(\.[0-9]{1,3})?$", v): return str(max(rule["minimum"], min(rule["maximum"], float(v))))
+    if t == "string" and "numeric_range" in rule and v.isdigit() and len(v) <= 4:
+        lo, hi = rule["numeric_range"]; return str(max(lo, min(hi, int(v))))
+    return None
+
+
+def default_text(rule):
+    d = rule["default"]
+    return d if isinstance(d, str) else str(d)
+
+
+# ---------------------------------------------------------------- the checks
+def scan(schema):
+    """Return a list of findings: dicts with key, file, problem, fix ('clamp'|'default'|'flag'|'layout'|'delete'), value."""
+    out = []; skins = skin_count(); lim = schema["limits"]["max_file_bytes"]
+    for key, rule in schema["keys"].items():
+        path = os.path.join(CFG, rule["file"])
+        try:
+            txt = safe_read(path, lim)
+            if txt is None: continue
+            if rule["type"] == "boolean":
+                if txt.strip() not in ("", "1"): raise Problem("a flag file must be empty")
+                continue
+            v = one_line(txt)
+            check_value(key, rule, v, skins)
+        except Problem as e:
+            try: bad = open(path, "rb").read(200).decode("utf-8", "replace") if os.path.isfile(path) and not os.path.islink(path) else ""
+            except OSError: bad = ""
+            fix = "flag" if rule["type"] == "boolean" else "default"
+            val = None
+            if fix == "default":
+                try: val = clamp(rule, one_line(safe_read(path, lim) or ""), skins)
+                except Problem: val = None
+                if val is not None: fix = "clamp"
+            out.append({"key": key, "file": rule["file"], "problem": str(e), "fix": fix, "value": val, "seen": bad.strip()[:60]})
+    mc = schema["menu_colors"]; p = os.path.join(CFG, mc["file"])
+    try:
+        txt = safe_read(p, lim)
+        if txt is not None:
+            lines = [l for l in txt.split("\n") if l != ""]
+            if not lines or any(not re.match(mc["pattern"], l) for l in lines): raise Problem("every line must be bg|acc|txt|sel=#rrggbb")
+    except Problem as e:
+        out.append({"key": "menu_colors", "file": mc["file"], "problem": str(e), "fix": "delete", "value": None, "seen": ""})
+    ly = schema["layouts"]; rx = re.compile(ly["entry_pattern"])
+    for name in ly["files"]:
+        p = os.path.join(CFG, name)
+        try:
+            txt = safe_read(p, 65536)
+            if txt is None: continue
+            items = [l for l in txt.split("\n") if l != ""]
+            if not ly["min_entries"] <= len(items) <= ly["max_entries"]: raise Problem("must have %d-%d entries" % (ly["min_entries"], ly["max_entries"]))
+            bad = [l for l in items if not rx.match(l)]
+            if bad: raise Problem("entry not allowed: %r" % bad[0][:40])
+        except Problem as e:
+            out.append({"key": "layout:" + name, "file": name, "problem": str(e), "fix": "layout", "value": None, "seen": ""})
+    return out
+
+
+def atomic_write(path, text):
+    d = os.path.dirname(path); os.makedirs(d, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".lc-", dir=d)
+    with os.fdopen(fd, "w") as f: f.write(text)
+    os.chmod(tmp, 0o600); os.replace(tmp, path)
+
+
+def quarantine(path, stamp):
+    """Move a bad file out of the way (as plain data, mode 0600) instead of deleting it."""
+    try:
+        d = os.path.join(QUAR, stamp); os.makedirs(d, mode=0o700, exist_ok=True)
+        dst = os.path.join(d, os.path.basename(path))
+        if os.path.islink(path) or not os.path.isfile(path): os.unlink(path)       # a symlink / device is just removed, never followed
+        else: shutil.move(path, dst); os.chmod(dst, 0o600)
+    except OSError:
+        try: os.unlink(path)
+        except OSError: pass
+
+
+def repair(schema, quiet=False):
+    finds = scan(schema); stamp = time.strftime("%Y%m%d-%H%M%S"); fixed = []
+    for f in finds:
+        path = os.path.join(CFG, f["file"])
+        rule = schema["keys"].get(f["key"])
+        quarantine(path, stamp)
+        if f["fix"] == "flag": atomic_write(path, "")                       # still "on", but a clean empty file
+        elif f["fix"] == "clamp": atomic_write(path, f["value"] + "\n")
+        elif f["fix"] == "default": atomic_write(path, default_text(rule) + "\n")
+        elif f["fix"] == "layout":
+            atomic_write(path, "\n".join(schema["layouts"]["default"]) + "\n")
+        # "delete" (menu colours): the next `macdock-skin apply` writes a fresh one
+        fixed.append(f)
+        if not quiet: print("repaired %-16s %s -> %s" % (f["file"], f["problem"], f["fix"]), file=sys.stderr)
+    return fixed
+
+
+# ---------------------------------------------------------------- commands
+def cmd_get(schema, key):
+    rule = schema["keys"].get(key)
+    if rule is None: raise SystemExit("legal-config: unknown key")
+    path = os.path.join(CFG, rule["file"]); skins = skin_count()
+    try:
+        txt = safe_read(path, schema["limits"]["max_file_bytes"])
+        if rule["type"] == "boolean":
+            if txt is None: print("1" if rule["default"] else "0")
+            else:
+                if txt.strip() not in ("", "1"): raise Problem("bad flag")
+                print("1")
+            return
+        if txt is None: print(default_text(rule)); return
+        print(check_value(key, rule, one_line(txt), skins))
+    except Problem:
+        print(default_text(rule) if rule["type"] != "boolean" else ("1" if rule["default"] else "0"))   # never echo a rejected value
+
+
+def cmd_set(schema, key, value):
+    rule = schema["keys"].get(key)
+    if rule is None: raise SystemExit("legal-config: unknown key")
+    path = os.path.join(CFG, rule["file"])
+    if rule["type"] == "boolean":
+        if value in ("1", "on", "true", "yes"): atomic_write(path, "")
+        elif value in ("0", "off", "false", "no"):
+            try: os.unlink(path)
+            except FileNotFoundError: pass
+        else: raise SystemExit("legal-config: %s takes on/off" % key)
+        return
+    try:
+        clean = check_value(key, rule, one_line(value + "\n"), skin_count())
+    except Problem as e:
+        raise SystemExit("legal-config: refused %s: %s" % (key, e))
+    atomic_write(path, clean + "\n")
+
+
+def cmd_reset(schema, what):
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    if what in ("layout", "all"):
+        for name in schema["layouts"]["files"]:
+            p = os.path.join(CFG, name)
+            if os.path.lexists(p): quarantine(p, stamp)
+            atomic_write(p, "\n".join(schema["layouts"]["default"]) + "\n")
+    keys = list(schema["keys"]) if what == "all" else ([what] if what in schema["keys"] else [])
+    if what not in ("layout", "all") and not keys: raise SystemExit("legal-config: unknown key")
+    for k in keys:
+        rule = schema["keys"][k]; p = os.path.join(CFG, rule["file"])
+        if os.path.lexists(p): quarantine(p, stamp)
+        if rule["type"] == "boolean":
+            if rule["default"]: atomic_write(p, "")
+        else: atomic_write(p, default_text(rule) + "\n")
+
+
+def selftest():
+    """Plant hostile values in a throw-away folder and prove none survive and nothing is executed."""
+    global CFG, QUAR
+    tmp = tempfile.mkdtemp(prefix="legal-config-test-"); CFG = tmp; QUAR = os.path.join(tmp, "legal-desk", "quarantine")
+    try: return _selftest(tmp)
+    finally: shutil.rmtree(tmp, ignore_errors=True)                      # always leave nothing behind, even when a check crashes
+
+
+def _selftest(tmp):
+    marker = os.path.join(tmp, "PWNED"); schema = load_schema(); n_ok = 0; n = 0
+
+    def put(name, content, mode=0o600):
+        p = os.path.join(CFG, name)
+        if os.path.lexists(p): os.unlink(p)
+        with open(p, "wb") as f: f.write(content if isinstance(content, bytes) else content.encode())
+        os.chmod(p, mode)
+
+    def expect(label, cond):
+        nonlocal n_ok, n
+        n += 1; n_ok += bool(cond); print(("  ok   " if cond else "  FAIL ") + label)
+
+    cases = [("dock-size", "1 + a[$(touch %s)]" % marker), ("dock-size", "5; touch %s" % marker), ("dock-size", "`touch %s`" % marker),
+             ("dock-skin", "0\ntouch %s" % marker), ("dock-zoom", "$(touch %s)" % marker), ("dock-style", "mac\" && touch \"%s" % marker),
+             ("dock-icon-style", "40 ; touch %s" % marker), ("dock-bar-style", "../../etc/passwd"), ("dock-clock", "right|touch %s" % marker)]
+    for fn, bad in cases: put(fn, bad)
+    put("dock-transparent", "$(touch %s)" % marker)                      # a flag file must be empty
+    put("dock-locked", "garbage"); put("dock-hidden", "")                # one bad flag, one good flag
+    put("dock-menu-colors", "bg=#112233\nacc=$(touch %s)\n" % marker)
+    put("nwg-dock-pinned", "chromium\nfoot; touch %s\n" % marker); put("macdock-layout", "chromium\n$(touch %s)\n" % marker)
+    put("dock-pointer", b"\x00\x01binary"); put("dock-mouse", "x=1\n" * 3000)
+    put("dock-radio-pos", "73 883"); put("dock-launcher", "12 99999999")
+    real = os.path.join(tmp, "real"); open(real, "w").write("1"); os.unlink(os.path.join(CFG, "dock-zoom")); os.symlink(real, os.path.join(CFG, "dock-zoom"))
+    os.chmod(real, 0o666); put("dock-radio-size", "3", 0o666)           # group/world writable
+    before = scan(schema)
+    expect("hostile values are all detected (%d findings)" % len(before), len(before) >= 16)
+    repair(schema, quiet=True)
+    expect("a second scan finds nothing left", scan(schema) == [])
+    expect("nothing was executed (no marker file)", not os.path.exists(marker))
+    for k in ("size", "skin", "zoom", "style", "icon_style", "bar_style", "clock", "pointer", "mouse", "radio_size", "launcher_pos"):
+        import io, contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf): cmd_get(schema, k)
+        expect("get %-12s -> %r is shell-safe" % (k, buf.getvalue().strip()), re.match(r"^[A-Za-z0-9_.=# -]*$", buf.getvalue().strip()) is not None)
+    expect("good flag file kept", os.path.exists(os.path.join(CFG, "dock-hidden")))
+    expect("bad flag was rewritten empty", os.path.exists(os.path.join(CFG, "dock-locked")) and os.path.getsize(os.path.join(CFG, "dock-locked")) == 0)
+    expect("bad layout replaced by the clean default", open(os.path.join(CFG, "nwg-dock-pinned")).read().split() == schema["layouts"]["default"])
+    expect("originals kept in quarantine (as data)", any(True for _ in os.scandir(QUAR)))
+    expect("out-of-range pair clamped/reset", open(os.path.join(CFG, "dock-launcher")).read().strip() == "0 0")
+    try: cmd_set(schema, "size", "9; reboot"); expect("set refuses an injected value", False)
+    except SystemExit: expect("set refuses an injected value", True)
+    cmd_set(schema, "size", "48"); expect("set accepts a good value", open(os.path.join(CFG, "dock-size")).read().strip() == "48")
+    print("%d/%d checks passed" % (n_ok, n)); return 0 if n_ok == n else 1
+
+
+def main():
+    a = sys.argv[1:] or ["validate"]
+    if a[0] == "selftest": return selftest()
+    schema = load_schema()
+    if a[0] == "validate":
+        f = scan(schema)
+        if "--json" in a: print(json.dumps(f, indent=1))
+        else:
+            for x in f: print("%-18s %s" % (x["file"], x["problem"]))
+            print("config is clean" if not f else "%d problem(s): run  legal-config repair" % len(f))
+        return 1 if f else 0
+    if a[0] == "repair": repair(schema, "--quiet" in a); return 0
+    if a[0] == "get" and len(a) == 2: cmd_get(schema, a[1]); return 0
+    if a[0] == "set" and len(a) == 3: cmd_set(schema, a[1], a[2]); return 0
+    if a[0] == "reset" and len(a) == 2: cmd_reset(schema, a[1]); return 0
+    if a[0] == "keys":
+        for k, r in schema["keys"].items(): print("%-14s %-18s %-8s default=%s" % (k, r["file"], r["type"], r["default"]))
+        return 0
+    print(__doc__); return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())
