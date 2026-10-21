@@ -415,7 +415,7 @@ ShellRoot {
 
   Process {
     id: poll
-    command: ["python3", "-c", "import json,subprocess;print(json.dumps(sorted({c['class'] for c in json.loads(subprocess.run(['hyprctl','clients','-j'],capture_output=True,text=True).stdout or '[]') if c['class'] and not c['class'].lower().startswith('nwg-')})))"]
+    command: ["/usr/lib/legal-desk/dock-running"]
     stdout: StdioCollector {
       onStreamFinished: {
         try { var l = JSON.parse(text); var o = {}; l.forEach(c => o[c.toLowerCase()] = true); root.running = o
@@ -1577,7 +1577,9 @@ print(json.dumps(out))
                   else if (act === "hide") root.sh(["/usr/lib/legal-desk/dock-hide-app", c])
                   else if (act === "focus") root.sh(["hyprctl", "dispatch", "hl.dsp.focus({window='address:" + addr + "'})"])
                   else if (act === "incog") root.launch(["/usr/lib/legal-desk/browser-incognito", c])
-                  else if (act === "new") { var r = root.appmap[c]; if (r) root.launch(["gtk-launch", r.id + ".desktop"]) }
+                  else if (act === "new") {
+                      var r = root.appmap[c]; if (r) root.launch(["gtk-launch", r.id + ".desktop"])
+                    }
                   root.ctx = ""
                 }
               }

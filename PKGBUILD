@@ -7,7 +7,7 @@ provides=('legal-dock')
 replaces=('legal-dock')
 conflicts=('legal-dock')
 arch=('any')
-url='https://github.com/5ive7/legal-dock'
+url='https://github.com/billylegal/legal-desk'
 license=('MIT')
 install=legal-desk.install
 depends=('hyprland' 'nwg-dock-hyprland' 'quickshell' 'inotify-tools' 'python' 'util-linux' 'procps-ng' 'bash'
@@ -17,7 +17,7 @@ optdepends=('whitesur-icon-theme: the macOS look for every app icon (Regular and
             'hyprland-plugins: title bars with Apple / Windows style window buttons (hyprbars)'
             'omarchy: desktop theme, web-app windows for Mail, screenshots')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')   # fill in with updpkgsums once the v2.1.0 tag is published
+sha256sums=('0f4c4c51a9e339f8c92fd3162ef6557a4e676d7a65faac15689c93097966996e')
 
 check() {
   cd "$pkgname-$pkgver"

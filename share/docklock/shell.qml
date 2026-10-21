@@ -325,9 +325,9 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
           Text { id: tl; anchors.centerIn: parent; text: "\u23F1 " + tLeft; color: bgC; font.pixelSize: 11; font.bold: true } }
         Rectangle {
           id: docsBtn
-          width: 40; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: mac ? 6 : 34; anchors.verticalCenter: parent.verticalCenter
+          width: 46; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: mac ? 6 : 34; anchors.verticalCenter: parent.verticalCenter
           color: docsMa.containsMouse || docsOpen ? selC : "transparent"; border.color: accC; border.width: 1
-          Text { anchors.centerIn: parent; text: "DOCS"; color: txtC; font.pixelSize: 8; font.bold: true; font.letterSpacing: 0.8 }
+          Text { anchors.centerIn: parent; text: "LEGAL"; color: txtC; font.pixelSize: 8; font.bold: true; font.letterSpacing: 0.8 }
           MouseArea { id: docsMa; anchors.fill: parent; hoverEnabled: true; onClicked: docsOpen = !docsOpen }
         }
         Rectangle { visible: !mac; width: 24; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
@@ -359,7 +359,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
         Column {
           id: docCol
           x: 8; y: 8; width: parent.width - 16; spacing: 4
-          Text { text: "DOCS"; color: accC; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
+          Text { text: "LEGAL"; color: accC; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
           Repeater {
             model: ldr.docs
             Rectangle {
