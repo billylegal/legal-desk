@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+"""up1-radio : the 1UP Radio player for the dock and the bar (mpv + yt-dlp, Python standard library only). Ours - nothing else needed.
+
+  up1-radio play [--live] [--station ID]   start (or re-sync to what is on air right now)
+  up1-radio pause | toggle | stop
+  up1-radio volume N|+N|-N  |  mute        volume 0-100, mute on/off
+  up1-radio station ID                     choose a station (switches at once when it is playing)
+  up1-radio status                         JSON: running, playing, paused, volume, muted, station, track, elapsed, dur, next
+  up1-radio now [--station ID]             JSON of what a station has on air (changes nothing)
+  up1-radio stations                       the station list (JSON)
+
+Every station publishes a schedule (the same one the website follows): a list of YouTube videos with start times. The supervisor (started by `play`,
+lives on after the window closes) works out the song on air now, starts mpv at the right second, and moves on at the scheduled times.
+"""
+import json, os, signal, socket, subprocess, sys, time, urllib.request
+
+HOME = os.path.expanduser("~")
+STATE = os.path.join(os.environ.get("XDG_STATE_HOME", HOME + "/.local/state"), "up1-radio")
+RUN = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+SOCK = os.path.join(RUN, "up1-radio.sock")
+PIDFILE = os.path.join(STATE, "supervisor.pid")
+STATEFILE = os.path.join(STATE, "state.json")      # station, volume, muted, wanted (what the listener asked for)
+LOG = os.path.join(STATE, "radio.log")
+CACHE_SECS = 600
+SITE = "https://1upradio.com/"
+STATIONS = [
+    {"id": "1up", "name": "1UP Radio", "kind": "schedule", "url": SITE + "schedule.json", "logo": SITE + "assets/logo.png", "site": SITE, "tagline": "Keep the volume up"},
+    {"id": "cultureshock", "name": "Culture Shock", "kind": "schedule", "url": SITE + "schedule-culture.json", "logo": SITE + "assets/cultureshock-og.png", "site": SITE + "?station=cultureshock", "tagline": "Roots, reggae, dub"},
+    {"id": "vault", "name": "The Vault", "kind": "schedule", "url": SITE + "schedule-hiphopvinyl.json", "logo": SITE + "assets/vault-art.png", "site": SITE + "?station=vault", "tagline": "Hip hop vinyl"},
+    {"id": "movement", "name": "The Movement", "kind": "schedule", "url": SITE + "schedule-movement.json", "logo": SITE + "assets/movement-art.png", "site": SITE + "?station=movement", "tagline": "House and Afro"},
+]
+
+
+def read_json(p, d):
+    try:
+        with open(p) as f: return json.load(f)
+    except Exception: return d
+
+
+def write_json(p, data):
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p + ".tmp", "w") as f: json.dump(data, f)
+    os.replace(p + ".tmp", p)
+
+
+def log(msg):
+    try:
+        os.makedirs(STATE, exist_ok=True)
+        with open(LOG, "a") as f: f.write("%s %s\n" % (time.strftime("%H:%M:%S"), msg))
+        if os.path.getsize(LOG) > 200000: os.replace(LOG, LOG + ".old")
+    except Exception: pass
+
+
+def settings():
+    s = read_json(STATEFILE, {})
+    s.setdefault("station", "1up"); s.setdefault("volume", 60); s.setdefault("muted", False); s.setdefault("wanted", False)
+    return s
+
+
+def station(sid):
+    for s in STATIONS + read_json(os.path.join(HOME, ".config/up1-radio/stations.json"), {}).get("stations", []):
+        if s["id"] == sid: return s
+    return STATIONS[0]
+
+
+def all_stations():
+    return STATIONS + read_json(os.path.join(HOME, ".config/up1-radio/stations.json"), {}).get("stations", [])
+
+
+# ---------------------------------------------------------------- the schedule
+def schedule(st, force=False):
+    path = os.path.join(STATE, "schedule-%s.json" % st["id"])
+    try:
+        if not force and time.time() - os.path.getmtime(path) < CACHE_SECS: return read_json(path, {"delay": 0, "plays": []})
+    except OSError: pass
+    try:
+        req = urllib.request.Request(st["url"] + "?t=%d" % time.time(), headers={"User-Agent": "up1-radio"})
+        with urllib.request.urlopen(req, timeout=15) as r: data = json.load(r)
+        write_json(path, data); return data
+    except Exception as e:
+        log("schedule fetch failed (%s): using the last copy" % type(e).__name__)
+        return read_json(path, {"delay": 0, "plays": []})
+
+
+def track_of(p, delay):
+    t = p["title"]; artist, _, name = t.partition(" - ")
+    if not name: artist, name = "", t
+    return {"id": p["id"], "title": name, "artist": artist, "name": t, "dur": p.get("dur", 0), "start": int(p["t"] + delay), "url": "https://www.youtube.com/watch?v=" + p["id"]}
+
+
+def on_air(st, sched):
+    """(track on air now with its elapsed seconds, or None between songs; the next songs)"""
+    plays, delay, now = sched.get("plays", []), sched.get("delay", 0), time.time()
+    k = -1
+    for i, p in enumerate(plays):
+        if p["t"] + delay <= now: k = i
+        else: break
+    nxt = [track_of(p, delay) for p in plays[k + 1:k + 4]]
+    if k < 0: return None, nxt
+    p = plays[k]; el = now - (p["t"] + delay)
+    if el >= p.get("dur", 0) + 2: return None, nxt           # that song is over; the next one starts at its scheduled time
+    tr = track_of(p, delay); tr["elapsed"] = int(el); tr["offset"] = int(el); return tr, nxt
+
+
+# ---------------------------------------------------------------- mpv over its socket
+def mpv_cmd(*cmd, timeout=1.5):
+    try:
+        s = socket.socket(socket.AF_UNIX); s.settimeout(timeout); s.connect(SOCK)
+        s.sendall((json.dumps({"command": list(cmd)}) + "\n").encode())
+        buf = b""
+        while b"\n" not in buf:
+            chunk = s.recv(4096)
+            if not chunk: break
+            buf += chunk
+        s.close()
+        for line in buf.decode().splitlines():
+            r = json.loads(line)
+            if "error" in r: return r.get("data") if r["error"] == "success" else None
+    except Exception: return None
+    return None
+
+
+def sup_pid():
+    try:
+        pid = int(open(PIDFILE).read().strip()); os.kill(pid, 0)
+        with open("/proc/%d/cmdline" % pid, "rb") as f:
+            if b"up1-radio" in f.read(): return pid
+    except Exception: pass
+    return 0
+
+
+# ---------------------------------------------------------------- the supervisor
+def supervise():
+    os.makedirs(STATE, exist_ok=True)
+    with open(PIDFILE, "w") as f: f.write(str(os.getpid()))
+    resync = [False]; stop = [False]
+    signal.signal(signal.SIGUSR1, lambda *a: resync.__setitem__(0, True))
+    signal.signal(signal.SIGTERM, lambda *a: stop.__setitem__(0, True))
+    proc = None; cur_id = None; fails = 0
+
+    def kill_mpv():
+        nonlocal proc, cur_id
+        if proc and proc.poll() is None:
+            proc.terminate()
+            try: proc.wait(3)
+            except Exception: proc.kill()
+        proc = None; cur_id = None
+        try: os.remove(SOCK)
+        except OSError: pass
+    log("supervisor up")
+    while not stop[0]:
+        s = settings()
+        if not s["wanted"]: break
+        st = station(s["station"])
+        if resync[0]: resync[0] = False; kill_mpv(); fails = 0
+        tr, _ = on_air(st, schedule(st))
+        if tr is None:                                            # between songs: wait for the next scheduled start
+            kill_mpv(); time.sleep(2); continue
+        if proc is None or proc.poll() is not None or cur_id != tr["id"] + st["id"]:
+            if proc is not None and proc.poll() is not None and cur_id == tr["id"] + st["id"]:
+                fails += 1                                        # mpv ended early (network, unavailable video): try again, then wait for the next song
+                if fails > 3: time.sleep(3); continue
+            kill_mpv()
+            cmd = ["mpv", "--no-video", "--really-quiet", "--no-terminal", "--audio-display=no", "--idle=no", "--input-ipc-server=" + SOCK,
+                   "--volume=%d" % s["volume"], "--mute=%s" % ("yes" if s["muted"] else "no"), "--start=%d" % tr["offset"], "--ytdl-format=bestaudio/best", tr["url"]]
+            log("%s: %s @%d" % (st["id"], tr["url"], tr["offset"]))
+            proc = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            cur_id = tr["id"] + st["id"]
+            if cur_id != getattr(supervise, "_last", None): fails = 0
+            supervise._last = cur_id
+        write_json(os.path.join(STATE, "now.json"), {"station": st["id"], "track": tr, "t": int(time.time())})
+        time.sleep(1)
+    kill_mpv()
+    try: os.remove(PIDFILE)
+    except OSError: pass
+    log("supervisor stopped")
+
+
+def ensure_supervisor():
+    if sup_pid(): return
+    os.makedirs(STATE, exist_ok=True)
+    subprocess.Popen([sys.executable, os.path.abspath(__file__), "--supervise"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    time.sleep(0.4)
+
+
+def poke():
+    p = sup_pid()
+    if p:
+        try: os.kill(p, signal.SIGUSR1)
+        except OSError: pass
+
+
+def out(d): print(json.dumps(d))
+
+
+# ---------------------------------------------------------------- commands
+def arg_station(args):
+    if "--station" in args:
+        i = args.index("--station")
+        if i + 1 < len(args): return args[i + 1]
+    return None
+
+
+def cmd_status():
+    s = settings(); st = station(s["station"]); sched = schedule(st); tr, nxt = on_air(st, sched)
+    alive = bool(sup_pid()) and s["wanted"]
+    pos = mpv_cmd("get_property", "time-pos") if alive else None
+    paused = bool(mpv_cmd("get_property", "pause")) if alive else False
+    playing = alive and pos is not None
+    d = {"running": bool(sup_pid()), "playing": playing, "paused": paused, "buffering": bool(alive and pos is None and tr is not None and not paused),
+         "volume": s["volume"], "muted": s["muted"], "station": st, "stations": all_stations()}
+    if tr is not None:
+        if pos is not None: tr["elapsed"] = int(pos)
+        d["track"] = tr; d["elapsed"] = tr.get("elapsed", 0); d["dur"] = tr["dur"]
+    else:
+        d["track"] = None; d["elapsed"] = 0; d["dur"] = 0
+    d["next"] = nxt
+    out(d)
+
+
+def main():
+    a = sys.argv[1:]
+    if not a: print(__doc__); return
+    c = a[0]
+    if c == "--supervise": return supervise()
+    s = settings()
+    if c == "stations": return out(all_stations())
+    if c == "now":
+        st = station(arg_station(a) or s["station"]); tr, nxt = on_air(st, schedule(st)); return out({"station": st, "track": tr, "next": nxt})
+    if c == "status": return cmd_status()
+    if c in ("play", "station"):
+        sid = arg_station(a) or (a[1] if c == "station" and len(a) > 1 else None)
+        changed = bool(sid) and sid != s["station"]
+        if sid: s["station"] = station(sid)["id"]
+        if c == "play":
+            was = s["wanted"] and bool(sup_pid()); s["wanted"] = True; write_json(STATEFILE, s)
+            if was and sup_pid():
+                if changed or "--live" in a: poke()
+                elif mpv_cmd("get_property", "pause"): mpv_cmd("set_property", "pause", False)
+            else: ensure_supervisor()
+        else:
+            write_json(STATEFILE, s)
+            if s["wanted"] and sup_pid(): poke()
+        return cmd_status()
+    if c in ("pause", "toggle"):
+        if not (sup_pid() and s["wanted"]):
+            if c == "toggle": s["wanted"] = True; write_json(STATEFILE, s); ensure_supervisor()
+            return cmd_status()
+        p = mpv_cmd("get_property", "pause")
+        if c == "pause" or not p: mpv_cmd("set_property", "pause", True)
+        else:
+            mpv_cmd("set_property", "pause", False); poke()          # coming back from a pause: jump to what is on air now
+        return cmd_status()
+    if c == "stop":
+        s["wanted"] = False; write_json(STATEFILE, s); poke()
+        p = sup_pid()
+        if p:
+            try: os.kill(p, signal.SIGTERM)
+            except OSError: pass
+        return cmd_status()
+    if c == "volume" and len(a) > 1:
+        v = a[1]; cur = s["volume"]
+        try: n = cur + int(v) if v[0] in "+-" else int(v)
+        except ValueError: n = cur
+        s["volume"] = max(0, min(100, n)); write_json(STATEFILE, s); mpv_cmd("set_property", "volume", s["volume"]); return cmd_status()
+    if c == "mute":
+        s["muted"] = not s["muted"]; write_json(STATEFILE, s); mpv_cmd("set_property", "mute", s["muted"]); return cmd_status()
+    print(__doc__)
+
+
+if __name__ == "__main__":
+    main()

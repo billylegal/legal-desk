@@ -12,6 +12,7 @@ ShellRoot {
   property color selC: "#2A1B52"
   FileView {
     path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
+    blockLoading: true   // read before the window opens: no default-colour flash
     onLoaded: {
       var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
       if (c.bg) ck.bgC = c.bg

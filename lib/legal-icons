@@ -417,7 +417,7 @@ def refresh(idx=None, now=None):
         if raw >= 29 and n not in ("launcher", "radio"):
             art = restyle(raw, n, art, d)
         open(os.path.join(d, n + ".svg"), "w").write(art)
-    for src in ("/usr/lib/snapdock/icons3d/radio-1up.svg",):   # 1UP Radio keeps its own logo in every set
+    for src in ("/usr/share/legal-desk/radio-1up.svg",):   # 1UP Radio keeps its own logo in every set
         if os.path.exists(src):
             shutil.copy(src, os.path.join(d, "radio.svg"))
     tmp = os.path.join(OUT, "current.tmp")

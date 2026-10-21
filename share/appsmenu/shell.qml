@@ -12,18 +12,29 @@ ShellRoot {
   property color txtC: "#E6E1FA"
   property color selC: "#2A1B52"
   property int plateR: 12
+  // The window only appears once the skin colours are read (no default-purple first frame).
+  property bool colorsReady: false
+  Timer { interval: 1500; running: true; onTriggered: ap.colorsReady = true }   // fallback if the colour file is missing
+  // Drag an app from here onto the dock to pin it
+  property var dragE: null
+  property real dragX: 0
+  property real dragY: 0
+  property bool dropOk: false
   FileView {
     path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
+    blockLoading: true   // read before the window opens: no default-colour flash
     onLoaded: {
       var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
       if (c.bg) ap.bgC = c.bg
       if (c.acc) ap.accC = c.acc
       if (c.txt) ap.txtC = c.txt
       if (c.sel) ap.selC = c.sel
+      ap.colorsReady = true
     }
+    onLoadFailed: ap.colorsReady = true
   }
   FileView {
-    path: Quickshell.env("HOME") + "/.cache/drawer-shape"; printErrors: false
+    path: Quickshell.env("HOME") + "/.cache/drawer-shape"; printErrors: false; blockLoading: true
     onLoaded: { var v = parseInt(text().trim()); if (!isNaN(v)) ap.plateR = v }
   }
 
@@ -126,6 +137,8 @@ ShellRoot {
   }
 
   PanelWindow {
+    id: win
+    visible: ap.colorsReady
     anchors { top: true; bottom: true; left: true; right: true }
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
@@ -134,6 +147,14 @@ ShellRoot {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
     MouseArea { anchors.fill: parent; onClicked: Qt.quit() }
+
+    // drag preview: follows the pointer while an app is carried; turns accent when it is over the dock
+    Rectangle {
+      visible: ap.dragE !== null
+      x: ap.dragX - width / 2; y: ap.dragY - height / 2; width: 160; height: 34; radius: Math.min(17, ap.plateR + 4)
+      color: ap.dropOk ? ap.accC : ap.bgC; border.color: ap.accC; border.width: 1
+      Text { anchors.centerIn: parent; text: ap.dropOk ? "Drop to pin" : (ap.dragE ? ap.dragE.name : ""); color: ap.dropOk ? ap.bgC : ap.txtC; font.pixelSize: 12; font.bold: true; elide: Text.ElideRight; width: parent.width - 12; horizontalAlignment: Text.AlignHCenter }
+    }
 
     Rectangle {
       id: card
@@ -217,7 +238,26 @@ ShellRoot {
             // kept-in-dock marker
             Rectangle { visible: ap.inDock(modelData); x: parent.width - 18; y: 6; width: 8; height: 8; radius: 4; color: ap.accC }
             MouseArea { id: ima; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.LeftButton | Qt.RightButton
+              property real px0: 0
+              property real py0: 0
+              property bool moved: false
+              property bool skipClick: false
+              onPressed: (m) => { px0 = m.x; py0 = m.y; moved = false }
+              onPositionChanged: (m) => {
+                if (!pressed || m.button === Qt.RightButton) return
+                if (!moved && Math.hypot(m.x - px0, m.y - py0) > 8) { moved = true; ap.dragE = modelData }
+                if (!moved) return
+                var g = ima.mapToItem(null, m.x, m.y)
+                ap.dragX = g.x; ap.dragY = g.y
+                ap.dropOk = g.y > win.height - 130      // the bottom strip of the screen is the dock
+              }
+              onReleased: (m) => {
+                if (!moved) return
+                if (ap.dropOk && !ap.inDock(modelData)) ap.togglePin(modelData)
+                ap.dragE = null; ap.dropOk = false; moved = false; skipClick = true
+              }
               onClicked: (m) => {
+                if (skipClick) { skipClick = false; return }
                 if (m.button === Qt.RightButton) { var p = ima.mapToItem(card, m.x, m.y); ap.ctxX = p.x; ap.ctxY = p.y; ap.ctxE = modelData }
                 else { ap.ctxE = null; ap.run(modelData) }
               } }

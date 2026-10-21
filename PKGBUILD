@@ -7,7 +7,7 @@ provides=('legal-dock')
 replaces=('legal-dock')
 conflicts=('legal-dock')
 arch=('any')
-url='https://github.com/5ive7/legal-desk'
+url='https://github.com/5ive7/legal-dock'
 license=('MIT')
 install=legal-desk.install
 depends=('hyprland' 'nwg-dock-hyprland' 'quickshell' 'inotify-tools' 'python' 'util-linux' 'procps-ng' 'bash'
@@ -49,6 +49,7 @@ package() {
   install -Dm644 share/config.schema.json "$pkgdir/usr/share/legal-desk/config.schema.json"
   install -Dm644 systemd/legal-minimized.service "$pkgdir/usr/lib/systemd/user/legal-minimized.service"
   install -Dm644 share/5ive7.png "$pkgdir/usr/share/legal-desk/5ive7.png"
+  install -Dm644 share/radio-1up.svg "$pkgdir/usr/share/legal-desk/radio-1up.svg"   # 1UP Radio logo every icon set copies
   install -Dm644 share/style.css "$pkgdir/usr/share/legal-desk/style.css"
   install -Dm644 share/mac-animations.lua "$pkgdir/usr/share/legal-desk/mac-animations.lua"
   install -Dm644 /dev/stdin "$pkgdir/etc/xdg/autostart/legal-desk-setup.desktop" <<'EOT'

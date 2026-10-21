@@ -1,5 +1,5 @@
 #!/bin/bash
-find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }   # your own copy in ~/.config wins, else the installed one
+find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="$HOME/.local/share/legal-desk/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }   # your own copy in ~/.config wins, else the installed one
 "$(dirname "$(readlink -f "$0")")/macdock-skin" palette >/dev/null 2>&1
 # reboot-confirm [reboot|shutdown] [center]
 # Ask before restarting / shutting down. "center" (used by the dock menu) puts the popup mid-screen;

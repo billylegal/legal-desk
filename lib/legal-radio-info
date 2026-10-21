@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """legal-radio-info : one JSON line for the 1UP Radio window: what plays now, what is next and what was just played.
-Uses SnapDock's sd-radio for the live state and its cached schedule (radio-schedule.json) for "just played"."""
+Uses our own player (up1-radio) for the live state and its cached schedule for "just played"."""
 import json, os, subprocess, time
 
-R = "/usr/lib/snapdock/bin/sd-radio"
-if not os.path.exists(R):
-    R = "sd-radio"
-STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")), "snapdock")
+R = os.path.join(os.path.dirname(os.path.realpath(__file__)), "up1-radio")
+STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")), "up1-radio")
 try:
     st = json.loads(subprocess.run([R, "status"], capture_output=True, text=True, timeout=6).stdout or "{}")
 except Exception:
@@ -15,10 +13,17 @@ out = {"ok": bool(st), "playing": bool(st.get("playing")), "paused": bool(st.get
        "running": bool(st.get("running")), "volume": st.get("volume", 50), "muted": bool(st.get("muted")),
        "track": st.get("track") or {}, "elapsed": st.get("elapsed", 0), "dur": st.get("dur", 0), "next": (st.get("next") or [])[:3], "prev": []}
 try:
-    sch = json.load(open(os.path.join(STATE, "radio-schedule.json")))
+    sid = (st.get("station") or {}).get("id", "1up")
+    sch = json.load(open(os.path.join(STATE, "schedule-%s.json" % sid)))
     delay, now = sch.get("delay", 0), time.time()
     done = [p for p in sch.get("plays", []) if p["t"] + delay + p.get("dur", 0) <= now]
     out["prev"] = [{"id": p["id"], "title": p["title"], "t": p["t"] + delay} for p in reversed(done[-4:])]
 except Exception:
     pass
+try:
+    sv = json.load(open(os.path.expanduser("~/.local/share/legal-desk/saved-songs.json")))
+except Exception:
+    sv = []
+out["station"] = st.get("station") or {"id": "1up", "name": "1UP Radio"}; out["stations"] = [{"id": x.get("id"), "name": x.get("name")} for x in (st.get("stations") or [])]
+out["saved"] = any(x.get("id") == (out["track"] or {}).get("id") for x in sv); out["savedCount"] = len(sv)
 print(json.dumps(out))

@@ -2,7 +2,7 @@
 # dock-menu-close main|ctx|all : close the dock's open menus (main = grid-button menu, ctx = right-click app menu).
 # Used so that opening or clicking one menu/icon closes any other menu that is still open.
 w="${1:-all}"
-find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }
+find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="$HOME/.local/share/legal-desk/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }
 [ "$w" = main ] || [ "$w" = all ] && pgrep -f "quickshell -n -p .*/docklock" >/dev/null && quickshell -p "$(find_dir docklock)" ipc call dockmenu close >/dev/null 2>&1
 [ "$w" = ctx ] || [ "$w" = all ] && pgrep -f "quickshell -n -p .*/macdock" >/dev/null && quickshell -p "$(find_dir macdock)" ipc call macdock closeMenu >/dev/null 2>&1
 exit 0

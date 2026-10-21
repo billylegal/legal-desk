@@ -62,6 +62,8 @@ def area():
     rl, rt, rr, rb = m['reserved']
     return m['x'] + rl, m['y'] + rt, w - rl - rr, h - rt - rb, m['activeWorkspace']['id']
 
+TOP_GAP = 32   # px between the top bar and any window on the top edge; locked by the user
+
 def rect(z, gap):
     # the window edges (left, top, right, bottom) of zone z, in whole pixels. Zone borders are rounded once, shared by both neighbours,
     # then each window is inset by half the gap: two windows side by side always have exactly `gap` px between them.
@@ -69,7 +71,12 @@ def rect(z, gap):
     G = int(round(gap)); lo = G // 2; hi = G - lo
     x0, y0 = round(ax + z[0] * aw), round(ay + z[1] * ah)
     x1, y1 = round(ax + (z[0] + z[2]) * aw), round(ay + (z[1] + z[3]) * ah)
-    return x0 + lo, y0 + lo, x1 - hi, y1 - hi
+    # inset only between neighbours: a zone edge that touches the bar, the dock or a screen side stays flush with it
+    l = x0 if z[0] <= 0 else x0 + lo
+    t = y0 + TOP_GAP if z[1] <= 0 else y0 + lo   # clear space under the top bar (locked at 32px)
+    r = x1 if z[0] + z[2] >= 1 else x1 - hi
+    b = y1 if z[1] + z[3] >= 1 else y1 - hi
+    return l, t, r, b
 
 def box(z, gap):
     l, t, r, b = rect(z, gap)
@@ -256,7 +263,9 @@ def watch_one(line):
             taken = set()
             for c in wins(ws):
                 if c['address'] != addr and c['floating']: taken.add(zone_of(c, d))
-            free = [i for i in range(len(layout(d)['zones'])) if i not in taken]
+            zs = layout(d)['zones']
+            free = [i for i in range(len(zs)) if i not in taken]
+            free.sort(key=lambda i: (zs[i][0] < 0.5, zs[i][1], i))   # right-hand zones first (top to bottom), then the left
             if free: snap(addr, free[0], d)
 
 if __name__ == '__main__':

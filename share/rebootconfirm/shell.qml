@@ -13,6 +13,7 @@ ShellRoot {
   property color selC: "#2A1B52"
   FileView {
     path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
+    blockLoading: true   // read before the window opens: no default-colour flash
     onLoaded: {
       var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
       if (c.bg) rc.bgC = c.bg
@@ -24,7 +25,7 @@ ShellRoot {
   // Corner radius of the skin (~/.cache/drawer-shape, written by macdock-skin), the same shape the app drawer uses.
   property int shapeR: 14
   FileView {
-    path: Quickshell.env("HOME") + "/.cache/drawer-shape"; printErrors: false
+    path: Quickshell.env("HOME") + "/.cache/drawer-shape"; printErrors: false; blockLoading: true
     onLoaded: { var v = parseInt(text().trim()); if (!isNaN(v)) rc.shapeR = Math.max(0, Math.min(v, 24)) }
   }
   readonly property string action: Quickshell.env("RC_ACTION") === "shutdown" ? "shutdown" : "reboot"

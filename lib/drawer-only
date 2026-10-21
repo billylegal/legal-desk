@@ -3,4 +3,5 @@
 # The window is ~/.config/appsmenu (skin-coloured frame; third-party app icons stay original).
 if pgrep -f '^quickshell.*appsmenu' >/dev/null; then pkill -f '^quickshell.*appsmenu'; exit 0; fi
 # Apps keep their normal icons; only Legal Desk's own apps (Mail, Calendar, Notes) wear the skin.
-exec setsid quickshell -n -p "/usr/share/legal-desk/appsmenu" >/dev/null 2>&1
+find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="$HOME/.local/share/legal-desk/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }
+exec setsid quickshell -n -p "$(find_dir appsmenu)" >/dev/null 2>&1

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Called on left-mouse press/release. After you DRAG a floating window and let go, snap it into a screen zone
+# chosen by where the mouse pointer is (Windows-style):
+#   corners -> quarter, left/right edge -> half, top middle -> maximize, bottom middle -> bottom half, middle -> centered
+state=/tmp/win-snap-press
+if [ "${1:-}" = press ]; then
+  hyprctl activewindow -j 2>/dev/null | jq -c '{address,at,size,floating}' > "$state"; exit 0
+fi
+[ -s "$state" ] || exit 0
+addr=$(jq -r .address "$state")
+now=$(hyprctl clients -j | jq -c --arg a "$addr" '.[]|select(.address==$a)')
+[ -n "$now" ] || exit 0
+[ "$(jq -r .floating <<<"$now")" = true ] || exit 0
+[ "$(jq -r .fullscreen <<<"$now")" = 0 ] || exit 0
+moved=$(jq -n --argjson a "$(cat "$state")" --argjson b "$now" '(($a.at[0]-$b.at[0])|fabs)+(($a.at[1]-$b.at[1])|fabs) > 12')
+resized=$(jq -n --argjson a "$(cat "$state")" --argjson b "$now" '(($a.size[0]-$b.size[0])|fabs)+(($a.size[1]-$b.size[1])|fabs) > 6')
+[ "$moved" = true ] && [ "$resized" = false ] || exit 0
+read -r cx cy < <(hyprctl cursorpos | tr -d ',')
+mon=$(jq -r .monitor <<<"$now")
+read -r mx my mw mh < <(hyprctl monitors -j | jq -r --argjson id "$mon" '.[]|select(.id==$id)|[.x,.y,(.width/.scale|floor),(.height/.scale|floor)]|@tsv')
+fx=$(( (cx-mx)*100/mw )); fy=$(( (cy-my)*100/mh ))
+col=m; row=m
+[ "$fx" -lt 20 ] && col=l; [ "$fx" -gt 80 ] && col=r
+[ "$fy" -lt 20 ] && row=t; [ "$fy" -gt 80 ] && row=b
+case "$col$row" in
+  lt) m=topleft;; lb) m=bottomleft;; rt) m=topright;; rb) m=bottomright;;
+  lm) m=left;; rm) m=right;; mt) m=max;; mb) m=bottom;; *) m=center;;
+esac
+exec win-snap "$m" "$addr"

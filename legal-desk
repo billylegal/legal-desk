@@ -3,7 +3,7 @@
 # legal-desk [start|setup|menu|classic|mac|rubik|theme|reset|small|medium|large|restart|status|radio|radio-bar|uninstall|version]
 B="/usr/lib/legal-desk"
 SH="/usr/share/legal-desk"
-VERSION="2.0.0"
+VERSION="2.1.0"
 
 # First run: give the classic dock its default look (never overwrites your own style.css).
 ensure_config() {
@@ -39,6 +39,7 @@ start_all() {
   { pgrep -f "dock-lock-guard" >/dev/null || setsid "$B/dock-lock-guard"; } >/dev/null 2>&1 </dev/null &
   "$B/macdock-start" >/dev/null 2>&1 </dev/null &
   "$B/legal-zones" start >/dev/null 2>&1 </dev/null &
+  { pgrep -f "quickshell -n -p $SH/fsbar" >/dev/null || setsid quickshell -n -p "$SH/fsbar"; } >/dev/null 2>&1 </dev/null &   # exit/close pill while a window is full screen
 }
 
 case "${1:-menu}" in
@@ -65,12 +66,12 @@ case "${1:-menu}" in
   small|medium|large) "$B/dock-size-set" "$1" ;;
   restart)
     pkill -x nwg-dock-hyprla
-    for d in docklock macdock; do pkill -f "p $SH/$d\$"; done
+    for d in docklock macdock fsbar; do pkill -f "p $SH/$d\$"; done
     sleep 1; start_all ;;
   status) "$B/macdock-toggle" status; echo "size: $(cat "$HOME/.cache/dock-size" 2>/dev/null || echo medium)" ;;
   uninstall)
     # Hand the dock back to the classic nwg-dock: stop every Legal Desk process, forget its state, start the stock dock.
-    for p in "docklock" "macdock"; do pkill -f "p $SH/$p\$"; done
+    for p in "docklock" "macdock" "fsbar"; do pkill -f "p $SH/$p\$"; done
     pkill -f "$B/dock-keepalive"; pkill -f "$B/dock-lock-guard"; pkill -x nwg-dock-hyprla
     rm -f "$HOME/.cache/dock-mac" "$HOME/.cache/dock-locked" "$HOME/.cache/dock-hidden" "$HOME/.cache/dock-full"
     sleep 1; { setsid nwg-dock-hyprland -r -x -i 56; } >/dev/null 2>&1 </dev/null &

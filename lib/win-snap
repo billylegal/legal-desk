@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# win-snap <left|right|top|bottom|topleft|topright|bottomleft|bottomright|center|max|restore> [window-address]
+# Windows-style snapping for Hyprland: floats the window and places it in the usable screen area.
+set -euo pipefail
+mode="${1:?mode}"; addr="${2:-}"
+if [ -n "$addr" ]; then win=$(hyprctl clients -j | jq -c --arg a "$addr" '.[]|select(.address==$a)'); else win=$(hyprctl activewindow -j); fi
+[ -n "$win" ] || exit 0
+addr=$(jq -r .address <<<"$win"); mon=$(jq -r .monitor <<<"$win"); floating=$(jq -r .floating <<<"$win")
+read -r mx my mw mh rl rt rr rb < <(hyprctl monitors -j | jq -r --argjson id "$mon" '.[]|select(.id==$id)|[.x,.y,(.width/.scale|floor),(.height/.scale|floor),.reserved[0],.reserved[1],.reserved[2],.reserved[3]]|@tsv')
+gap=6
+X=$((mx+rl+gap)); Y=$((my+rt+gap)); W=$((mw-rl-rr-2*gap)); H=$((mh-rt-rb-2*gap))
+hw=$(((W-gap)/2)); hh=$(((H-gap)/2))
+case "$mode" in
+  restore) hyprctl dispatch "hl.dsp.window.float({action='disable',window='address:$addr'})" >/dev/null; exit 0;;
+  left)        x=$X; y=$Y; w=$hw; h=$H;;
+  right)       x=$((X+hw+gap)); y=$Y; w=$hw; h=$H;;
+  top)         x=$X; y=$Y; w=$W; h=$hh;;
+  bottom)      x=$X; y=$((Y+hh+gap)); w=$W; h=$hh;;
+  topleft)     x=$X; y=$Y; w=$hw; h=$hh;;
+  topright)    x=$((X+hw+gap)); y=$Y; w=$hw; h=$hh;;
+  bottomleft)  x=$X; y=$((Y+hh+gap)); w=$hw; h=$hh;;
+  bottomright) x=$((X+hw+gap)); y=$((Y+hh+gap)); w=$hw; h=$hh;;
+  center)      w=$((W*2/3)); h=$((H*2/3)); x=$((X+(W-w)/2)); y=$((Y+(H-h)/2));;
+  max)         x=$X; y=$Y; w=$W; h=$H;;
+  *) echo "unknown mode $mode" >&2; exit 1;;
+esac
+[ "$floating" = "true" ] || hyprctl dispatch "hl.dsp.window.float({action='enable',window='address:$addr'})" >/dev/null
+hyprctl dispatch "hl.dsp.window.resize({x=$w,y=$h,exact=true,window='address:$addr'})" >/dev/null
+hyprctl dispatch "hl.dsp.window.move({x=$x,y=$y,exact=true,window='address:$addr'})" >/dev/null

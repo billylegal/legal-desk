@@ -14,9 +14,14 @@ Panel {
   ipcTarget: "oneup-radio"
 
   // Colours follow the dock skin (~/.cache/dock-menu-colors, re-read every second). The status greens stay fixed.
-  property color cBg: "#07050F"
-  property color cAcc: "#8B5CF6"
-  property color cTxt: root.cTxt
+  // Two looks: "skin" = follow the dock skin, "nebula" = the original purple. The button in the popup header switches (kept in ~/.cache/oneup-radio-look).
+  property color sBg: "#07050F"
+  property color sAcc: "#8B5CF6"
+  property color sTxt: "#F2EBFF"
+  property bool useSkin: true
+  readonly property color cBg: useSkin ? sBg : "#07050F"
+  readonly property color cAcc: useSkin ? sAcc : "#8B5CF6"
+  readonly property color cTxt: useSkin ? sTxt : "#F2EBFF"
   readonly property color cAcc2: Qt.lighter(root.cAcc, 1.35)
   readonly property color cDim: Qt.rgba(root.cTxt.r, root.cTxt.g, root.cTxt.b, 0.55)
   // the Nebula artwork only belongs to the Nebula skin
@@ -26,12 +31,23 @@ Panel {
     path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
     onLoaded: {
       var c = {}; text().split("\n").forEach(function (l) { var m = l.match(/^\s*(\w+)\s*=\s*(#[0-9a-fA-F]{6})/); if (m) c[m[1]] = m[2] })
-      if (c.bg) root.cBg = c.bg
-      if (c.acc) root.cAcc = c.acc
-      if (c.txt) root.cTxt = c.txt
+      if (c.bg) root.sBg = c.bg
+      if (c.acc) root.sAcc = c.acc
+      if (c.txt) root.sTxt = c.txt
     }
   }
-  Timer { interval: 1000; running: true; repeat: true; onTriggered: colorsFile.reload() }
+  FileView {
+    id: lookFile
+    path: Quickshell.env("HOME") + "/.cache/oneup-radio-look"
+    onLoaded: root.useSkin = text().trim() !== "nebula"
+  }
+  Process { id: lookSave; property var cmd: []; command: cmd }
+  function toggleLook() {
+    root.useSkin = !root.useSkin
+    lookSave.cmd = ["sh", "-c", "echo " + (root.useSkin ? "skin" : "nebula") + " > \"$HOME/.cache/oneup-radio-look\""]
+    lookSave.running = false; lookSave.running = true
+  }
+  Timer { interval: 1000; running: true; repeat: true; onTriggered: { colorsFile.reload(); lookFile.reload() } }
 
   property var info: ({ ok: false, playing: false, paused: false, track: {}, next: [], prev: [], volume: 50, muted: false, elapsed: 0, dur: 0, running: false })
   readonly property bool on: !!info.playing && !info.paused
@@ -145,7 +161,7 @@ Panel {
     open: root.opened
     focusTarget: keys
     contentWidth: panel.fittedContentWidth(Style.space(400))
-    contentHeight: panel.fittedContentHeight(Style.space(522))
+    contentHeight: panel.fittedContentHeight(Style.space(560))
 
     PanelKeyCatcher {
       id: keys
@@ -189,10 +205,10 @@ Panel {
           Row {
             x: 58; anchors.verticalCenter: parent.verticalCenter; spacing: 7
             Text { id: oneT; text: "1UP"; color: root.cAcc; font.pixelSize: 22; font.bold: true; font.letterSpacing: 1.4 }
-            Text { text: "RADIO"; color: root.cTxt; font.pixelSize: 13; font.weight: Font.Light; font.letterSpacing: 6; anchors.baseline: oneT.baseline }
+            Text { text: "RADIO"; color: root.cTxt; font.pixelSize: 13; font.weight: Font.Light; font.letterSpacing: 1.5; anchors.baseline: oneT.baseline }
           }
           Row {
-            anchors.right: parent.right; anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter; spacing: 6
+            anchors.right: parent.right; anchors.rightMargin: 14; anchors.verticalCenter: parent.verticalCenter; spacing: 5
             Rectangle {
               id: pwr; width: 30; height: 30; radius: 15; anchors.verticalCenter: parent.verticalCenter
               readonly property bool lit: !!root.info.playing
@@ -209,7 +225,13 @@ Panel {
               MouseArea { id: pwma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.ArrowCursor; onClicked: root.run([root.info.playing ? "stop" : "play"]) }
             }
             Rectangle { width: 8; height: 8; radius: 4; anchors.verticalCenter: parent.verticalCenter; color: root.on ? "#8dffc7" : "#46567a" }
-            Text { text: root.on ? "ON AIR" : "OFF AIR"; color: root.on ? "#8dffc7" : root.cDim; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2.4; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: root.on ? "ON AIR" : "OFF AIR"; color: root.on ? "#8dffc7" : root.cDim; font.pixelSize: 10; font.bold: true; font.letterSpacing: 1; anchors.verticalCenter: parent.verticalCenter }
+            Rectangle {
+              width: lookT.implicitWidth + 10; height: 15; radius: 7.5; anchors.verticalCenter: parent.verticalCenter
+              color: lkma.containsMouse ? Qt.rgba(root.cAcc.r, root.cAcc.g, root.cAcc.b, 0.22) : "#0affffff"; border.width: 1; border.color: lkma.containsMouse ? root.cAcc : "#4dffffff"
+              Text { id: lookT; anchors.centerIn: parent; text: root.useSkin ? "SKIN" : "NEBULA"; color: root.cTxt; font.pixelSize: 7; font.bold: true; font.letterSpacing: 0.8 }
+              MouseArea { id: lkma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.ArrowCursor; onClicked: root.toggleLook() }
+            }
           }
         }
 
@@ -320,9 +342,20 @@ Panel {
           Text { anchors.right: parent.right; text: root.vol; color: root.cAcc; font.pixelSize: 10; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
         }
 
+        // save song (like the button on 1upradio.com)
+        Rectangle {
+          id: saveBtn
+          readonly property bool sv: !!root.info.saved
+          x: (parent.width - width) / 2; y: 316; width: 132; height: 30; radius: 15
+          color: svma.containsMouse ? Qt.rgba(root.cAcc.r, root.cAcc.g, root.cAcc.b, 0.22) : (sv ? Qt.rgba(root.cAcc.r, root.cAcc.g, root.cAcc.b, 0.16) : "#0affffff")
+          border.width: 1; border.color: sv || svma.containsMouse ? root.cAcc : "#4dffffff"; opacity: root.info.track && root.info.track.id ? 1 : 0.45
+          Text { anchors.centerIn: parent; text: saveBtn.sv ? "\u2665 Saved" : "\u2661 Save Song"; color: saveBtn.sv ? root.cAcc2 : root.cTxt; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1.2 }
+          MouseArea { id: svma; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.ArrowCursor; onClicked: root.run(["save"]) }
+        }
+
         // up next / just played
         Row {
-          x: 14; y: 322; width: parent.width - 28; height: 150; spacing: 10
+          x: 14; y: 356; width: parent.width - 28; height: 150; spacing: 10
           Repeater {
             model: [{ h: "UP NEXT", k: "next" }, { h: "JUST PLAYED", k: "prev" }]
             Rectangle {
@@ -349,7 +382,7 @@ Panel {
 
         // footer
         Item {
-          x: 14; y: 478; width: parent.width - 28; height: 34
+          x: 14; y: 516; width: parent.width - 28; height: 34
           Row {
             anchors.verticalCenter: parent.verticalCenter; spacing: 5
             Text { text: "Keep the volume up \u00b7 Sponsored by"; color: root.cDim; font.pixelSize: 9; anchors.verticalCenter: parent.verticalCenter }

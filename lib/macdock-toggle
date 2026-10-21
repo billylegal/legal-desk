@@ -1,5 +1,5 @@
 #!/bin/bash
-find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }   # your own copy in ~/.config wins, else the installed one
+find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="$HOME/.local/share/legal-desk/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }   # your own copy in ~/.config wins, else the installed one
 # macdock-toggle on|rubik|off|status — switch between the magnifying macOS-style dock and the classic nwg-dock.
 F="$HOME/.cache/dock-mac"
 start_mac() { pgrep -f "quickshell -n -p .*/macdock$" >/dev/null || setsid quickshell -n -p "$(find_dir macdock)" >/dev/null 2>&1 & }

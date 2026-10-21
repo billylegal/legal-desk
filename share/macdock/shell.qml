@@ -307,7 +307,7 @@ ShellRoot {
   Timer { interval: 1500; running: root.ownTokens.indexOf("__radio__") >= 0; repeat: true; triggeredOnStart: true; onTriggered: { if (!radioPoll.running) radioPoll.running = true } }
   // Omarchy Store: updates waiting (red badge on its icon; click goes straight to the Updates page)
   property int storeUpd: 0
-  readonly property string storeCls: "chrome-127.0.0.1__-Default"
+  readonly property string storeCls: "brave-127.0.0.1__-Default"
   Process {
     id: storePoll
     command: ["/usr/lib/legal-desk/dock-store-updates"]
@@ -548,10 +548,10 @@ print(json.dumps(out))
     else launch(["bash", "-c", "gtk-launch \"$1\" || { command -v \"$1\" >/dev/null && setsid \"$1\"; }", "x", cls])
   }
   function iconFor(cls) {
-    if (cls === "__launcher__") return "file:///usr/share/nwg-dock-hyprland/images/grid.svg"
-    if (cls === "__trash__" || cls === "__folder__") return artDir !== "" ? artDir + "/" + artName(cls) + ".svg" : ""
-    if (cls === storeCls) { var sp = Quickshell.iconPath("omarchy-store", true); if (sp) return sp }   // the Omarchy Store always gets its own icon, even when its launcher does not name the window class
-    var r = appmap[cls]
+      if (cls === "__launcher__") return "file:///usr/share/nwg-dock-hyprland/images/grid.svg"
+      if (cls === "__trash__" || cls === "__folder__") return artDir !== "" ? artDir + "/" + artName(cls) + ".svg" : ""
+      if (cls === storeCls) { var sp = Quickshell.iconPath("omarchy-store", true); if (sp) return sp }
+      var r = appmap[cls]
     var n = r && r.icon ? r.icon : cls
     if (n.startsWith("/")) return "file://" + n
     var tries = [n, cls, cls.toLowerCase(), cls.toLowerCase().replace(/^chrome-/, "").replace(/-default$/, "")]
@@ -1431,7 +1431,7 @@ print(json.dumps(out))
               // Launcher: left click opens / closes the Apps window; right click opens / closes the dock menu
               if (cell.modelData.cls === "__launcher__") {
                 if (root.rubik) twistAnim.restart(); root.ctx = ""
-                if (m.button === Qt.RightButton) root.sh(["/usr/lib/legal-desk/dock-menu-toggle"]); else root.sh(["/usr/lib/legal-desk/drawer-only"])
+                if (m.button === Qt.RightButton) root.sh(["/usr/lib/legal-desk/drawer-only"]); else root.sh(["/usr/lib/legal-desk/dock-menu-toggle"])
                 return
               }
               if (m.button === Qt.LeftButton) { if (root.rubik) twistAnim.restart(); root.ctx = ""; root.closeMain(); root.activate(cell.modelData.cls) }
@@ -1463,21 +1463,21 @@ print(json.dumps(out))
   function isBrowser(c) { return /^(google-chrome|chromium|brave|microsoft-edge|vivaldi|helium|firefox|zen|librewolf)/i.test(c) }
   function ctxRows() {
     var rows = []
-    if (ctx === "__trash__") return [{ l: "Trash", a: "hdr" }, { l: "Open trash", a: "open" }, { l: "Empty trash", a: "empty" }, { l: "Cancel", a: "cancel" }]
-    if (ctx === "__folder__") return [{ l: "Downloads", a: "hdr" }, { l: "Open folder", a: "open" }, { l: "Cancel", a: "cancel" }]
-    if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__" || ctx === "__disks__" || ctx === "__zones__") return [{ l: ctx === "__zones__" ? "Legal Zones" : ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : ctx === "__disks__" ? "Disk Management" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
-    if (ctx === storeCls) { var sr = [{ l: "Omarchy Store", a: "hdr" }]; if (storeUpd > 0) sr.push({ l: "Update available  ·  " + storeUpd, a: "storeupd" }); sr.push({ l: "Check for updates", a: "storecheck" }, { l: "Open the store", a: "storeopen" }, { l: isPinned(ctx) ? "Remove from dock" : "Pin to dock", a: "pin" }, { l: "Cancel", a: "cancel" }); return sr }
-    if (ctx === "__radio__") return [{ l: "1UP Radio", a: "hdr" }, { l: "Open radio window", a: "open" }, { l: "Play / Pause", a: "rtoggle" }, { l: "Live (jump to now)", a: "rlive" }, { l: "Stop", a: "rstop" }, { l: radioStyle === "logo" ? "Icon: meters" : "Icon: original logo", a: "ricon" }, { l: "Remove from dock", a: "unown" }, { l: "Cancel", a: "cancel" }]
-    if (ctx === "settings") return [{ l: "Settings", a: "hdr" }, { l: "Open settings", a: "open" }, { l: "Task manager", a: "tasks" }, { l: "Cancel", a: "cancel" }]
-    if (ctx === "__snap__") return [{ l: "Screenshot", a: "hdr" }, { l: "Take screenshot", a: "open" }, { l: "Cancel", a: "cancel" }]
+    if (ctx === "__trash__") return [{ l: "Trash", a: "hdr" }, { l: "Open trash", a: "open" }, { l: "Empty trash", a: "empty" }]
+    if (ctx === "__folder__") return [{ l: "Downloads", a: "hdr" }, { l: "Open folder", a: "open" }]
+    if (ctx === "__calendar__" || ctx === "__notes__" || ctx === "__tasks__" || ctx === "__disks__" || ctx === "__zones__") return [{ l: ctx === "__zones__" ? "Legal Zones" : ctx === "__calendar__" ? "Calendar" : ctx === "__notes__" ? "Notes" : ctx === "__disks__" ? "Disk Management" : "Task Manager", a: "hdr" }, { l: "Open", a: "open" }, { l: "Remove from dock", a: "unown" }]
+    if (ctx === storeCls) { var sr = [{ l: "Omarchy Store", a: "hdr" }]; if (storeUpd > 0) sr.push({ l: "Update available  ·  " + storeUpd, a: "storeupd" }); sr.push({ l: "Check for updates", a: "storecheck" }, { l: "Open the store", a: "storeopen" }, { l: "Hide", a: "hide" }, { l: "Quit", a: "close" }, { l: isPinned(ctx) ? "Remove from dock" : "Pin to dock", a: "pin" }); return sr }
+    if (ctx === "__radio__") return [{ l: "1UP Radio", a: "hdr" }, { l: "Open radio window", a: "open" }, { l: "Play / Pause", a: "rtoggle" }, { l: "Live (jump to now)", a: "rlive" }, { l: "Stop", a: "rstop" }, { l: radioStyle === "logo" ? "Icon: meters" : "Icon: original logo", a: "ricon" }, { l: "Remove from dock", a: "unown" }]
+    if (ctx === "settings") return [{ l: "Settings", a: "hdr" }, { l: "Open settings", a: "open" }, { l: "Task manager", a: "tasks" }, { l: "Hide", a: "hide" }, { l: "Quit", a: "close" }]
+    if (ctx === "__snap__") return [{ l: "Screenshot", a: "hdr" }, { l: "Take screenshot", a: "open" }]
     var w = ctxWins
     rows.push({ l: ((appmap[ctx] && appmap[ctx].name) || ctx.replace(/^chrome-/, "").replace(/-Default$/, "")) + (w.length > 0 ? "  ·  " + w.length : ""), a: "hdr" })
     for (var i = 0; i < w.length && i < 6; i++) rows.push({ l: " " + (w[i].t.length > 20 ? w[i].t.substring(0, 19) + "…" : (w[i].t || "(untitled)")), a: "focus", addr: w[i].a })
     if (appmap[ctx]) rows.push({ l: "New window", a: "new" })
     if (isBrowser(ctx)) rows.push({ l: "New incognito window", a: "incog" })
     rows.push({ l: isPinned(ctx) ? "Remove from dock" : "Pin to dock", a: "pin" })
-    if (w.length > 0) rows.push({ l: "Close app", a: "close" })
-    rows.push({ l: "Cancel", a: "cancel" })
+    rows.push({ l: "Hide", a: "hide" })
+    rows.push({ l: "Quit", a: "close" })
     return rows
   }
   // The two "Remove from dock?" questions.
@@ -1574,6 +1574,7 @@ print(json.dumps(out))
                   else if (act === "empty") root.sh(["gio", "trash", "--empty"])
                   else if (act === "pin") { if (root.isPinned(c)) root.askRemove("pin", c); else root.sh(["/usr/lib/legal-desk/dock-pin-toggle", c]) }
                   else if (act === "close") root.sh(["/usr/lib/legal-desk/dock-close-app", c])
+                  else if (act === "hide") root.sh(["/usr/lib/legal-desk/dock-hide-app", c])
                   else if (act === "focus") root.sh(["hyprctl", "dispatch", "hl.dsp.focus({window='address:" + addr + "'})"])
                   else if (act === "incog") root.launch(["/usr/lib/legal-desk/browser-incognito", c])
                   else if (act === "new") { var r = root.appmap[c]; if (r) root.launch(["gtk-launch", r.id + ".desktop"]) }

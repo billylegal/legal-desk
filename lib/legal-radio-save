@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+"""legal-radio-save [toggle|list|has]: "Save Song" for the desktop 1UP Radio (same idea as the button on 1upradio.com).
+The list lives in ~/.local/share/legal-desk/saved-songs.json as [{id, title, at}], newest first. toggle saves the song that plays now (or removes it)."""
+import json, os, subprocess, sys, time
+R = os.path.join(os.path.dirname(os.path.realpath(__file__)), "up1-radio")
+F = os.path.expanduser("~/.local/share/legal-desk/saved-songs.json")
+def load():
+    try: return json.load(open(F))
+    except Exception: return []
+def save(l):
+    os.makedirs(os.path.dirname(F), exist_ok=True)
+    json.dump(l, open(F + ".tmp", "w"), indent=1, ensure_ascii=False); os.replace(F + ".tmp", F)
+def now():
+    try: t = json.loads(subprocess.run([R, "status"], capture_output=True, text=True, timeout=6).stdout or "{}").get("track") or {}
+    except Exception: t = {}
+    return t.get("id"), t.get("name") or t.get("title") or ""
+cmd = sys.argv[1] if len(sys.argv) > 1 else "toggle"
+l = load()
+if cmd == "list":
+    print(json.dumps(l, ensure_ascii=False))
+elif cmd == "toggle":
+    i, n = now()
+    if i:
+        k = next((x for x, s in enumerate(l) if s["id"] == i), -1)
+        if k >= 0: l.pop(k)
+        else: l.insert(0, {"id": i, "title": n, "at": int(time.time())})
+        save(l)

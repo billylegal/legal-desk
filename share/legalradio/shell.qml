@@ -81,7 +81,7 @@ ShellRoot {
 
     Rectangle {
       id: card
-      readonly property real cw: rd.sz === 0 ? 330 : (rd.sz === 1 ? 372 : 412)
+      readonly property real cw: 372          // all three sizes the same width
       readonly property real ch: rd.sz === 0 ? 86 : body.implicitHeight + 20
       width: cw; height: ch
       // the remembered spot, else bottom centre above the dock; always kept on the screen
@@ -129,7 +129,7 @@ ShellRoot {
         anchors.fill: parent
         Image { x: 10; y: 10; width: 44; height: 44; source: Qt.resolvedUrl("logo.png"); fillMode: Image.PreserveAspectCrop; smooth: true; mipmap: true }
         Column {
-          x: 64; y: 10; width: parent.width - 64 - 112; spacing: 2
+          x: 64; y: 10; width: parent.width - 64 - 152; spacing: 2
           Text { width: parent.width; text: rd.tr.title ? rd.tr.title : "Press play to tune in"; color: "white"; font.pixelSize: 12; font.weight: Font.Medium; elide: Text.ElideRight }
           Text { width: parent.width; text: rd.tr.artist ? rd.tr.artist : "1UP Radio"; color: rd.acc2; font.pixelSize: 10; font.capitalization: Font.AllUppercase; font.letterSpacing: 1.4; elide: Text.ElideRight }
           Row { spacing: 2; height: 14
@@ -144,6 +144,14 @@ ShellRoot {
         // thin progress along the bottom
         Rectangle { x: 10; y: parent.height - 12; width: parent.width - 20; height: 2; radius: 1; color: "#2effffff" }
         Rectangle { x: 10; y: parent.height - 12; width: (parent.width - 20) * rd.frac; height: 2; radius: 1; color: rd.accC }
+        Rectangle {
+          id: sheart
+          readonly property bool sv: !!rd.info.saved
+          x: parent.width - 138; y: 22; width: 32; height: 32; radius: 16; opacity: rd.tr.id ? 1 : 0.45
+          color: shma.containsMouse ? Qt.rgba(0.545, 0.36, 0.96, 0.28) : "#0dffffff"; border.color: sv || shma.containsMouse ? rd.accC : "#4dffffff"; border.width: 1
+          Text { anchors.centerIn: parent; text: sheart.sv ? "\u2665" : "\u2661"; color: sheart.sv ? rd.acc2 : "white"; font.pixelSize: 15 }
+          MouseArea { id: shma; anchors.fill: parent; hoverEnabled: true; onClicked: rd.run(["save"]) }
+        }
         Rectangle {
           x: parent.width - 100; y: 17; width: 42; height: 42; radius: 21
           color: spma.containsMouse ? Qt.rgba(0.545, 0.36, 0.96, 0.32) : Qt.rgba(0.545, 0.36, 0.96, 0.16); border.color: Qt.rgba(0.545, 0.36, 0.96, 0.85); border.width: 1
@@ -309,6 +317,21 @@ ShellRoot {
             Timer { id: volClear; interval: 1500; onTriggered: rd.volDrag = -1 }
           }
           Text { anchors.right: parent.right; text: rd.vol; color: rd.accC; font.pixelSize: 10; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+        }
+
+        // save song (like the button on 1upradio.com)
+        Item {
+          visible: rd.sz > 0
+          width: parent.width; height: visible ? 28 : 0
+          Rectangle {
+            id: saveBtn
+            readonly property bool sv: !!rd.info.saved
+            anchors.horizontalCenter: parent.horizontalCenter; width: 128; height: 28; radius: 14
+            color: svma.containsMouse ? Qt.rgba(0.545, 0.36, 0.96, 0.28) : (sv ? Qt.rgba(0.545, 0.36, 0.96, 0.16) : "#0affffff")
+            border.width: 1; border.color: sv || svma.containsMouse ? rd.accC : "#4dffffff"; opacity: rd.tr.id ? 1 : 0.45
+            Text { anchors.centerIn: parent; text: saveBtn.sv ? "\u2665 Saved" : "\u2661 Save Song"; color: saveBtn.sv ? rd.acc2 : "white"; font.pixelSize: 11; font.bold: true; font.letterSpacing: 1.2 }
+            MouseArea { id: svma; anchors.fill: parent; hoverEnabled: true; onClicked: rd.run(["save"]) }
+          }
         }
 
         // up next / just played (large only)

@@ -1,5 +1,5 @@
 #!/bin/bash
-find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }   # your own copy in ~/.config wins, else the installed one
+find_dir() { local d="$HOME/.config/$1"; [ -d "$d" ] || d="$HOME/.local/share/legal-desk/$1"; [ -d "$d" ] || d="/usr/share/legal-desk/$1"; echo "$d"; }   # your own copy in ~/.config wins, else the installed one
 # Rubik's-cube button: if the app drawer is open, close it right away; otherwise toggle the dock menu.
 if pgrep -f '^quickshell.*appsmenu' >/dev/null; then
   pkill -f '^quickshell.*appsmenu'

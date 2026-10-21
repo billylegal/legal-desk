@@ -1,0 +1,13 @@
+#!/bin/bash
+# dock-hide-app <class> : minimize (hide) every visible window of that app class.
+# Windows are parked on special:minimized by the legal-minimized daemon; clicking the
+# app's dock icon restores them (win-minimize restore-class is called by the dock).
+hyprctl clients -j | python3 -c "
+import json,sys
+c=sys.argv[1].lower()
+for w in json.load(sys.stdin):
+    ws=(w.get('workspace') or {})
+    if w['class'].lower()==c and not str(ws.get('name','')).startswith('special'):
+        print(w['address'])" "$1" | while read a; do
+  [ -n "$a" ] && "$(dirname "$(readlink -f "$0")")/win-minimize" hide "$a"
+done

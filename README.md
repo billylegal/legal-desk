@@ -134,3 +134,6 @@ Legal Desk carries [1UP Radio](https://1upradio.com) in two forms, both in the *
 - **Bar widget** (like Hertz Radio): `legal-desk radio-bar on` installs the plugin `legaldesk.oneup-radio` and adds it to the right side of the Omarchy bar (`radio-bar off` removes it). A waveform icon beats while it plays, the track scrolls next to it; click for the same Nebula player, middle-click Play/Pause, right-click Stop, scroll for volume. Options on its entry in `shell.json`: `"showTitle": false`, `"maxTitleWidth": 150`.
 
 `legal-desk radio play|toggle|live|stop|volume N|mute|window` controls it from a terminal.
+
+## Full-screen pill
+While a window is in true full screen (the title bar is hidden then), a small pill sits in the top-right corner with **⤡** (back to a normal window) and **✕** (close). It follows the dock skin and starts with `legal-desk start` (`share/fsbar`).

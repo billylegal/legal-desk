@@ -36,6 +36,7 @@ ShellRoot {
   FileView {
     id: themeColors
     path: Quickshell.env("HOME") + "/.cache/dock-menu-colors"
+    blockLoading: true   // read before the window opens: no default-colour flash
     watchChanges: true
     onFileChanged: reload()
     onLoaded: {
@@ -51,6 +52,18 @@ ShellRoot {
   property bool hidden: false
   property bool transparent: false
   property bool menuOpen: false
+  // Docs: the launchers picked from the DOCS button beside the clock. Legal Desk is the original; Store downloads add more JSON files.
+  property var docs: []
+  property bool docsOpen: false
+  onDocsOpenChanged: if (docsOpen) { docs = []; docsList.running = false; docsList.running = true }
+  Process {
+    id: docsList
+    command: ["bash", "-c", "for f in \"$HOME\"/.local/share/legal-desk/docs/*.json \"$HOME\"/.config/legal-desk/docs/*.json; do [ -f \"$f\" ] && tr -d '\\n' < \"$f\" && echo; done"]
+    stdout: SplitParser { onRead: function (line) { try { var d = JSON.parse(line); if (d.name && d.exec) ldr.docs = ldr.docs.concat([d]) } catch (e) { } } }
+  }
+  property string docScript: ""
+  Process { id: docRun; command: ["bash", "-c", "export PATH=\"$HOME/.local/bin:$PATH\"; " + ldr.docScript] }
+  Process { id: storeRun; command: ["/usr/lib/legal-desk/dock-store-open"] }
   property bool mac: false
   property bool rubik: false
   property int sizePx: 46
@@ -294,7 +307,7 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
       anchors { bottom: true; left: clockPos === "left"; right: clockPos === "right" }
       // Fixed height, so the Size slider only resizes the icons: the Mac dock's icons sit 12 px above the screen bottom, and this 46 px box is centred on them at the standard size
       margins { bottom: mac ? 12 : 6; left: 6; right: 6 }
-      implicitWidth: Math.max(ctxt.implicitWidth, cdate.implicitWidth) + 28 + (tLeft !== "" ? tpill.width + 8 : 0) + (mac ? 0 : 34); implicitHeight: 46
+      implicitWidth: Math.max(ctxt.implicitWidth, cdate.implicitWidth) + 28 + (tLeft !== "" ? tpill.width + 8 : 0) + (mac ? 0 : 34) + 46; implicitHeight: 46
       color: "transparent"
       exclusionMode: ExclusionMode.Ignore
       WlrLayershell.layer: WlrLayer.Top
@@ -310,10 +323,62 @@ print(json.dumps({"px": px, "zoom": _rd("dock-zoom", "0"), "lx": float((_rd("doc
         Rectangle { id: tpill; visible: tLeft !== ""; height: 24; width: tl.implicitWidth + 16; radius: 12; color: accC
           x: Math.max(ctxt.implicitWidth, cdate.implicitWidth) + 28; anchors.verticalCenter: parent.verticalCenter
           Text { id: tl; anchors.centerIn: parent; text: "\u23F1 " + tLeft; color: bgC; font.pixelSize: 11; font.bold: true } }
+        Rectangle {
+          id: docsBtn
+          width: 40; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: mac ? 6 : 34; anchors.verticalCenter: parent.verticalCenter
+          color: docsMa.containsMouse || docsOpen ? selC : "transparent"; border.color: accC; border.width: 1
+          Text { anchors.centerIn: parent; text: "DOCS"; color: txtC; font.pixelSize: 8; font.bold: true; font.letterSpacing: 0.8 }
+          MouseArea { id: docsMa; anchors.fill: parent; hoverEnabled: true; onClicked: docsOpen = !docsOpen }
+        }
         Rectangle { visible: !mac; width: 24; height: 24; radius: 6; anchors.right: parent.right; anchors.rightMargin: 6; anchors.verticalCenter: parent.verticalCenter
           color: snapMa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
           Text { anchors.centerIn: parent; text: "\uf030"; color: txtC; font.family: "JetBrainsMono Nerd Font"; font.pixelSize: 12 }
           MouseArea { id: snapMa; anchors.fill: parent; hoverEnabled: true; onClicked: { snapProc.running = false; snapProc.running = true } } }
+      }
+    }
+  }
+
+  // The DOCS list: pops up above the clock. Click a doc to run it; "Get more" opens the Store.
+  Variants {
+    model: clockPos !== "off" && docsOpen ? [lastDock ? lastDock.mon : (Quickshell.screens.length ? Quickshell.screens[0].name : "")] : []
+    PanelWindow {
+      required property var modelData
+      screen: Quickshell.screens.find(s => s.name === modelData) ?? Quickshell.screens[0]
+      anchors { bottom: true; left: clockPos === "left"; right: clockPos === "right" }
+      margins { bottom: 66; left: 6; right: 6 }
+      implicitWidth: 260; implicitHeight: docCol.implicitHeight + 16
+      color: "transparent"
+      exclusionMode: ExclusionMode.Ignore
+      WlrLayershell.layer: WlrLayer.Overlay
+      WlrLayershell.namespace: "dockdocs"
+      WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+      Rectangle {
+        anchors.fill: parent; radius: 12; color: bgC; border.color: accC; border.width: 1
+        focus: true
+        Keys.onEscapePressed: docsOpen = false
+        Column {
+          id: docCol
+          x: 8; y: 8; width: parent.width - 16; spacing: 4
+          Text { text: "DOCS"; color: accC; font.pixelSize: 10; font.bold: true; font.letterSpacing: 2 }
+          Repeater {
+            model: ldr.docs
+            Rectangle {
+              required property var modelData
+              width: docCol.width; height: 32; radius: 6
+              color: docMa.containsMouse ? selC : "transparent"
+              Text { anchors.verticalCenter: parent.verticalCenter; x: 10; text: modelData.name + (modelData.original ? "  (original)" : ""); color: txtC; font.pixelSize: 13 }
+              MouseArea { id: docMa; anchors.fill: parent; hoverEnabled: true
+                onClicked: { ldr.docScript = modelData.exec; docRun.running = false; docRun.running = true; ldr.docsOpen = false } }
+            }
+          }
+          Rectangle {
+            width: docCol.width; height: 32; radius: 6
+            color: getMa.containsMouse ? selC : "transparent"; border.color: accC; border.width: 1
+            Text { anchors.centerIn: parent; text: "Get more docs in the Store"; color: accC; font.pixelSize: 12 }
+            MouseArea { id: getMa; anchors.fill: parent; hoverEnabled: true
+              onClicked: { storeRun.running = false; storeRun.running = true; ldr.docsOpen = false } }
+          }
+        }
       }
     }
   }
